@@ -7,6 +7,9 @@
   v2026.06.07.002  Fixed control dock drifting into mid-page on long songs (now pinned to viewport).
   v2026.06.07.003  PWA wrapper: manifest, service worker, self-hosted fonts, app icons.
   v2026.06.07.004  Add-to-setlist from All Songs; picker import option; lyrics fetch + chord search.
+  v2026.06.07.005  Bug fixes: persist font/speed/flats; custom prompt/confirm modals; goBack fix;
+                   hide Play FAB on empty sets; swipe hint auto-hide; backdrop tap closes modals;
+                   card hover theme fix; font size CSS-only update; simplified chord lookup.
 -->
 <html lang="en">
 <head>
@@ -73,7 +76,7 @@
   .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);
     padding:.9rem 1rem;margin-bottom:.6rem;display:flex;align-items:center;gap:.85rem;transition:.15s;}
   .card:active{transform:scale(.99);}
-  .card:hover{border-color:#4a4232;}
+  .card:hover{border-color:var(--faint);}
   .card .meta{flex:1;min-width:0;}
   .card .t{font-weight:600;font-size:1.05rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
   .card .s{font-size:.78rem;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:.1rem;}
@@ -125,7 +128,10 @@
   .blank{height:.8em;}
   .chorus{border-left:3px solid var(--accent);padding-left:.7rem;margin-left:-.1rem;}
   .comment{color:var(--muted);font-style:italic;font-size:.7em;margin:.3rem 0 .5rem;font-family:var(--ui);}
-  .swipehint{text-align:center;color:var(--faint);font-size:.7rem;font-family:var(--mono);margin-top:2rem;opacity:.6;}
+  .swipehint{text-align:center;color:var(--faint);font-size:.7rem;font-family:var(--mono);margin-top:2rem;opacity:.6;transition:opacity .5s;}
+  .modal.bottom{align-items:flex-end;}
+  .modal.bottom .sheetwrap{border-radius:var(--radius) var(--radius) 0 0;border-left:1px solid var(--line);border-right:1px solid var(--line);max-height:55dvh;}
+  .confirm-msg{color:var(--muted);font-size:.92rem;margin:0;line-height:1.5;}
 
   .dock{position:fixed;left:0;right:0;bottom:0;
     background:var(--panel);
@@ -198,7 +204,7 @@
 <div class="app">
   <header>
     <button class="back" id="backBtn" style="display:none">‹ <span id="backLabel">Back</span></button>
-    <div class="brand" id="brand"><span class="dot"></span>SetList69<small>v2026.06.07.004</small></div>
+    <div class="brand" id="brand"><span class="dot"></span>SetList69<small>v2026.06.07.005</small></div>
     <div class="htitle" id="headerTitle" style="display:none"></div>
     <div class="spacer"></div>
     <button class="iconbtn" id="menuBtn" title="Songs &amp; backup">≡</button>
@@ -261,10 +267,7 @@
         <textarea id="fBody" placeholder="[G]Amazing [G7]grace how [C]sweet the [G]sound&#10;&#10;…or paste chord lines above lyric lines."></textarea></div>
       <div class="hint">Inline <code>[C]</code> or chords-above-lyrics both work — it always renders chords above the words.
         Directives <code>{key:}</code>, <code>{soc}/{eoc}</code>, <code>{c:note}</code> supported.</div>
-      <div class="lookuprow">
-        <button class="ghostbtn" id="fetchLyricsBtn">🔍 Fetch lyrics</button>
-        <button class="ghostbtn" id="findChordsBtn">↗ Chords online</button>
-      </div>
+      <button class="ghostbtn" id="findChordsBtn">↗ Find chords &amp; lyrics online</button>
       <div class="fileimport">Import file:
         <label>.cho / .chordpro / .pro / .onsong / .txt<input type="file" id="fileInput" accept=".cho,.chordpro,.pro,.crd,.onsong,.txt,text/plain" hidden></label></div>
     </div>
@@ -299,6 +302,22 @@
   </div>
 </div>
 
+<div class="modal bottom" id="promptModal">
+  <div class="sheetwrap">
+    <div class="mhead"><h3 id="promptModalTitle">Enter name</h3><button class="iconbtn" id="closePromptModal">✕</button></div>
+    <div class="mbody"><div class="field"><input id="promptInput" placeholder="" autocomplete="off"></div></div>
+    <div class="mfoot"><button class="btn ghost" id="promptCancel">Cancel</button><button class="btn primary" id="promptOK">OK</button></div>
+  </div>
+</div>
+
+<div class="modal bottom" id="confirmModal">
+  <div class="sheetwrap">
+    <div class="mhead"><h3 id="confirmTitle">Confirm</h3><button class="iconbtn" id="closeConfirmModal">✕</button></div>
+    <div class="mbody"><p class="confirm-msg" id="confirmMsg"></p></div>
+    <div class="mfoot"><button class="btn ghost" id="confirmCancel">Cancel</button><button class="btn primary" id="confirmOK">OK</button></div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script>
@@ -329,7 +348,7 @@ function seed(){
   return {songs,setlists:[
     {id:"set1",name:"Front Porch",songIds:["hr","wf","sf"]},
     {id:"set2",name:"Sunday Morning",songIds:["am","wc","st"]}
-  ],theme:"dark"};
+  ],theme:"dark",fontSize:1.35,scrollSpeed:3,preferFlats:false};
 }
 
 /* ===== state & nav ===== */
@@ -337,7 +356,7 @@ let state=seed();
 let screen="setlists";
 let curSetlist=null,curSongId=null,curIndex=-1,cameFromAll=false;
 let transpose=0,preferFlats=false,fontSize=1.35,scrollSpeed=3;
-let scrolling=false,scrollRAF=null,scrollAccum=0;
+let scrolling=false,scrollRAF=null,scrollAccum=0,swipeHintTimer=null;
 let editingId=null,editorReturn="allSongs",wakeLock=null,addingSongId=null;
 
 /* ===== transposition ===== */
@@ -472,7 +491,7 @@ function show(name){
   releaseWake();if(name==="song")requestWake();
 }
 function goBack(){
-  if(screen==="song")show(curIndex>=0?"setSongs":(cameFromAll?"allSongs":"setSongs"));
+  if(screen==="song")show(curIndex>=0&&curSetlist?"setSongs":(cameFromAll?"allSongs":"setlists"));
   else if(screen==="setSongs")show("setlists");
   else if(screen==="allSongs")show("setlists");
 }
@@ -491,6 +510,7 @@ function renderSetlists(){
 }
 function renderSetSongs(){
   const sl=state.setlists.find(s=>s.id===curSetlist);if(!sl){show("setlists");return;}
+  document.getElementById("playSet").style.display=sl.songIds.length?"":"none";
   const wrap=document.getElementById("setSongList");
   if(!sl.songIds.length){wrap.innerHTML='<div class="empty"><div class="big">♪</div>No songs in this set yet.</div>';return;}
   wrap.innerHTML=sl.songIds.map((id,i)=>{
@@ -514,10 +534,14 @@ function openCurrent(){
   transpose=0;stopScroll();document.getElementById("trVal").textContent="0";
   renderSheet(s);show("song");document.getElementById("songView").scrollTop=0;
   const ctlNav=document.getElementById("prevSong").parentElement;
+  const hint=document.getElementById("swipeHint");
+  clearTimeout(swipeHintTimer);
   if(curIndex>=0){const sl=state.setlists.find(x=>x.id===curSetlist);ctlNav.style.display="";
     document.getElementById("setPos").textContent=(curIndex+1)+"/"+sl.songIds.length;
-    document.getElementById("swipeHint").style.display=sl.songIds.length>1?"":"none";}
-  else{ctlNav.style.display="none";document.getElementById("swipeHint").style.display="none";}
+    if(sl.songIds.length>1){hint.style.display="";hint.style.opacity=".6";
+      swipeHintTimer=setTimeout(()=>{hint.style.opacity="0";},2800);}
+    else{hint.style.display="none";}}
+  else{ctlNav.style.display="none";hint.style.display="none";}
 }
 function reRender(){const s=state.songs.find(x=>x.id===curSongId);if(s)renderSheet(s);}
 function nextSong(){if(curIndex<0)return;const sl=state.setlists.find(x=>x.id===curSetlist);if(curIndex<sl.songIds.length-1)openSongInSet(curIndex+1);}
@@ -619,9 +643,10 @@ async function exportData(){
 function restoreData(file){
   const r=new FileReader();r.onload=()=>{try{const d=JSON.parse(r.result);
     if(!d.songs||!d.setlists)throw 0;
-    if(!confirm("Replace all current songs and setlists with this backup?"))return;
-    state=d;if(!state.theme)state.theme="dark";persist();applyTheme();
-    renderSetlists();renderAllSongs();show("setlists");toast("Restored");
+    showConfirm("Restore backup","Replace all current songs and setlists with this backup?","Restore",()=>{
+      state=d;if(!state.theme)state.theme="dark";persist();applyTheme();
+      renderSetlists();renderAllSongs();show("setlists");toast("Restored");
+    });
   }catch(e){toast("⚠ Not a valid backup file");}};r.readAsText(file);}
 
 /* Parse an OnSong / ChordPro / plain-text song into our model.
@@ -673,16 +698,36 @@ function applyTheme(){const light=state.theme==="light";document.documentElement
   const b=document.getElementById("themeBtn");if(b)b.textContent=light?"☀":"☾";}
 function uid(p){return (p||"id")+Date.now()+Math.floor(Math.random()*1000);}
 
+/* ===== custom dialogs ===== */
+let _promptCb=null,_confirmCb=null;
+function showPrompt(title,placeholder,defaultVal,cb){
+  _promptCb=cb;
+  document.getElementById("promptModalTitle").textContent=title;
+  const inp=document.getElementById("promptInput");inp.placeholder=placeholder||"";inp.value=defaultVal||"";
+  document.getElementById("promptModal").classList.add("show");setTimeout(()=>inp.focus(),80);
+}
+function closePromptModal(){document.getElementById("promptModal").classList.remove("show");_promptCb=null;}
+function showConfirm(title,msg,actionLabel,cb){
+  _confirmCb=cb;
+  document.getElementById("confirmTitle").textContent=title;
+  document.getElementById("confirmMsg").textContent=msg;
+  document.getElementById("confirmOK").textContent=actionLabel||"OK";
+  document.getElementById("confirmModal").classList.add("show");
+}
+function closeConfirmModal(){document.getElementById("confirmModal").classList.remove("show");_confirmCb=null;}
+
 /* ===== events ===== */
 document.getElementById("backBtn").addEventListener("click",goBack);
 document.getElementById("themeBtn").addEventListener("click",()=>{state.theme=state.theme==="light"?"dark":"light";applyTheme();persist();});
 document.getElementById("menuBtn").addEventListener("click",()=>{renderAllSongs();cameFromAll=true;show("allSongs");});
 
 document.getElementById("newSetlist").addEventListener("click",()=>{
-  const name=prompt("Name this setlist:","New Set");if(name===null)return;
-  state.setlists.push({id:uid("set"),name:name.trim()||"New Set",songIds:[]});persist();renderSetlists();});
+  showPrompt("Name this setlist","New Set","",name=>{
+    state.setlists.push({id:uid("set"),name:(name||"").trim()||"New Set",songIds:[]});persist();renderSetlists();
+  });
+});
 document.getElementById("setlistList").addEventListener("click",e=>{
-  const del=e.target.closest("[data-delset]");if(del){if(confirm("Delete this setlist? (songs stay in your library)")){state.setlists=state.setlists.filter(s=>s.id!==del.dataset.delset);persist();renderSetlists();}return;}
+  const del=e.target.closest("[data-delset]");if(del){showConfirm("Delete setlist","Songs stay in your library — only the set is removed.","Delete",()=>{state.setlists=state.setlists.filter(s=>s.id!==del.dataset.delset);persist();renderSetlists();});return;}
   const open=e.target.closest(".open-set");if(open){curSetlist=open.dataset.id;renderSetSongs();show("setSongs");}});
 
 document.getElementById("setSongList").addEventListener("click",e=>{
@@ -742,12 +787,12 @@ document.getElementById("restoreInput").addEventListener("change",e=>{if(e.targe
 
 document.getElementById("trUp").addEventListener("click",()=>{transpose++;document.getElementById("trVal").textContent=(transpose>0?"+":"")+transpose;reRender();});
 document.getElementById("trDown").addEventListener("click",()=>{transpose--;document.getElementById("trVal").textContent=(transpose>0?"+":"")+transpose;reRender();});
-document.getElementById("flatBtn").addEventListener("click",e=>{preferFlats=!preferFlats;e.target.classList.toggle("on",preferFlats);reRender();});
-document.getElementById("fontUp").addEventListener("click",()=>{fontSize=Math.min(2.4,fontSize+0.1);reRender();});
-document.getElementById("fontDown").addEventListener("click",()=>{fontSize=Math.max(0.7,fontSize-0.1);reRender();});
+document.getElementById("flatBtn").addEventListener("click",e=>{preferFlats=!preferFlats;state.preferFlats=preferFlats;persist();e.target.classList.toggle("on",preferFlats);reRender();});
+document.getElementById("fontUp").addEventListener("click",()=>{fontSize=Math.min(2.4,Math.round((fontSize+0.1)*10)/10);state.fontSize=fontSize;persist();document.getElementById("sheet").style.setProperty("--sheet-size",fontSize+"rem");});
+document.getElementById("fontDown").addEventListener("click",()=>{fontSize=Math.max(0.7,Math.round((fontSize-0.1)*10)/10);state.fontSize=fontSize;persist();document.getElementById("sheet").style.setProperty("--sheet-size",fontSize+"rem");});
 document.getElementById("scrollBtn").addEventListener("click",()=>{scrolling?stopScroll():startScroll();});
-document.getElementById("scrollUp").addEventListener("click",()=>{scrollSpeed=Math.min(9,scrollSpeed+1);document.getElementById("speedVal").textContent=scrollSpeed;});
-document.getElementById("scrollDown").addEventListener("click",()=>{scrollSpeed=Math.max(1,scrollSpeed-1);document.getElementById("speedVal").textContent=scrollSpeed;});
+document.getElementById("scrollUp").addEventListener("click",()=>{scrollSpeed=Math.min(9,scrollSpeed+1);state.scrollSpeed=scrollSpeed;persist();document.getElementById("speedVal").textContent=scrollSpeed;});
+document.getElementById("scrollDown").addEventListener("click",()=>{scrollSpeed=Math.max(1,scrollSpeed-1);state.scrollSpeed=scrollSpeed;persist();document.getElementById("speedVal").textContent=scrollSpeed;});
 document.getElementById("prevSong").addEventListener("click",prevSong);
 document.getElementById("nextSong").addEventListener("click",nextSong);
 document.getElementById("editSong").addEventListener("click",()=>{if(curSongId)openEditor(curSongId,"song");});
@@ -758,32 +803,21 @@ document.getElementById("saveSong").addEventListener("click",()=>{
   const ret=editorReturn,wasNew=!editingId,id=saveSong();
   if(wasNew&&ret==="setSongs"&&curSetlist){const sl=state.setlists.find(s=>s.id===curSetlist);if(sl){sl.songIds.push(id);persist();renderSetSongs();renderSetlists();}}});
 document.getElementById("deleteSong").addEventListener("click",()=>{
-  if(!editingId)return;if(!confirm("Delete this song everywhere (all setlists)?"))return;
-  const delId=editingId;
-  state.songs=state.songs.filter(x=>x.id!==delId);
-  state.setlists.forEach(sl=>{sl.songIds=sl.songIds.filter(id=>id!==delId);});
-  persist();closeEditor();renderAllSongs();renderSetSongs();renderSetlists();
-  if(curSongId===delId)show(curSetlist?"setSongs":"allSongs");toast("Deleted");});
-document.getElementById("fetchLyricsBtn").addEventListener("click",async()=>{
-  const title=document.getElementById("fTitle").value.trim();
-  const artist=document.getElementById("fSub").value.trim();
-  if(!title){toast("Enter a title first");return;}
-  toast("Fetching lyrics…");
-  try{
-    const url="https://api.lyrics.ovh/v1/"+encodeURIComponent(artist||"unknown")+"/"+encodeURIComponent(title);
-    const res=await fetch(url,{signal:AbortSignal.timeout(8000)});
-    if(!res.ok)throw 0;
-    const d=await res.json();
-    if(!d.lyrics)throw 0;
-    document.getElementById("fBody").value=d.lyrics.trim();
-    toast("Lyrics loaded — add chords inline: [G]word [C]word");
-  }catch(e){toast("Lyrics not found — check title/artist spelling");}
+  if(!editingId)return;
+  showConfirm("Delete song","Remove from all setlists? This cannot be undone.","Delete",()=>{
+    const delId=editingId;
+    state.songs=state.songs.filter(x=>x.id!==delId);
+    state.setlists.forEach(sl=>{sl.songIds=sl.songIds.filter(id=>id!==delId);});
+    persist();closeEditor();renderAllSongs();renderSetSongs();renderSetlists();
+    if(curSongId===delId)show(curSetlist?"setSongs":"allSongs");toast("Deleted");
+  });
 });
 document.getElementById("findChordsBtn").addEventListener("click",()=>{
   const title=document.getElementById("fTitle").value.trim();
   const artist=document.getElementById("fSub").value.trim();
   if(!title){toast("Enter a title first");return;}
   window.open("https://www.ultimate-guitar.com/search.php?search_type=title&value="+encodeURIComponent((artist?artist+" ":"")+title),"_blank");
+  toast("Find the song, copy the chords, paste into the box");
 });
 document.getElementById("fileInput").addEventListener("change",e=>{const f=e.target.files[0];if(!f)return;
   const r=new FileReader();r.onload=()=>{const text=r.result;document.getElementById("fBody").value=text;
@@ -814,11 +848,34 @@ async function boot(){
   try{const saved=await idbGet(KEYNAME);if(saved&&saved.songs)state=saved;}
   catch(e){canPersist=false;try{const f=localStorage.getItem("chordstand.fallback");if(f)state=JSON.parse(f);}catch(_){}}
   if(!state.songs)state=seed();if(!state.setlists)state.setlists=[];if(!state.theme)state.theme="dark";
+  if(state.fontSize!=null)fontSize=state.fontSize;
+  if(state.scrollSpeed!=null)scrollSpeed=state.scrollSpeed;
+  if(state.preferFlats!=null)preferFlats=state.preferFlats;
   applyTheme();document.getElementById("speedVal").textContent=scrollSpeed;
+  document.getElementById("flatBtn").classList.toggle("on",preferFlats);
   renderSetlists();renderAllSongs();show("setlists");
   if(!canPersist)setTimeout(()=>toast("Preview mode — use Back up to a file to keep songs"),700);
 }
 boot();
+
+/* ===== prompt / confirm modal events ===== */
+document.getElementById("closePromptModal").addEventListener("click",closePromptModal);
+document.getElementById("promptCancel").addEventListener("click",closePromptModal);
+document.getElementById("promptOK").addEventListener("click",()=>{const v=document.getElementById("promptInput").value;const cb=_promptCb;closePromptModal();if(cb)cb(v);});
+document.getElementById("promptInput").addEventListener("keydown",e=>{if(e.key==="Enter"){const v=e.target.value;const cb=_promptCb;closePromptModal();if(cb)cb(v);}else if(e.key==="Escape")closePromptModal();});
+document.getElementById("closeConfirmModal").addEventListener("click",closeConfirmModal);
+document.getElementById("confirmCancel").addEventListener("click",closeConfirmModal);
+document.getElementById("confirmOK").addEventListener("click",()=>{const cb=_confirmCb;closeConfirmModal();if(cb)cb();});
+
+/* ===== backdrop tap closes any modal ===== */
+document.querySelectorAll(".modal").forEach(m=>{m.addEventListener("click",e=>{
+  if(e.target!==m)return;
+  if(m.id==="editor")closeEditor();
+  else if(m.id==="picker")closePicker();
+  else if(m.id==="setlistAdder")closeAdder();
+  else if(m.id==="promptModal")closePromptModal();
+  else if(m.id==="confirmModal")closeConfirmModal();
+});});
 
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('./sw.js');
