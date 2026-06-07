@@ -6,6 +6,7 @@
   v2026.06.07.001  Renamed project ChordStand -> SetList69; adopted dated revisions.
   v2026.06.07.002  Fixed control dock drifting into mid-page on long songs (now pinned to viewport).
   v2026.06.07.003  PWA wrapper: manifest, service worker, self-hosted fonts, app icons.
+  v2026.06.07.004  Add-to-setlist from All Songs; picker import option; lyrics fetch + chord search.
 -->
 <html lang="en">
 <head>
@@ -176,6 +177,15 @@
   .pickadd{font-size:1.2rem;color:var(--ok);padding:.2rem .5rem;}
   .pickrow.added{opacity:.5;}
 
+  .adderrow{display:flex;align-items:center;gap:.7rem;padding:.65rem .8rem;border-radius:10px;background:var(--panel);border:1px solid var(--line);margin-bottom:.45rem;}
+  .adderrow .meta{flex:1;min-width:0;}
+  .adderrow .t{font-weight:600;}
+  .adderrow .s{font-size:.75rem;color:var(--muted);}
+  .adderbtn{font-size:1.25rem;padding:.2rem .55rem;color:var(--muted);}
+  .adderbtn.in{color:var(--ok);}
+  .lookuprow{display:flex;gap:.5rem;}
+  .lookuprow .ghostbtn{flex:1;margin-bottom:0;font-size:.8rem;padding:.55rem .4rem;}
+
   .toast{position:fixed;left:50%;bottom:2rem;transform:translateX(-50%) translateY(2rem);background:var(--ink);
     color:var(--bg);padding:.6rem 1rem;border-radius:30px;font-size:.85rem;font-weight:600;opacity:0;
     pointer-events:none;transition:.25s;z-index:60;max-width:90vw;text-align:center;}
@@ -188,7 +198,7 @@
 <div class="app">
   <header>
     <button class="back" id="backBtn" style="display:none">‹ <span id="backLabel">Back</span></button>
-    <div class="brand" id="brand"><span class="dot"></span>SetList69<small>v2026.06.07.003</small></div>
+    <div class="brand" id="brand"><span class="dot"></span>SetList69<small>v2026.06.07.004</small></div>
     <div class="htitle" id="headerTitle" style="display:none"></div>
     <div class="spacer"></div>
     <button class="iconbtn" id="menuBtn" title="Songs &amp; backup">≡</button>
@@ -251,6 +261,10 @@
         <textarea id="fBody" placeholder="[G]Amazing [G7]grace how [C]sweet the [G]sound&#10;&#10;…or paste chord lines above lyric lines."></textarea></div>
       <div class="hint">Inline <code>[C]</code> or chords-above-lyrics both work — it always renders chords above the words.
         Directives <code>{key:}</code>, <code>{soc}/{eoc}</code>, <code>{c:note}</code> supported.</div>
+      <div class="lookuprow">
+        <button class="ghostbtn" id="fetchLyricsBtn">🔍 Fetch lyrics</button>
+        <button class="ghostbtn" id="findChordsBtn">↗ Chords online</button>
+      </div>
       <div class="fileimport">Import file:
         <label>.cho / .chordpro / .pro / .onsong / .txt<input type="file" id="fileInput" accept=".cho,.chordpro,.pro,.crd,.onsong,.txt,text/plain" hidden></label></div>
     </div>
@@ -266,10 +280,22 @@
   <div class="sheetwrap">
     <div class="mhead"><h3>Add to setlist</h3><button class="iconbtn" id="closePicker">✕</button></div>
     <div class="mbody">
-      <button class="secbtn" id="pickerNew">+ Create a new song</button>
+      <div class="row2" style="margin-bottom:.7rem">
+        <button class="secbtn" id="pickerNew" style="margin-bottom:0">✏ Write new song</button>
+        <button class="secbtn" id="pickerImport" style="background:var(--panel2);border:1px solid var(--line);color:var(--ink);margin-bottom:0">♫ Import file</button>
+      </div>
+      <input type="file" id="pickerFileInput" accept=".onsong,.txt,.cho,.chordpro,.pro,.crd,text/plain" multiple hidden>
       <div id="pickerList"></div>
     </div>
     <div class="mfoot"><button class="btn primary" id="pickerDone">Done</button></div>
+  </div>
+</div>
+
+<div class="modal" id="setlistAdder">
+  <div class="sheetwrap">
+    <div class="mhead"><h3 id="adderTitle">Add to setlist</h3><button class="iconbtn" id="closeAdder">✕</button></div>
+    <div class="mbody"><div id="adderList"></div></div>
+    <div class="mfoot"><button class="btn primary" id="adderDone">Done</button></div>
   </div>
 </div>
 
@@ -312,7 +338,7 @@ let screen="setlists";
 let curSetlist=null,curSongId=null,curIndex=-1,cameFromAll=false;
 let transpose=0,preferFlats=false,fontSize=1.35,scrollSpeed=3;
 let scrolling=false,scrollRAF=null,scrollAccum=0;
-let editingId=null,editorReturn="allSongs",wakeLock=null;
+let editingId=null,editorReturn="allSongs",wakeLock=null,addingSongId=null;
 
 /* ===== transposition ===== */
 const SHARP=["C","C#","D","D#","E","F","F#","G","G#","A","A#","B"];
@@ -477,7 +503,7 @@ function renderAllSongs(){
   const songs=[...state.songs].sort((a,b)=>a.title.localeCompare(b.title));
   document.getElementById("allCount").textContent=state.songs.length+" song"+(state.songs.length!==1?"s":"");
   if(!songs.length){wrap.innerHTML='<div class="empty"><div class="big">♪</div>No songs yet.</div>';return;}
-  wrap.innerHTML=songs.map(s=>'<div class="card open-allsong" data-id="'+s.id+'"><div class="meta"><div class="t">'+esc(s.title)+'</div><div class="s">'+esc(s.sub||"")+'</div></div>'+(s.key?'<span class="pill" style="background:'+keyColor(s.key)+'">'+esc(s.key)+'</span>':"")+'<span class="chev">›</span></div>').join("");
+  wrap.innerHTML=songs.map(s=>'<div class="card open-allsong" data-id="'+s.id+'"><div class="meta"><div class="t">'+esc(s.title)+'</div><div class="s">'+esc(s.sub||"")+'</div></div>'+(s.key?'<span class="pill" style="background:'+keyColor(s.key)+'">'+esc(s.key)+'</span>':"")+'<button class="iconbtn addsong" data-addid="'+s.id+'" title="Add to a setlist">⊕</button><span class="chev">›</span></div>').join("");
 }
 
 /* ===== open song ===== */
@@ -544,6 +570,24 @@ function renderPicker(){
   list.innerHTML=songs.map(s=>{const inSet=sl.songIds.includes(s.id);
     return '<div class="pickrow '+(inSet?"added":"")+'"><div class="meta"><div class="t">'+esc(s.title)+'</div><div class="s">'+esc(s.sub||"")+(s.key?" · "+esc(s.key):"")+'</div></div>'+(s.key?'<span class="pill" style="background:'+keyColor(s.key)+'">'+esc(s.key)+'</span>':"")+'<button class="pickadd" data-add="'+s.id+'">'+(inSet?"✓":"＋")+'</button></div>';
   }).join("")||'<div class="empty">No songs yet — create one.</div>';
+}
+
+/* ===== setlist adder (add a song to setlists from All Songs view) ===== */
+function openAdder(songId){
+  addingSongId=songId;
+  const s=state.songs.find(x=>x.id===songId);
+  document.getElementById("adderTitle").textContent=(s?'"'+s.title+'"':"Song")+" → setlist";
+  renderAdder();
+  document.getElementById("setlistAdder").classList.add("show");
+}
+function closeAdder(){document.getElementById("setlistAdder").classList.remove("show");addingSongId=null;}
+function renderAdder(){
+  const wrap=document.getElementById("adderList");
+  if(!state.setlists.length){wrap.innerHTML='<div class="empty">No setlists yet — go back and create one first.</div>';return;}
+  wrap.innerHTML=state.setlists.map(sl=>{
+    const inSet=sl.songIds.includes(addingSongId);
+    return '<div class="adderrow"><div class="meta"><div class="t">'+esc(sl.name)+'</div><div class="s">'+sl.songIds.length+' song'+(sl.songIds.length!==1?"s":"")+'</div></div><button class="adderbtn '+(inSet?"in":"")+('" data-addersl="'+sl.id+'">')+(inSet?"✓":"＋")+'</button></div>';
+  }).join("");
 }
 
 /* ===== backup/restore ===== */
@@ -654,11 +698,29 @@ document.getElementById("playSet").addEventListener("click",()=>{const sl=state.
 document.getElementById("closePicker").addEventListener("click",closePicker);
 document.getElementById("pickerDone").addEventListener("click",()=>{closePicker();renderSetSongs();renderSetlists();});
 document.getElementById("pickerNew").addEventListener("click",()=>{closePicker();openEditor(null,"setSongs");});
+document.getElementById("pickerImport").addEventListener("click",()=>document.getElementById("pickerFileInput").click());
+document.getElementById("pickerFileInput").addEventListener("change",async e=>{
+  const files=[...e.target.files];e.target.value="";if(!files.length)return;
+  const sl=state.setlists.find(s=>s.id===curSetlist);if(!sl)return;
+  let n=0;
+  for(const f of files){
+    let text="";try{text=await f.text();}catch(_){continue;}
+    const p=parseImport(text,f.name.replace(/\.[^.]+$/,""));
+    if(!p.body&&!p.title)continue;
+    const id="s"+Date.now()+Math.floor(Math.random()*1e4);
+    state.songs.push({id,title:p.title,sub:p.sub,key:p.key,body:p.body});
+    sl.songIds.push(id);n++;
+  }
+  if(n){persist();renderAllSongs();renderSetlists();renderPicker();renderSetSongs();}
+  toast(n?("Imported "+n+" song"+(n!==1?"s":"")+" into set"):"Nothing imported");
+});
 document.getElementById("pickerList").addEventListener("click",e=>{const add=e.target.closest("[data-add]");if(!add)return;
   const sl=state.setlists.find(s=>s.id===curSetlist);const id=add.dataset.add;
   if(!sl.songIds.includes(id)){sl.songIds.push(id);persist();renderPicker();}});
 
-document.getElementById("allSongList").addEventListener("click",e=>{const open=e.target.closest(".open-allsong");if(open)openSongStandalone(open.dataset.id);});
+document.getElementById("allSongList").addEventListener("click",e=>{
+  const addBtn=e.target.closest(".addsong");if(addBtn){openAdder(addBtn.dataset.addid);return;}
+  const open=e.target.closest(".open-allsong");if(open)openSongStandalone(open.dataset.id);});
 document.getElementById("newSongGlobal").addEventListener("click",()=>openEditor(null,"allSongs"));
 document.getElementById("onsongBtn").addEventListener("click",()=>document.getElementById("onsongInput").click());
 document.getElementById("onsongInput").addEventListener("change",async e=>{
@@ -702,12 +764,43 @@ document.getElementById("deleteSong").addEventListener("click",()=>{
   state.setlists.forEach(sl=>{sl.songIds=sl.songIds.filter(id=>id!==delId);});
   persist();closeEditor();renderAllSongs();renderSetSongs();renderSetlists();
   if(curSongId===delId)show(curSetlist?"setSongs":"allSongs");toast("Deleted");});
+document.getElementById("fetchLyricsBtn").addEventListener("click",async()=>{
+  const title=document.getElementById("fTitle").value.trim();
+  const artist=document.getElementById("fSub").value.trim();
+  if(!title){toast("Enter a title first");return;}
+  toast("Fetching lyrics…");
+  try{
+    const url="https://api.lyrics.ovh/v1/"+encodeURIComponent(artist||"unknown")+"/"+encodeURIComponent(title);
+    const res=await fetch(url,{signal:AbortSignal.timeout(8000)});
+    if(!res.ok)throw 0;
+    const d=await res.json();
+    if(!d.lyrics)throw 0;
+    document.getElementById("fBody").value=d.lyrics.trim();
+    toast("Lyrics loaded — add chords inline: [G]word [C]word");
+  }catch(e){toast("Lyrics not found — check title/artist spelling");}
+});
+document.getElementById("findChordsBtn").addEventListener("click",()=>{
+  const title=document.getElementById("fTitle").value.trim();
+  const artist=document.getElementById("fSub").value.trim();
+  if(!title){toast("Enter a title first");return;}
+  window.open("https://www.ultimate-guitar.com/search.php?search_type=title&value="+encodeURIComponent((artist?artist+" ":"")+title),"_blank");
+});
 document.getElementById("fileInput").addEventListener("change",e=>{const f=e.target.files[0];if(!f)return;
   const r=new FileReader();r.onload=()=>{const text=r.result;document.getElementById("fBody").value=text;
     const tm=text.match(/\{\s*(?:title|t)\s*:\s*(.+?)\s*\}/i);
     if(tm&&!document.getElementById("fTitle").value)document.getElementById("fTitle").value=tm[1];
     else if(!document.getElementById("fTitle").value)document.getElementById("fTitle").value=f.name.replace(/\.[^.]+$/,"");
     const km=text.match(/\{\s*key\s*:\s*(.+?)\s*\}/i);if(km)document.getElementById("fKey").value=km[1];};r.readAsText(f);e.target.value="";});
+
+document.getElementById("closeAdder").addEventListener("click",closeAdder);
+document.getElementById("adderDone").addEventListener("click",closeAdder);
+document.getElementById("adderList").addEventListener("click",e=>{
+  const btn=e.target.closest("[data-addersl]");if(!btn||!addingSongId)return;
+  const sl=state.setlists.find(x=>x.id===btn.dataset.addersl);if(!sl)return;
+  const idx=sl.songIds.indexOf(addingSongId);
+  if(idx>=0)sl.songIds.splice(idx,1);else sl.songIds.push(addingSongId);
+  persist();renderAdder();renderSetlists();
+});
 
 /* swipe between songs in a set */
 (function(){const v=document.getElementById("songView");let x0=0,y0=0,t0=0,active=false;
