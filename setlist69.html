@@ -14,6 +14,7 @@
                    duplicate); preferred transpose persisted per song; narrow-screen card fix.
   v2026.06.07.007  Long-press context menu on songs (edit/move/remove/delete); drag-to-reorder
                    songs in a set via ≡ handle; removes ▲▼ buttons.
+  v2026.06.07.008  Fix long-press context menu not firing on All Songs screen.
 -->
 <html lang="en">
 <head>
@@ -224,7 +225,7 @@
 <div class="app">
   <header>
     <button class="back" id="backBtn" style="display:none">‹ <span id="backLabel">Back</span></button>
-    <div class="brand" id="brand"><span class="dot"></span>SetList69<small>v2026.06.07.007</small></div>
+    <div class="brand" id="brand"><span class="dot"></span>SetList69<small>v2026.06.07.008</small></div>
     <div class="htitle" id="headerTitle" style="display:none"></div>
     <div class="spacer"></div>
     <button class="iconbtn" id="menuBtn" title="Songs &amp; backup">≡</button>
@@ -961,8 +962,8 @@ document.getElementById("closeSongCtx").addEventListener("click",closeSongContex
     return{id:sl.songIds[+meta.dataset.i],screen:"setSongs"};
   });
   install("allSongList",card=>{
-    const open=card.querySelector(".open-allsong");if(!open)return null;
-    return{id:open.dataset.id,screen:"allSongs"};
+    const id=card.dataset.id;if(!id)return null;
+    return{id,screen:"allSongs"};
   });
 })();
 
