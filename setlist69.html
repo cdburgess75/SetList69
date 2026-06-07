@@ -5,6 +5,7 @@
 
   v2026.06.07.001  Renamed project ChordStand -> SetList69; adopted dated revisions.
   v2026.06.07.002  Fixed control dock drifting into mid-page on long songs (now pinned to viewport).
+  v2026.06.07.003  PWA wrapper: manifest, service worker, self-hosted fonts, app icons.
 -->
 <html lang="en">
 <head>
@@ -14,10 +15,12 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#16140f">
 <title>SetList69</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Hanken+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <style>
+  @font-face{font-family:'Fraunces';font-style:normal;font-weight:500 600;font-display:swap;src:url('fonts/fraunces-latin.woff2') format('woff2');}
+  @font-face{font-family:'Hanken Grotesk';font-style:normal;font-weight:400 700;font-display:swap;src:url('fonts/hanken-grotesk-latin.woff2') format('woff2');}
+  @font-face{font-family:'JetBrains Mono';font-style:normal;font-weight:500 700;font-display:swap;src:url('fonts/jetbrains-mono-latin.woff2') format('woff2');}
   :root{
     /* dark mode: near-black bg, bright white lyrics, bright gold chords */
     --bg:#121110; --panel:#1d1b18; --panel2:#272420; --line:#46413640;
@@ -185,7 +188,7 @@
 <div class="app">
   <header>
     <button class="back" id="backBtn" style="display:none">‹ <span id="backLabel">Back</span></button>
-    <div class="brand" id="brand"><span class="dot"></span>SetList69<small>v2026.06.07.002</small></div>
+    <div class="brand" id="brand"><span class="dot"></span>SetList69<small>v2026.06.07.003</small></div>
     <div class="htitle" id="headerTitle" style="display:none"></div>
     <div class="spacer"></div>
     <button class="iconbtn" id="menuBtn" title="Songs &amp; backup">≡</button>
@@ -723,6 +726,10 @@ async function boot(){
   if(!canPersist)setTimeout(()=>toast("Preview mode — use Back up to a file to keep songs"),700);
 }
 boot();
+
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('./sw.js');
+}
 </script>
 </body>
 </html>

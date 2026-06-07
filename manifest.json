@@ -1,0 +1,15 @@
+{
+  "name": "SetList69",
+  "short_name": "SetList69",
+  "description": "Offline-first chord & lyric setlist app for performing musicians",
+  "start_url": "./setlist69.html",
+  "display": "standalone",
+  "background_color": "#121110",
+  "theme_color": "#121110",
+  "orientation": "portrait-primary",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
