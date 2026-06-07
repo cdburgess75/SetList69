@@ -10,6 +10,8 @@
   v2026.06.07.005  Bug fixes: persist font/speed/flats; custom prompt/confirm modals; goBack fix;
                    hide Play FAB on empty sets; swipe hint auto-hide; backdrop tap closes modals;
                    card hover theme fix; font size CSS-only update; simplified chord lookup.
+  v2026.06.07.006  Live search in All Songs + Picker; setlist settings (rename, notes, reorder,
+                   duplicate); preferred transpose persisted per song; narrow-screen card fix.
 -->
 <html lang="en">
 <head>
@@ -132,6 +134,15 @@
   .modal.bottom{align-items:flex-end;}
   .modal.bottom .sheetwrap{border-radius:var(--radius) var(--radius) 0 0;border-left:1px solid var(--line);border-right:1px solid var(--line);max-height:55dvh;}
   .confirm-msg{color:var(--muted);font-size:.92rem;margin:0;line-height:1.5;}
+  .card{overflow:hidden;}
+  .sl-notes{font-size:.72rem;color:var(--faint);margin-top:.12rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .set-notes{font-size:.8rem;color:var(--muted);font-style:italic;margin-bottom:.7rem;line-height:1.4;}
+  .set-notes:empty{display:none;}
+  .searchbar{margin-bottom:.7rem;}
+  .searchbar input{width:100%;padding:.55rem .8rem;border-radius:10px;background:var(--panel);border:1px solid var(--line);color:var(--ink);font-size:.9rem;font-family:var(--ui);-webkit-user-select:text;user-select:text;outline:none;}
+  .searchbar input::placeholder{color:var(--faint);}
+  .searchbar input:focus{border-color:var(--chord);}
+  @media (max-width:390px){.card{gap:.5rem;padding:.8rem .7rem;}}
 
   .dock{position:fixed;left:0;right:0;bottom:0;
     background:var(--panel);
@@ -204,7 +215,7 @@
 <div class="app">
   <header>
     <button class="back" id="backBtn" style="display:none">‹ <span id="backLabel">Back</span></button>
-    <div class="brand" id="brand"><span class="dot"></span>SetList69<small>v2026.06.07.005</small></div>
+    <div class="brand" id="brand"><span class="dot"></span>SetList69<small>v2026.06.07.006</small></div>
     <div class="htitle" id="headerTitle" style="display:none"></div>
     <div class="spacer"></div>
     <button class="iconbtn" id="menuBtn" title="Songs &amp; backup">≡</button>
@@ -219,6 +230,7 @@
     </section>
 
     <section class="screen" id="setSongsScreen">
+      <div class="set-notes" id="setNotes"></div>
       <div id="setSongList"></div>
       <button class="ghostbtn" id="addSongToSet">+ Add song to this set</button>
       <button class="fab" id="playSet" title="Start at first song">▶</button>
@@ -248,6 +260,7 @@
       <button class="ghostbtn" id="exportBtn">⤓ Back up all data to a file</button>
       <button class="ghostbtn" id="importBtn">⤒ Restore from a backup file</button>
       <input type="file" id="restoreInput" accept=".json,application/json" hidden>
+      <div class="searchbar"><input type="search" id="allSearch" placeholder="Search songs…" autocomplete="off"></div>
       <div id="allSongList"></div>
       <button class="fab" id="newSongGlobal" title="New song">+</button>
     </section>
@@ -288,6 +301,7 @@
         <button class="secbtn" id="pickerImport" style="background:var(--panel2);border:1px solid var(--line);color:var(--ink);margin-bottom:0">♫ Import file</button>
       </div>
       <input type="file" id="pickerFileInput" accept=".onsong,.txt,.cho,.chordpro,.pro,.crd,text/plain" multiple hidden>
+      <div class="searchbar"><input type="search" id="pickerSearch" placeholder="Search songs…" autocomplete="off"></div>
       <div id="pickerList"></div>
     </div>
     <div class="mfoot"><button class="btn primary" id="pickerDone">Done</button></div>
@@ -299,6 +313,20 @@
     <div class="mhead"><h3 id="adderTitle">Add to setlist</h3><button class="iconbtn" id="closeAdder">✕</button></div>
     <div class="mbody"><div id="adderList"></div></div>
     <div class="mfoot"><button class="btn primary" id="adderDone">Done</button></div>
+  </div>
+</div>
+
+<div class="modal bottom" id="setlistSettings">
+  <div class="sheetwrap" style="max-height:70dvh">
+    <div class="mhead"><h3>Setlist settings</h3><button class="iconbtn" id="closeSetlistSettings">✕</button></div>
+    <div class="mbody">
+      <div class="field"><label>Name</label><input id="slName" placeholder="Set name" autocomplete="off"></div>
+      <div class="field"><label>Notes (optional)</label><textarea id="slNotes" placeholder="Venue, date, key reminders…" style="min-height:5rem;resize:none;"></textarea></div>
+    </div>
+    <div class="mfoot">
+      <button class="btn ghost" id="dupSetlist" title="Duplicate this setlist">⧉ Duplicate</button>
+      <button class="btn primary" id="saveSetlistSettings">Save</button>
+    </div>
   </div>
 </div>
 
@@ -357,7 +385,8 @@ let screen="setlists";
 let curSetlist=null,curSongId=null,curIndex=-1,cameFromAll=false;
 let transpose=0,preferFlats=false,fontSize=1.35,scrollSpeed=3;
 let scrolling=false,scrollRAF=null,scrollAccum=0,swipeHintTimer=null;
-let editingId=null,editorReturn="allSongs",wakeLock=null,addingSongId=null;
+let editingId=null,editorReturn="allSongs",wakeLock=null,addingSongId=null,editingSetlistId=null;
+let allSearchQ="",pickerSearchQ="";
 
 /* ===== transposition ===== */
 const SHARP=["C","C#","D","D#","E","F","F#","G","G#","A","A#","B"];
@@ -501,16 +530,18 @@ function renderSetlists(){
   const wrap=document.getElementById("setlistList");
   document.getElementById("setlistCount").textContent=state.setlists.length+" set"+(state.setlists.length!==1?"s":"");
   if(!state.setlists.length){wrap.innerHTML='<div class="empty"><div class="big">♫</div>No setlists yet.<br>Tap + to make one.</div>';return;}
-  wrap.innerHTML=state.setlists.map(sl=>{
+  wrap.innerHTML=state.setlists.map((sl,i)=>{
     const n=sl.songIds.length;
     const keys=[...new Set(sl.songIds.map(id=>(state.songs.find(s=>s.id===id)||{}).key).filter(Boolean))];
     const dots=keys.slice(0,6).map(k=>'<span style="display:inline-block;width:.6rem;height:.6rem;border-radius:50%;background:'+keyColor(k)+';margin-right:2px"></span>').join("");
-    return '<div class="card open-set" data-id="'+sl.id+'"><div class="meta"><div class="t">'+esc(sl.name)+'</div><div class="s">'+n+' song'+(n!==1?"s":"")+' &nbsp;'+dots+'</div></div><button class="rm" data-delset="'+sl.id+'" title="Delete setlist">✕</button><span class="chev">›</span></div>';
+    const notesEl=sl.notes?'<div class="sl-notes">'+esc(sl.notes)+'</div>':"";
+    return '<div class="card"><div class="ord"><button data-setup="'+i+'">▲</button><button data-setdown="'+i+'">▼</button></div><div class="meta open-set" data-id="'+sl.id+'"><div class="t">'+esc(sl.name)+'</div><div class="s">'+n+' song'+(n!==1?"s":"")+' &nbsp;'+dots+'</div>'+notesEl+'</div><button class="iconbtn" data-editset="'+sl.id+'" title="Settings">✎</button><button class="rm" data-delset="'+sl.id+'" title="Delete setlist">✕</button></div>';
   }).join("");
 }
 function renderSetSongs(){
   const sl=state.setlists.find(s=>s.id===curSetlist);if(!sl){show("setlists");return;}
   document.getElementById("playSet").style.display=sl.songIds.length?"":"none";
+  document.getElementById("setNotes").textContent=sl.notes||"";
   const wrap=document.getElementById("setSongList");
   if(!sl.songIds.length){wrap.innerHTML='<div class="empty"><div class="big">♪</div>No songs in this set yet.</div>';return;}
   wrap.innerHTML=sl.songIds.map((id,i)=>{
@@ -520,9 +551,12 @@ function renderSetSongs(){
 }
 function renderAllSongs(){
   const wrap=document.getElementById("allSongList");
-  const songs=[...state.songs].sort((a,b)=>a.title.localeCompare(b.title));
+  const q=allSearchQ;
+  const all=[...state.songs].sort((a,b)=>a.title.localeCompare(b.title));
   document.getElementById("allCount").textContent=state.songs.length+" song"+(state.songs.length!==1?"s":"");
-  if(!songs.length){wrap.innerHTML='<div class="empty"><div class="big">♪</div>No songs yet.</div>';return;}
+  const songs=q?all.filter(s=>s.title.toLowerCase().includes(q)||(s.sub||"").toLowerCase().includes(q)):all;
+  if(!all.length){wrap.innerHTML='<div class="empty"><div class="big">♪</div>No songs yet.</div>';return;}
+  if(!songs.length){wrap.innerHTML='<div class="empty">No matches.</div>';return;}
   wrap.innerHTML=songs.map(s=>'<div class="card open-allsong" data-id="'+s.id+'"><div class="meta"><div class="t">'+esc(s.title)+'</div><div class="s">'+esc(s.sub||"")+'</div></div>'+(s.key?'<span class="pill" style="background:'+keyColor(s.key)+'">'+esc(s.key)+'</span>':"")+'<button class="iconbtn addsong" data-addid="'+s.id+'" title="Add to a setlist">⊕</button><span class="chev">›</span></div>').join("");
 }
 
@@ -531,7 +565,7 @@ function openSongInSet(index){const sl=state.setlists.find(s=>s.id===curSetlist)
 function openSongStandalone(id){curIndex=-1;curSongId=id;cameFromAll=true;openCurrent();}
 function openCurrent(){
   const s=state.songs.find(x=>x.id===curSongId);if(!s)return;
-  transpose=0;stopScroll();document.getElementById("trVal").textContent="0";
+  transpose=s.defaultTranspose||0;stopScroll();document.getElementById("trVal").textContent=(transpose>0?"+":"")+transpose;
   renderSheet(s);show("song");document.getElementById("songView").scrollTop=0;
   const ctlNav=document.getElementById("prevSong").parentElement;
   const hint=document.getElementById("swipeHint");
@@ -585,15 +619,19 @@ function saveSong(){
   renderAllSongs();renderSetSongs();renderSetlists();toast("Saved");return newId;}
 
 /* ===== picker ===== */
-function openPicker(){renderPicker();document.getElementById("picker").classList.add("show");}
+function openPicker(){pickerSearchQ="";document.getElementById("pickerSearch").value="";renderPicker();document.getElementById("picker").classList.add("show");}
 function closePicker(){document.getElementById("picker").classList.remove("show");}
 function renderPicker(){
   const sl=state.setlists.find(s=>s.id===curSetlist);if(!sl)return;
   const list=document.getElementById("pickerList");
-  const songs=[...state.songs].sort((a,b)=>a.title.localeCompare(b.title));
+  const q=pickerSearchQ;
+  const all=[...state.songs].sort((a,b)=>a.title.localeCompare(b.title));
+  const songs=q?all.filter(s=>s.title.toLowerCase().includes(q)||(s.sub||"").toLowerCase().includes(q)):all;
+  if(!all.length){list.innerHTML='<div class="empty">No songs yet — create one.</div>';return;}
+  if(!songs.length){list.innerHTML='<div class="empty">No matches.</div>';return;}
   list.innerHTML=songs.map(s=>{const inSet=sl.songIds.includes(s.id);
     return '<div class="pickrow '+(inSet?"added":"")+'"><div class="meta"><div class="t">'+esc(s.title)+'</div><div class="s">'+esc(s.sub||"")+(s.key?" · "+esc(s.key):"")+'</div></div>'+(s.key?'<span class="pill" style="background:'+keyColor(s.key)+'">'+esc(s.key)+'</span>':"")+'<button class="pickadd" data-add="'+s.id+'">'+(inSet?"✓":"＋")+'</button></div>';
-  }).join("")||'<div class="empty">No songs yet — create one.</div>';
+  }).join("");
 }
 
 /* ===== setlist adder (add a song to setlists from All Songs view) ===== */
@@ -698,6 +736,16 @@ function applyTheme(){const light=state.theme==="light";document.documentElement
   const b=document.getElementById("themeBtn");if(b)b.textContent=light?"☀":"☾";}
 function uid(p){return (p||"id")+Date.now()+Math.floor(Math.random()*1000);}
 
+/* ===== setlist settings ===== */
+function openSetlistSettings(id){
+  editingSetlistId=id;
+  const sl=state.setlists.find(s=>s.id===id);
+  document.getElementById("slName").value=sl?sl.name:"";
+  document.getElementById("slNotes").value=sl?(sl.notes||""):"";
+  document.getElementById("setlistSettings").classList.add("show");setTimeout(()=>document.getElementById("slName").focus(),80);
+}
+function closeSetlistSettings(){document.getElementById("setlistSettings").classList.remove("show");editingSetlistId=null;}
+
 /* ===== custom dialogs ===== */
 let _promptCb=null,_confirmCb=null;
 function showPrompt(title,placeholder,defaultVal,cb){
@@ -727,7 +775,10 @@ document.getElementById("newSetlist").addEventListener("click",()=>{
   });
 });
 document.getElementById("setlistList").addEventListener("click",e=>{
+  const sup=e.target.closest("[data-setup]");if(sup){const i=+sup.dataset.setup;if(i>0){const a=state.setlists;[a[i-1],a[i]]=[a[i],a[i-1]];persist();renderSetlists();}return;}
+  const sdown=e.target.closest("[data-setdown]");if(sdown){const i=+sdown.dataset.setdown;if(i<state.setlists.length-1){const a=state.setlists;[a[i+1],a[i]]=[a[i],a[i+1]];persist();renderSetlists();}return;}
   const del=e.target.closest("[data-delset]");if(del){showConfirm("Delete setlist","Songs stay in your library — only the set is removed.","Delete",()=>{state.setlists=state.setlists.filter(s=>s.id!==del.dataset.delset);persist();renderSetlists();});return;}
+  const edit=e.target.closest("[data-editset]");if(edit){openSetlistSettings(edit.dataset.editset);return;}
   const open=e.target.closest(".open-set");if(open){curSetlist=open.dataset.id;renderSetSongs();show("setSongs");}});
 
 document.getElementById("setSongList").addEventListener("click",e=>{
@@ -785,8 +836,8 @@ document.getElementById("exportBtn").addEventListener("click",exportData);
 document.getElementById("importBtn").addEventListener("click",()=>document.getElementById("restoreInput").click());
 document.getElementById("restoreInput").addEventListener("change",e=>{if(e.target.files[0])restoreData(e.target.files[0]);e.target.value="";});
 
-document.getElementById("trUp").addEventListener("click",()=>{transpose++;document.getElementById("trVal").textContent=(transpose>0?"+":"")+transpose;reRender();});
-document.getElementById("trDown").addEventListener("click",()=>{transpose--;document.getElementById("trVal").textContent=(transpose>0?"+":"")+transpose;reRender();});
+document.getElementById("trUp").addEventListener("click",()=>{transpose++;document.getElementById("trVal").textContent=(transpose>0?"+":"")+transpose;const _s=state.songs.find(x=>x.id===curSongId);if(_s){_s.defaultTranspose=transpose;persist();}reRender();});
+document.getElementById("trDown").addEventListener("click",()=>{transpose--;document.getElementById("trVal").textContent=(transpose>0?"+":"")+transpose;const _s=state.songs.find(x=>x.id===curSongId);if(_s){_s.defaultTranspose=transpose;persist();}reRender();});
 document.getElementById("flatBtn").addEventListener("click",e=>{preferFlats=!preferFlats;state.preferFlats=preferFlats;persist();e.target.classList.toggle("on",preferFlats);reRender();});
 document.getElementById("fontUp").addEventListener("click",()=>{fontSize=Math.min(2.4,Math.round((fontSize+0.1)*10)/10);state.fontSize=fontSize;persist();document.getElementById("sheet").style.setProperty("--sheet-size",fontSize+"rem");});
 document.getElementById("fontDown").addEventListener("click",()=>{fontSize=Math.max(0.7,Math.round((fontSize-0.1)*10)/10);state.fontSize=fontSize;persist();document.getElementById("sheet").style.setProperty("--sheet-size",fontSize+"rem");});
@@ -858,6 +909,24 @@ async function boot(){
 }
 boot();
 
+/* ===== setlist settings events ===== */
+document.getElementById("closeSetlistSettings").addEventListener("click",closeSetlistSettings);
+document.getElementById("saveSetlistSettings").addEventListener("click",()=>{
+  const sl=state.setlists.find(s=>s.id===editingSetlistId);if(!sl)return closeSetlistSettings();
+  const name=document.getElementById("slName").value.trim();
+  sl.name=name||sl.name;sl.notes=document.getElementById("slNotes").value.trim();
+  persist();renderSetlists();
+  if(screen==="setSongs"){document.getElementById("headerTitle").textContent=sl.name;document.getElementById("setNotes").textContent=sl.notes||"";}
+  closeSetlistSettings();toast("Saved");
+});
+document.getElementById("dupSetlist").addEventListener("click",()=>{
+  const sl=state.setlists.find(s=>s.id===editingSetlistId);if(!sl)return;
+  state.setlists.push({id:uid("set"),name:"Copy of "+sl.name,songIds:[...sl.songIds],notes:sl.notes||""});
+  persist();renderSetlists();closeSetlistSettings();toast("Duplicated");
+});
+document.getElementById("allSearch").addEventListener("input",e=>{allSearchQ=e.target.value.toLowerCase();renderAllSongs();});
+document.getElementById("pickerSearch").addEventListener("input",e=>{pickerSearchQ=e.target.value.toLowerCase();renderPicker();});
+
 /* ===== prompt / confirm modal events ===== */
 document.getElementById("closePromptModal").addEventListener("click",closePromptModal);
 document.getElementById("promptCancel").addEventListener("click",closePromptModal);
@@ -873,6 +942,7 @@ document.querySelectorAll(".modal").forEach(m=>{m.addEventListener("click",e=>{
   if(m.id==="editor")closeEditor();
   else if(m.id==="picker")closePicker();
   else if(m.id==="setlistAdder")closeAdder();
+  else if(m.id==="setlistSettings")closeSetlistSettings();
   else if(m.id==="promptModal")closePromptModal();
   else if(m.id==="confirmModal")closeConfirmModal();
 });});
