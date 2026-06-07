@@ -12,6 +12,8 @@
                    card hover theme fix; font size CSS-only update; simplified chord lookup.
   v2026.06.07.006  Live search in All Songs + Picker; setlist settings (rename, notes, reorder,
                    duplicate); preferred transpose persisted per song; narrow-screen card fix.
+  v2026.06.07.007  Long-press context menu on songs (edit/move/remove/delete); drag-to-reorder
+                   songs in a set via ≡ handle; removes ▲▼ buttons.
 -->
 <html lang="en">
 <head>
@@ -143,6 +145,13 @@
   .searchbar input::placeholder{color:var(--faint);}
   .searchbar input:focus{border-color:var(--chord);}
   @media (max-width:390px){.card{gap:.5rem;padding:.8rem .7rem;}}
+  .drag-handle{font-size:1.15rem;color:var(--faint);padding:.3rem .35rem;touch-action:none;-webkit-user-select:none;user-select:none;cursor:grab;flex-shrink:0;}
+  .drag-handle:hover{color:var(--muted);}
+  .card.is-dragging{opacity:.2;box-shadow:none;}
+  .drag-insert{height:3px;background:var(--accent);border-radius:2px;margin:-1px 0 1px;pointer-events:none;flex-shrink:0;}
+  .ctx-btn{width:100%;text-align:left;padding:.75rem 1rem;border-radius:10px;background:var(--panel);border:1px solid var(--line);color:var(--ink);font-size:.95rem;font-weight:600;margin-bottom:.35rem;display:flex;align-items:center;gap:.65rem;transition:.12s;}
+  .ctx-btn:hover,.ctx-btn:active{background:var(--panel2);}
+  .ctx-btn.ctx-danger{color:var(--accent);}
 
   .dock{position:fixed;left:0;right:0;bottom:0;
     background:var(--panel);
@@ -215,7 +224,7 @@
 <div class="app">
   <header>
     <button class="back" id="backBtn" style="display:none">‹ <span id="backLabel">Back</span></button>
-    <div class="brand" id="brand"><span class="dot"></span>SetList69<small>v2026.06.07.006</small></div>
+    <div class="brand" id="brand"><span class="dot"></span>SetList69<small>v2026.06.07.007</small></div>
     <div class="htitle" id="headerTitle" style="display:none"></div>
     <div class="spacer"></div>
     <button class="iconbtn" id="menuBtn" title="Songs &amp; backup">≡</button>
@@ -313,6 +322,13 @@
     <div class="mhead"><h3 id="adderTitle">Add to setlist</h3><button class="iconbtn" id="closeAdder">✕</button></div>
     <div class="mbody"><div id="adderList"></div></div>
     <div class="mfoot"><button class="btn primary" id="adderDone">Done</button></div>
+  </div>
+</div>
+
+<div class="modal bottom" id="songContextMenu">
+  <div class="sheetwrap" style="max-height:55dvh">
+    <div class="mhead"><h3 id="ctxSongTitle" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:80%"></h3><button class="iconbtn" id="closeSongCtx">✕</button></div>
+    <div class="mbody" id="ctxBtns" style="gap:0;padding:.75rem 1rem;"></div>
   </div>
 </div>
 
@@ -546,7 +562,7 @@ function renderSetSongs(){
   if(!sl.songIds.length){wrap.innerHTML='<div class="empty"><div class="big">♪</div>No songs in this set yet.</div>';return;}
   wrap.innerHTML=sl.songIds.map((id,i)=>{
     const s=state.songs.find(x=>x.id===id);if(!s)return"";
-    return '<div class="card"><span class="num">'+(i+1)+'</span><div class="ord"><button data-up="'+i+'">▲</button><button data-down="'+i+'">▼</button></div><div class="meta open-song" data-i="'+i+'"><div class="t">'+esc(s.title)+'</div><div class="s">'+esc(s.sub||"")+'</div></div>'+(s.key?'<span class="pill" style="background:'+keyColor(s.key)+'">'+esc(s.key)+'</span>':"")+'<button class="rm" data-rmfromset="'+i+'" title="Remove from set">✕</button></div>';
+    return '<div class="card" data-songidx="'+i+'"><span class="drag-handle" title="Drag to reorder">≡</span><span class="num">'+(i+1)+'</span><div class="meta open-song" data-i="'+i+'"><div class="t">'+esc(s.title)+'</div><div class="s">'+esc(s.sub||"")+'</div></div>'+(s.key?'<span class="pill" style="background:'+keyColor(s.key)+'">'+esc(s.key)+'</span>':"")+'<button class="rm" data-rmfromset="'+i+'" title="Remove from set">✕</button></div>';
   }).join("");
 }
 function renderAllSongs(){
@@ -783,9 +799,7 @@ document.getElementById("setlistList").addEventListener("click",e=>{
 
 document.getElementById("setSongList").addEventListener("click",e=>{
   const sl=state.setlists.find(s=>s.id===curSetlist);if(!sl)return;
-  const up=e.target.closest("[data-up]"),down=e.target.closest("[data-down]"),rm=e.target.closest("[data-rmfromset]"),open=e.target.closest(".open-song");
-  if(up){const i=+up.dataset.up;if(i>0){const a=sl.songIds;[a[i-1],a[i]]=[a[i],a[i-1]];persist();renderSetSongs();}return;}
-  if(down){const i=+down.dataset.down;if(i<sl.songIds.length-1){const a=sl.songIds;[a[i+1],a[i]]=[a[i],a[i+1]];persist();renderSetSongs();}return;}
+  const rm=e.target.closest("[data-rmfromset]"),open=e.target.closest(".open-song");
   if(rm){sl.songIds.splice(+rm.dataset.rmfromset,1);persist();renderSetSongs();renderSetlists();return;}
   if(open){openSongInSet(+open.dataset.i);}});
 document.getElementById("addSongToSet").addEventListener("click",openPicker);
@@ -887,6 +901,125 @@ document.getElementById("adderList").addEventListener("click",e=>{
   persist();renderAdder();renderSetlists();
 });
 
+/* ===== song context menu ===== */
+let ctxSongId=null;
+function openSongContext(songId,fromScreen){
+  ctxSongId=songId;
+  const s=state.songs.find(x=>x.id===songId);if(!s)return;
+  document.getElementById("ctxSongTitle").textContent=s.title;
+  const body=document.getElementById("ctxBtns");body.innerHTML="";
+  function mkBtn(icon,label,danger,fn){
+    const b=document.createElement("button");
+    b.className="ctx-btn"+(danger?" ctx-danger":"");
+    const ico=document.createElement("span");ico.style.cssText="width:1.5em;text-align:center;display:inline-block;flex-shrink:0;";ico.textContent=icon;
+    b.appendChild(ico);b.appendChild(document.createTextNode(label));
+    b.addEventListener("click",()=>{closeSongContext();fn();});
+    body.appendChild(b);
+  }
+  mkBtn("✎","Edit song",false,()=>openEditor(songId,fromScreen));
+  if(fromScreen==="setSongs"){
+    mkBtn("↗","Add / move to another set",false,()=>openAdder(songId));
+    mkBtn("✕","Remove from this set",false,()=>{
+      const sl=state.setlists.find(x=>x.id===curSetlist);if(!sl)return;
+      const i=sl.songIds.indexOf(songId);if(i>=0){sl.songIds.splice(i,1);persist();renderSetSongs();renderSetlists();}
+    });
+  }else{
+    mkBtn("⊕","Add to a setlist",false,()=>openAdder(songId));
+  }
+  mkBtn("⌫","Delete everywhere",true,()=>{
+    showConfirm("Delete song","Remove from all setlists? Cannot be undone.","Delete",()=>{
+      state.songs=state.songs.filter(x=>x.id!==songId);
+      state.setlists.forEach(sl=>{sl.songIds=sl.songIds.filter(x=>x!==songId);});
+      persist();renderAllSongs();renderSetSongs();renderSetlists();
+      if(curSongId===songId)show(curSetlist?"setSongs":"allSongs");toast("Deleted");
+    });
+  });
+  document.getElementById("songContextMenu").classList.add("show");
+}
+function closeSongContext(){document.getElementById("songContextMenu").classList.remove("show");ctxSongId=null;}
+document.getElementById("closeSongCtx").addEventListener("click",closeSongContext);
+
+/* ===== long-press to open context menu ===== */
+(function(){
+  let lpTimer=null;
+  function install(containerId,getCtx){
+    const el=document.getElementById(containerId);
+    el.addEventListener("touchstart",e=>{
+      if(e.target.closest("button")||e.target.closest(".drag-handle"))return;
+      const card=e.target.closest(".card");if(!card)return;
+      const ctx=getCtx(card);if(!ctx)return;
+      clearTimeout(lpTimer);
+      lpTimer=setTimeout(()=>{navigator.vibrate?.(40);openSongContext(ctx.id,ctx.screen);},500);
+    },{passive:true});
+    el.addEventListener("touchmove",()=>clearTimeout(lpTimer),{passive:true});
+    el.addEventListener("touchend",()=>clearTimeout(lpTimer),{passive:true});
+    el.addEventListener("touchcancel",()=>clearTimeout(lpTimer),{passive:true});
+  }
+  install("setSongList",card=>{
+    const meta=card.querySelector(".open-song");if(!meta)return null;
+    const sl=state.setlists.find(s=>s.id===curSetlist);if(!sl)return null;
+    return{id:sl.songIds[+meta.dataset.i],screen:"setSongs"};
+  });
+  install("allSongList",card=>{
+    const open=card.querySelector(".open-allsong");if(!open)return null;
+    return{id:open.dataset.id,screen:"allSongs"};
+  });
+})();
+
+/* ===== drag-to-reorder songs in a set ===== */
+(function(){
+  let dragEl=null,ghost=null,startY=0,ghostTop=0,dragIdx=-1;
+  const getList=()=>document.getElementById("setSongList");
+
+  document.getElementById("setSongList").addEventListener("touchstart",e=>{
+    if(!e.target.closest(".drag-handle"))return;
+    const card=e.target.closest(".card");if(!card)return;
+    const cards=[...getList().querySelectorAll(".card")];
+    dragIdx=cards.indexOf(card);if(dragIdx<0)return;
+    dragEl=card;
+    const rect=card.getBoundingClientRect();
+    startY=e.touches[0].clientY;ghostTop=rect.top;
+    ghost=card.cloneNode(true);
+    ghost.style.cssText="position:fixed;left:"+rect.left+"px;top:"+ghostTop+"px;width:"+rect.width+"px;z-index:100;opacity:.92;pointer-events:none;transform:scale(1.02) rotate(.25deg);box-shadow:0 14px 44px #000b;border-radius:14px;transition:none;";
+    document.body.appendChild(ghost);
+    card.classList.add("is-dragging");
+    e.preventDefault();
+  },{passive:false});
+
+  document.addEventListener("touchmove",e=>{
+    if(!dragEl||!ghost)return;
+    e.preventDefault();
+    ghost.style.top=(ghostTop+(e.touches[0].clientY-startY))+"px";
+    const ty=e.touches[0].clientY;
+    getList().querySelectorAll(".drag-insert").forEach(x=>x.remove());
+    const others=[...getList().querySelectorAll(".card:not(.is-dragging)")];
+    let insertBefore=null;
+    for(const c of others){const r=c.getBoundingClientRect();if(ty<r.top+r.height/2){insertBefore=c;break;}}
+    const line=document.createElement("div");line.className="drag-insert";
+    if(insertBefore)getList().insertBefore(line,insertBefore);
+    else{const d=getList().querySelector(".card.is-dragging");getList().insertBefore(line,d);}
+  },{passive:false});
+
+  function endDrag(touchY){
+    if(!dragEl)return;
+    getList().querySelectorAll(".drag-insert").forEach(x=>x.remove());
+    const others=[...getList().querySelectorAll(".card:not(.is-dragging)")];
+    let insertBeforeIdx=others.length;
+    for(let i=0;i<others.length;i++){const r=others[i].getBoundingClientRect();if(touchY<r.top+r.height/2){insertBeforeIdx=i;break;}}
+    const sl=state.setlists.find(s=>s.id===curSetlist);
+    if(sl){const[moved]=sl.songIds.splice(dragIdx,1);sl.songIds.splice(insertBeforeIdx,0,moved);persist();}
+    dragEl.classList.remove("is-dragging");ghost.remove();
+    ghost=null;dragEl=null;dragIdx=-1;
+    renderSetSongs();
+  }
+  document.addEventListener("touchend",e=>{if(dragEl)endDrag(e.changedTouches[0].clientY);},{passive:true});
+  document.addEventListener("touchcancel",()=>{
+    if(!dragEl)return;
+    getList().querySelectorAll(".drag-insert").forEach(x=>x.remove());
+    dragEl.classList.remove("is-dragging");if(ghost){ghost.remove();ghost=null;}dragEl=null;dragIdx=-1;
+  },{passive:true});
+})();
+
 /* swipe between songs in a set */
 (function(){const v=document.getElementById("songView");let x0=0,y0=0,t0=0,active=false;
   v.addEventListener("touchstart",e=>{if(e.touches.length!==1)return;active=true;x0=e.touches[0].clientX;y0=e.touches[0].clientY;t0=Date.now();},{passive:true});
@@ -943,6 +1076,7 @@ document.querySelectorAll(".modal").forEach(m=>{m.addEventListener("click",e=>{
   else if(m.id==="picker")closePicker();
   else if(m.id==="setlistAdder")closeAdder();
   else if(m.id==="setlistSettings")closeSetlistSettings();
+  else if(m.id==="songContextMenu")closeSongContext();
   else if(m.id==="promptModal")closePromptModal();
   else if(m.id==="confirmModal")closeConfirmModal();
 });});
