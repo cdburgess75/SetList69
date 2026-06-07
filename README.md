@@ -27,8 +27,9 @@ SetList69 stores your songs — lyrics with chords — groups them into setlists
 
 ### Setlists
 - Create, rename, reorder (▲▼), and duplicate setlists
-- Add notes per setlist (venue, date, key reminders)
+- Add notes per setlist (venue, date, key reminders) — shown on the card and inside the set
 - Color-coded key dots show the harmonic flavor at a glance
+- Live search/filter when browsing songs to add
 - Play ▶ starts at the first song; swipe or tap ◀▶ to navigate
 
 ### Songs
@@ -36,9 +37,24 @@ SetList69 stores your songs — lyrics with chords — groups them into setlists
 - **Inline ChordPro** (`[G]Amazing [G7]grace`) and **chords-above-lyrics** formats both work
 - Supports ChordPro directives: `{key:}`, `{soc}` / `{eoc}`, `{c:note}`
 - Chord pills are **color-coded by root pitch** — same root = same color everywhere
-- Transpose up/down by semitone; preferred transpose **saved per song**
-- Sharp/flat spelling toggle
+- Transpose up/down by semitone; **preferred transpose saved per song** (reopens where you left it)
+- Sharp/flat spelling toggle, persisted across sessions
 - Font size adjustable (0.7 – 2.4 rem), persisted across sessions
+- **Live search** in All Songs by title or artist
+
+### Song management (long-press)
+Hold any song card for half a second — the phone vibrates and a context sheet slides up:
+
+| Action | Available in |
+|--------|-------------|
+| Edit song | Set · All Songs |
+| Add / move to another set | Set · All Songs |
+| Remove from this set | Set only |
+| Delete everywhere | Set · All Songs |
+
+### Reordering
+- **Drag to reorder** songs within a set — touch the `≡` handle and pull up or down; an accent-colored indicator shows where it will land
+- **Reorder setlists** with ▲▼ buttons on each setlist card
 
 ### Import & Export
 | Format | Support |
@@ -50,12 +66,9 @@ SetList69 stores your songs — lyrics with chords — groups them into setlists
 | Full backup to JSON | ✅ Share sheet / save dialog / download |
 | Restore from JSON backup | ✅ |
 
-- **All Songs screen** — search your library, import files, back up / restore everything
-- **Picker** — live search when adding songs to a set
-
 ### Themes
-- Dark (default) — near-black with amber chords, ≈17:1 contrast
-- Light — warm white with deep red-orange chords, ≥ WCAG AA
+- **Dark** (default) — near-black with amber chords, ≈17:1 contrast
+- **Light** — warm white with deep red-orange chords, ≥ WCAG AA throughout
 
 ---
 
@@ -107,6 +120,8 @@ v2026.06.07.005  Bug fixes: persist settings; custom modals; goBack fix; swipe h
                  backdrop close; card hover fix; font size CSS-only update.
 v2026.06.07.006  Live search; setlist settings (rename, notes, reorder, duplicate);
                  preferred transpose per song; narrow-screen card fix.
+v2026.06.07.007  Long-press context menu on songs (edit / move / remove / delete);
+                 drag-to-reorder songs in a set via ≡ handle.
 ```
 
 ---
