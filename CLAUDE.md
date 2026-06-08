@@ -181,7 +181,8 @@ Call `persist()` after every mutation of `state`.
   - Drops known OnSong metadata keys (`tempo`, `time`, `capo`, `ccli`, etc.) but **keeps section labels** like `Verse:`/`Chorus:` in the body.
   - Falls back to the filename for the title.
   - Wired to a **multi-file** picker on All Songs (`onsongInput`), so it doubles as bulk import. Each file becomes a new song in the library.
-  - **Not supported yet:** OnSong archive/songbook bundles (`.onsongarchive` / `.onsongbook`), which are ZIPs of many songs. Needs an unzip step (see §13).
+  - **Supported:** `.zip` bundles containing `.onsong`/ChordPro/`.txt` files — `expandFiles()` unzips using native `DecompressionStream` then passes each entry to `parseImport()`. Works in both the tools sheet importer and the picker importer.
+  - **Not supported:** `.onsongarchive` / `.onsongbook` — these are proprietary binary formats (not ZIPs), readable only by OnSong. `.backup` is a ZIP but its song content lives in an SQLite3 database, also not practical. For bulk migration from OnSong, the path is: export songs as `.onsong` or ChordPro individually, zip them, import the zip.
 
 -----
 
@@ -259,9 +260,7 @@ There's no test framework — verification is manual but disciplined:
 - Nashville number display.
 - Chord diagrams.
 - Fit-to-width auto-sizing of the song text.
-- OnSong **archive** (ZIP) import — needs an in-browser unzip (e.g. a tiny inflate implementation, kept dependency-free if possible).
-- Drag-to-reorder songs within a setlist (currently up/down buttons).
-- Multiple richer setlist features (duplicate, rename inline).
+- OpenSong XML (`.xml`) import — `DOMParser`-based, ~30 lines, covers migration from OpenSong/church projection apps.
 
 **Explicitly out of scope (by design):** cloud sync and any built-in online song catalog. Both fight the offline-first, copyright-clean, owner-controlled design. Moving songs between devices is handled by backup-to-file.
 

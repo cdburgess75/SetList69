@@ -16,6 +16,7 @@
                    songs in a set via ≡ handle; removes ▲▼ buttons.
   v2026.06.07.008  Fix long-press context menu not firing on All Songs screen.
   v2026.06.08.001  Unified home screen: setlists and songs together; backup/import moved to tools sheet.
+  v2026.06.08.002  ZIP bundle import: .zip files containing .onsong/.chordpro/.txt song files now expand on import.
 -->
 <html lang="en">
 <head>
@@ -226,7 +227,7 @@
 <div class="app">
   <header>
     <button class="back" id="backBtn" style="display:none">‹ <span id="backLabel">Back</span></button>
-    <div class="brand" id="brand"><span class="dot"></span>SetList69<small>v2026.06.08.001</small></div>
+    <div class="brand" id="brand"><span class="dot"></span>SetList69<small>v2026.06.08.002</small></div>
     <div class="htitle" id="headerTitle" style="display:none"></div>
     <div class="spacer"></div>
     <button class="iconbtn" id="menuBtn" title="Tools &amp; backup">≡</button>
@@ -310,7 +311,7 @@
         <button class="secbtn" id="pickerNew" style="margin-bottom:0">✏ Write new song</button>
         <button class="secbtn" id="pickerImport" style="background:var(--panel2);border:1px solid var(--line);color:var(--ink);margin-bottom:0">♫ Import file</button>
       </div>
-      <input type="file" id="pickerFileInput" accept=".onsong,.txt,.cho,.chordpro,.pro,.crd,text/plain" multiple hidden>
+      <input type="file" id="pickerFileInput" accept=".onsong,.txt,.cho,.chordpro,.chopro,.pro,.crd,.zip,text/plain,application/zip" multiple hidden>
       <div class="searchbar"><input type="search" id="pickerSearch" placeholder="Search songs…" autocomplete="off"></div>
       <div id="pickerList"></div>
     </div>
@@ -367,8 +368,8 @@
   <div class="sheetwrap" style="max-height:50dvh">
     <div class="mhead"><h3>Library tools</h3><button class="iconbtn" id="closeTools">✕</button></div>
     <div class="mbody">
-      <button class="ghostbtn" id="onsongBtn">♫ Import songs (OnSong / ChordPro / text)</button>
-      <input type="file" id="onsongInput" accept=".onsong,.txt,.cho,.chordpro,.pro,.crd,text/plain" multiple hidden>
+      <button class="ghostbtn" id="onsongBtn">♫ Import songs — OnSong · ChordPro · text · .zip</button>
+      <input type="file" id="onsongInput" accept=".onsong,.txt,.cho,.chordpro,.chopro,.pro,.crd,.zip,text/plain,application/zip" multiple hidden>
       <button class="ghostbtn" id="exportBtn">⤓ Back up all data to a file</button>
       <button class="ghostbtn" id="importBtn">⤒ Restore from a backup file</button>
       <input type="file" id="restoreInput" accept=".json,application/json" hidden>
@@ -715,6 +716,64 @@ function restoreData(file){
     });
   }catch(e){toast("⚠ Not a valid backup file");}};r.readAsText(file);}
 
+/* Unzip a .zip file and return [{name, text}] for each song-like entry.
+   Uses the browser's native DecompressionStream (deflate-raw) — no library needed.
+   Skips directories, macOS metadata (__MACOSX / ._), and non-song file types. */
+const SONG_EXT=/\.(onsong|txt|cho|chordpro|chopro|pro|crd)$/i;
+async function unzip(file){
+  const buf=await file.arrayBuffer();
+  const bytes=new Uint8Array(buf);
+  const view=new DataView(buf);
+  const out=[];
+  let pos=0;
+  while(pos<=bytes.length-30){
+    if(view.getUint32(pos,true)!==0x04034b50)break; // local file header signature
+    const method=view.getUint16(pos+8,true);
+    const cSize=view.getUint32(pos+18,true);
+    const nameLen=view.getUint16(pos+26,true);
+    const extraLen=view.getUint16(pos+28,true);
+    const name=new TextDecoder().decode(bytes.subarray(pos+30,pos+30+nameLen));
+    const dataPos=pos+30+nameLen+extraLen;
+    const compressed=bytes.subarray(dataPos,dataPos+cSize);
+    const skip=name.endsWith('/')||name.startsWith('__MACOSX/')||/\/\._|^\._/.test(name)||!SONG_EXT.test(name);
+    if(!skip){
+      try{
+        let decoded;
+        if(method===0){
+          decoded=new TextDecoder().decode(compressed);
+        }else if(method===8&&typeof DecompressionStream!=='undefined'){
+          const ds=new DecompressionStream('deflate-raw');
+          const w=ds.writable.getWriter();w.write(compressed);w.close();
+          const chunks=[];const r=ds.readable.getReader();
+          for(;;){const{done,value}=await r.read();if(done)break;chunks.push(value);}
+          const total=chunks.reduce((a,c)=>a+c.length,0);
+          const flat=new Uint8Array(total);let off=0;
+          for(const c of chunks){flat.set(c,off);off+=c.length;}
+          decoded=new TextDecoder().decode(flat);
+        }
+        if(decoded!=null)out.push({name:name.replace(/.*\//,'').replace(/\.[^.]+$/,''),text:decoded});
+      }catch(_){}
+    }
+    pos=dataPos+cSize;
+  }
+  return out;
+}
+
+/* Expand a mixed array of File objects — expanding any .zip files inline —
+   and return [{name, text}] ready for parseImport(). */
+async function expandFiles(files){
+  const entries=[];
+  for(const f of files){
+    if(/\.zip$/i.test(f.name)){
+      try{entries.push(...await unzip(f));}catch(_){toast("⚠ Could not read "+f.name);}
+    }else{
+      let text='';try{text=await f.text();}catch(_){continue;}
+      entries.push({name:f.name.replace(/\.[^.]+$/,''),text});
+    }
+  }
+  return entries;
+}
+
 /* Parse an OnSong / ChordPro / plain-text song into our model.
    Handles: ChordPro {title}/{subtitle}/{artist}/{key} directives anywhere near top,
    OnSong plain header (title line, artist line) + metadata lines (Key:, Tempo:, …).
@@ -825,10 +884,8 @@ document.getElementById("pickerFileInput").addEventListener("change",async e=>{
   const files=[...e.target.files];e.target.value="";if(!files.length)return;
   const sl=state.setlists.find(s=>s.id===curSetlist);if(!sl)return;
   let n=0;
-  for(const f of files){
-    let text="";try{text=await f.text();}catch(_){continue;}
-    const p=parseImport(text,f.name.replace(/\.[^.]+$/,""));
-    if(!p.body&&!p.title)continue;
+  for(const{name,text}of await expandFiles(files)){
+    const p=parseImport(text,name);if(!p.body&&!p.title)continue;
     const id="s"+Date.now()+Math.floor(Math.random()*1e4);
     state.songs.push({id,title:p.title,sub:p.sub,key:p.key,body:p.body});
     sl.songIds.push(id);n++;
@@ -848,10 +905,8 @@ document.getElementById("onsongBtn").addEventListener("click",()=>document.getEl
 document.getElementById("onsongInput").addEventListener("change",async e=>{
   const files=[...e.target.files];e.target.value="";if(!files.length)return;
   let n=0;
-  for(const f of files){
-    let text="";try{text=await f.text();}catch(_){continue;}
-    const p=parseImport(text,f.name.replace(/\.[^.]+$/,""));
-    if(!p.body&&!p.title)continue;
+  for(const{name,text}of await expandFiles(files)){
+    const p=parseImport(text,name);if(!p.body&&!p.title)continue;
     state.songs.push({id:"s"+Date.now()+Math.floor(Math.random()*1e4),title:p.title,sub:p.sub,key:p.key,body:p.body});
     n++;
   }
