@@ -15,6 +15,7 @@
   v2026.06.07.007  Long-press context menu on songs (edit/move/remove/delete); drag-to-reorder
                    songs in a set via ≡ handle; removes ▲▼ buttons.
   v2026.06.07.008  Fix long-press context menu not firing on All Songs screen.
+  v2026.06.08.001  Unified home screen: setlists and songs together; backup/import moved to tools sheet.
 -->
 <html lang="en">
 <head>
@@ -225,18 +226,28 @@
 <div class="app">
   <header>
     <button class="back" id="backBtn" style="display:none">‹ <span id="backLabel">Back</span></button>
-    <div class="brand" id="brand"><span class="dot"></span>SetList69<small>v2026.06.07.008</small></div>
+    <div class="brand" id="brand"><span class="dot"></span>SetList69<small>v2026.06.08.001</small></div>
     <div class="htitle" id="headerTitle" style="display:none"></div>
     <div class="spacer"></div>
-    <button class="iconbtn" id="menuBtn" title="Songs &amp; backup">≡</button>
+    <button class="iconbtn" id="menuBtn" title="Tools &amp; backup">≡</button>
     <button class="iconbtn" id="themeBtn" title="Light / dark mode">☾</button>
   </header>
 
   <main>
     <section class="screen show" id="setlistsScreen">
-      <div class="listhead"><h2>Setlists</h2><span class="count" id="setlistCount"></span></div>
+      <div class="listhead">
+        <h2>Setlists</h2><span class="count" id="setlistCount"></span>
+        <div class="spacer"></div>
+        <button class="iconbtn" id="newSetlist" title="New setlist" style="font-size:1.4rem;color:var(--accent)">+</button>
+      </div>
       <div id="setlistList"></div>
-      <button class="fab" id="newSetlist" title="New setlist">+</button>
+      <div class="listhead" style="margin-top:1.6rem">
+        <h2>Songs</h2><span class="count" id="allCount"></span>
+        <div class="spacer"></div>
+        <button class="iconbtn" id="newSongHome" title="New song" style="font-size:1.4rem;color:var(--accent)">+</button>
+      </div>
+      <div class="searchbar"><input type="search" id="allSearch" placeholder="Search songs…" autocomplete="off"></div>
+      <div id="allSongList"></div>
     </section>
 
     <section class="screen" id="setSongsScreen">
@@ -263,17 +274,6 @@
       </div>
     </section>
 
-    <section class="screen" id="allSongsScreen">
-      <div class="listhead"><h2>All Songs</h2><span class="count" id="allCount"></span></div>
-      <button class="ghostbtn" id="onsongBtn">♫ Import songs (OnSong / ChordPro / text)</button>
-      <input type="file" id="onsongInput" accept=".onsong,.txt,.cho,.chordpro,.pro,.crd,text/plain" multiple hidden>
-      <button class="ghostbtn" id="exportBtn">⤓ Back up all data to a file</button>
-      <button class="ghostbtn" id="importBtn">⤒ Restore from a backup file</button>
-      <input type="file" id="restoreInput" accept=".json,application/json" hidden>
-      <div class="searchbar"><input type="search" id="allSearch" placeholder="Search songs…" autocomplete="off"></div>
-      <div id="allSongList"></div>
-      <button class="fab" id="newSongGlobal" title="New song">+</button>
-    </section>
   </main>
 </div>
 
@@ -363,6 +363,19 @@
   </div>
 </div>
 
+<div class="modal bottom" id="toolsSheet">
+  <div class="sheetwrap" style="max-height:50dvh">
+    <div class="mhead"><h3>Library tools</h3><button class="iconbtn" id="closeTools">✕</button></div>
+    <div class="mbody">
+      <button class="ghostbtn" id="onsongBtn">♫ Import songs (OnSong / ChordPro / text)</button>
+      <input type="file" id="onsongInput" accept=".onsong,.txt,.cho,.chordpro,.pro,.crd,text/plain" multiple hidden>
+      <button class="ghostbtn" id="exportBtn">⤓ Back up all data to a file</button>
+      <button class="ghostbtn" id="importBtn">⤒ Restore from a backup file</button>
+      <input type="file" id="restoreInput" accept=".json,application/json" hidden>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script>
@@ -399,10 +412,10 @@ function seed(){
 /* ===== state & nav ===== */
 let state=seed();
 let screen="setlists";
-let curSetlist=null,curSongId=null,curIndex=-1,cameFromAll=false;
+let curSetlist=null,curSongId=null,curIndex=-1;
 let transpose=0,preferFlats=false,fontSize=1.35,scrollSpeed=3;
 let scrolling=false,scrollRAF=null,scrollAccum=0,swipeHintTimer=null;
-let editingId=null,editorReturn="allSongs",wakeLock=null,addingSongId=null,editingSetlistId=null;
+let editingId=null,editorReturn="setlists",wakeLock=null,addingSongId=null,editingSetlistId=null;
 let allSearchQ="",pickerSearchQ="";
 
 /* ===== transposition ===== */
@@ -525,21 +538,19 @@ function renderSheet(song){
 function show(name){
   screen=name;
   document.querySelectorAll(".screen").forEach(s=>s.classList.remove("show"));
-  const map={setlists:"setlistsScreen",setSongs:"setSongsScreen",song:"songView",allSongs:"allSongsScreen"};
+  const map={setlists:"setlistsScreen",setSongs:"setSongsScreen",song:"songView"};
   document.getElementById(map[name]).classList.add("show");
   const back=document.getElementById("backBtn"),brand=document.getElementById("brand"),ht=document.getElementById("headerTitle");
   if(name==="setlists"){back.style.display="none";brand.style.display="";ht.style.display="none";}
   else{back.style.display="";brand.style.display="none";ht.style.display="";}
   if(name==="setSongs"){ht.textContent=(state.setlists.find(s=>s.id===curSetlist)||{}).name||"";document.getElementById("backLabel").textContent="Setlists";}
-  if(name==="song"){const s=state.songs.find(x=>x.id===curSongId);ht.textContent=s?s.title:"";document.getElementById("backLabel").textContent=curIndex>=0?"Set":"Songs";}
-  if(name==="allSongs"){ht.textContent="All Songs";document.getElementById("backLabel").textContent="Setlists";}
+  if(name==="song"){const s=state.songs.find(x=>x.id===curSongId);ht.textContent=s?s.title:"";document.getElementById("backLabel").textContent=curIndex>=0?"Set":"Home";}
   if(name!=="song")stopScroll();
   releaseWake();if(name==="song")requestWake();
 }
 function goBack(){
-  if(screen==="song")show(curIndex>=0&&curSetlist?"setSongs":(cameFromAll?"allSongs":"setlists"));
+  if(screen==="song")show(curIndex>=0&&curSetlist?"setSongs":"setlists");
   else if(screen==="setSongs")show("setlists");
-  else if(screen==="allSongs")show("setlists");
 }
 
 /* ===== renderers ===== */
@@ -578,8 +589,8 @@ function renderAllSongs(){
 }
 
 /* ===== open song ===== */
-function openSongInSet(index){const sl=state.setlists.find(s=>s.id===curSetlist);if(!sl)return;curIndex=index;curSongId=sl.songIds[index];cameFromAll=false;openCurrent();}
-function openSongStandalone(id){curIndex=-1;curSongId=id;cameFromAll=true;openCurrent();}
+function openSongInSet(index){const sl=state.setlists.find(s=>s.id===curSetlist);if(!sl)return;curIndex=index;curSongId=sl.songIds[index];openCurrent();}
+function openSongStandalone(id){curIndex=-1;curSongId=id;openCurrent();}
 function openCurrent(){
   const s=state.songs.find(x=>x.id===curSongId);if(!s)return;
   transpose=s.defaultTranspose||0;stopScroll();document.getElementById("trVal").textContent=(transpose>0?"+":"")+transpose;
@@ -784,7 +795,7 @@ function closeConfirmModal(){document.getElementById("confirmModal").classList.r
 /* ===== events ===== */
 document.getElementById("backBtn").addEventListener("click",goBack);
 document.getElementById("themeBtn").addEventListener("click",()=>{state.theme=state.theme==="light"?"dark":"light";applyTheme();persist();});
-document.getElementById("menuBtn").addEventListener("click",()=>{renderAllSongs();cameFromAll=true;show("allSongs");});
+document.getElementById("menuBtn").addEventListener("click",()=>{document.getElementById("toolsSheet").classList.add("show");});
 
 document.getElementById("newSetlist").addEventListener("click",()=>{
   showPrompt("Name this setlist","New Set","",name=>{
@@ -832,7 +843,7 @@ document.getElementById("pickerList").addEventListener("click",e=>{const add=e.t
 document.getElementById("allSongList").addEventListener("click",e=>{
   const addBtn=e.target.closest(".addsong");if(addBtn){openAdder(addBtn.dataset.addid);return;}
   const open=e.target.closest(".open-allsong");if(open)openSongStandalone(open.dataset.id);});
-document.getElementById("newSongGlobal").addEventListener("click",()=>openEditor(null,"allSongs"));
+document.getElementById("newSongHome").addEventListener("click",()=>openEditor(null,"setlists"));
 document.getElementById("onsongBtn").addEventListener("click",()=>document.getElementById("onsongInput").click());
 document.getElementById("onsongInput").addEventListener("change",async e=>{
   const files=[...e.target.files];e.target.value="";if(!files.length)return;
@@ -875,7 +886,7 @@ document.getElementById("deleteSong").addEventListener("click",()=>{
     state.songs=state.songs.filter(x=>x.id!==delId);
     state.setlists.forEach(sl=>{sl.songIds=sl.songIds.filter(id=>id!==delId);});
     persist();closeEditor();renderAllSongs();renderSetSongs();renderSetlists();
-    if(curSongId===delId)show(curSetlist?"setSongs":"allSongs");toast("Deleted");
+    if(curSongId===delId)show(curSetlist?"setSongs":"setlists");toast("Deleted");
   });
 });
 document.getElementById("findChordsBtn").addEventListener("click",()=>{
@@ -892,6 +903,7 @@ document.getElementById("fileInput").addEventListener("change",e=>{const f=e.tar
     else if(!document.getElementById("fTitle").value)document.getElementById("fTitle").value=f.name.replace(/\.[^.]+$/,"");
     const km=text.match(/\{\s*key\s*:\s*(.+?)\s*\}/i);if(km)document.getElementById("fKey").value=km[1];};r.readAsText(f);e.target.value="";});
 
+document.getElementById("closeTools").addEventListener("click",()=>document.getElementById("toolsSheet").classList.remove("show"));
 document.getElementById("closeAdder").addEventListener("click",closeAdder);
 document.getElementById("adderDone").addEventListener("click",closeAdder);
 document.getElementById("adderList").addEventListener("click",e=>{
@@ -932,7 +944,7 @@ function openSongContext(songId,fromScreen){
       state.songs=state.songs.filter(x=>x.id!==songId);
       state.setlists.forEach(sl=>{sl.songIds=sl.songIds.filter(x=>x!==songId);});
       persist();renderAllSongs();renderSetSongs();renderSetlists();
-      if(curSongId===songId)show(curSetlist?"setSongs":"allSongs");toast("Deleted");
+      if(curSongId===songId)show(curSetlist?"setSongs":"setlists");toast("Deleted");
     });
   });
   document.getElementById("songContextMenu").classList.add("show");
@@ -963,7 +975,7 @@ document.getElementById("closeSongCtx").addEventListener("click",closeSongContex
   });
   install("allSongList",card=>{
     const id=card.dataset.id;if(!id)return null;
-    return{id,screen:"allSongs"};
+    return{id,screen:"setlists"};
   });
 })();
 
@@ -1078,6 +1090,7 @@ document.querySelectorAll(".modal").forEach(m=>{m.addEventListener("click",e=>{
   else if(m.id==="setlistAdder")closeAdder();
   else if(m.id==="setlistSettings")closeSetlistSettings();
   else if(m.id==="songContextMenu")closeSongContext();
+  else if(m.id==="toolsSheet")document.getElementById("toolsSheet").classList.remove("show");
   else if(m.id==="promptModal")closePromptModal();
   else if(m.id==="confirmModal")closeConfirmModal();
 });});
