@@ -19,6 +19,8 @@
   v2026.06.08.002  ZIP bundle import: .zip files containing .onsong/.chordpro/.txt song files now expand on import.
   v2026.06.08.003  Gig fixes: wake lock no longer drops between songs; swipe threshold 60→40px; scroll-end
                    haptic + visual flash; current song highlighted in set view; search debounced 150ms.
+  v2026.06.08.004  Stage mode (hides editing chrome during performance); fit-to-screen font; global set
+                   transpose; OpenSong XML import.
 -->
 <html lang="en">
 <head>
@@ -87,6 +89,19 @@
   .card:active{transform:scale(.99);}
   .card:hover{border-color:var(--faint);}
   .card.is-current{border-color:var(--accent);box-shadow:inset 3px 0 0 var(--accent);}
+  .set-toolbar{display:flex;align-items:center;gap:.5rem;margin-bottom:.75rem;flex-wrap:wrap;}
+  .set-tr-label{font-size:.7rem;color:var(--faint);font-family:var(--mono);}
+  .stagebtn{padding:.38rem .85rem;border-radius:9px;font-size:.8rem;font-weight:700;background:var(--accent);color:#fff;letter-spacing:.2px;}
+  .stagebtn:hover{background:var(--accent2);}
+  /* stage mode: hide all editing chrome */
+  #setSongsScreen[data-stage] .drag-handle,
+  #setSongsScreen[data-stage] .rm,
+  #setSongsScreen[data-stage] #addSongToSet,
+  #setSongsScreen[data-stage] #playSet,
+  #setSongsScreen[data-stage] .set-toolbar .ctl,
+  #setSongsScreen[data-stage] .set-tr-label{display:none !important;}
+  #setSongsScreen[data-stage] #stageBtn{background:var(--panel2);color:var(--muted);border:1px solid var(--line);}
+  #setSongsScreen[data-stage] .card{padding:1.15rem 1rem;cursor:pointer;}
   .card .meta{flex:1;min-width:0;}
   .card .t{font-weight:600;font-size:1.05rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
   .card .s{font-size:.78rem;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:.1rem;}
@@ -230,7 +245,7 @@
 <div class="app">
   <header>
     <button class="back" id="backBtn" style="display:none">‹ <span id="backLabel">Back</span></button>
-    <div class="brand" id="brand"><span class="dot"></span>SetList69<small>v2026.06.08.003</small></div>
+    <div class="brand" id="brand"><span class="dot"></span>SetList69<small>v2026.06.08.004</small></div>
     <div class="htitle" id="headerTitle" style="display:none"></div>
     <div class="spacer"></div>
     <button class="iconbtn" id="menuBtn" title="Tools &amp; backup">≡</button>
@@ -256,6 +271,12 @@
 
     <section class="screen" id="setSongsScreen">
       <div class="set-notes" id="setNotes"></div>
+      <div class="set-toolbar" id="setToolbar">
+        <div class="ctl"><button id="setTrDown">♭−</button><span class="val" id="setTrVal">±0</span><button id="setTrUp">+♯</button></div>
+        <span class="set-tr-label">set key</span>
+        <div class="spacer"></div>
+        <button class="stagebtn" id="stageBtn">▶ Stage</button>
+      </div>
       <div id="setSongList"></div>
       <button class="ghostbtn" id="addSongToSet">+ Add song to this set</button>
       <button class="fab" id="playSet" title="Start at first song">▶</button>
@@ -271,7 +292,7 @@
       <div class="dock">
         <div class="ctl"><button id="trDown">♭−</button><span class="val" id="trVal">0</span><button id="trUp">+♯</button></div>
         <div class="ctl"><button id="flatBtn" title="Sharp/flat">♯/♭</button></div>
-        <div class="ctl"><button id="fontDown">A−</button><button id="fontUp">A＋</button></div>
+        <div class="ctl"><button id="fontDown">A−</button><button id="fontFit" title="Fit to screen" style="font-size:.7rem;letter-spacing:.3px">fit</button><button id="fontUp">A＋</button></div>
         <div class="ctl"><button class="scrollbtn" id="scrollBtn">▶</button><button id="scrollDown">−</button><span class="val" id="speedVal">3</span><button id="scrollUp">+</button></div>
         <div class="ctl"><button id="prevSong">◀</button><span class="pos" id="setPos"></span><button id="nextSong">▶</button></div>
         <button class="iconbtn" id="editSong" title="Edit">✎</button>
@@ -314,7 +335,7 @@
         <button class="secbtn" id="pickerNew" style="margin-bottom:0">✏ Write new song</button>
         <button class="secbtn" id="pickerImport" style="background:var(--panel2);border:1px solid var(--line);color:var(--ink);margin-bottom:0">♫ Import file</button>
       </div>
-      <input type="file" id="pickerFileInput" accept=".onsong,.txt,.cho,.chordpro,.chopro,.pro,.crd,.zip,text/plain,application/zip" multiple hidden>
+      <input type="file" id="pickerFileInput" accept=".onsong,.txt,.cho,.chordpro,.chopro,.pro,.crd,.xml,.zip,text/plain,application/zip" multiple hidden>
       <div class="searchbar"><input type="search" id="pickerSearch" placeholder="Search songs…" autocomplete="off"></div>
       <div id="pickerList"></div>
     </div>
@@ -371,8 +392,8 @@
   <div class="sheetwrap" style="max-height:50dvh">
     <div class="mhead"><h3>Library tools</h3><button class="iconbtn" id="closeTools">✕</button></div>
     <div class="mbody">
-      <button class="ghostbtn" id="onsongBtn">♫ Import songs — OnSong · ChordPro · text · .zip</button>
-      <input type="file" id="onsongInput" accept=".onsong,.txt,.cho,.chordpro,.chopro,.pro,.crd,.zip,text/plain,application/zip" multiple hidden>
+      <button class="ghostbtn" id="onsongBtn">♫ Import songs — OnSong · ChordPro · OpenSong · .zip</button>
+      <input type="file" id="onsongInput" accept=".onsong,.txt,.cho,.chordpro,.chopro,.pro,.crd,.xml,.zip,text/plain,application/zip" multiple hidden>
       <button class="ghostbtn" id="exportBtn">⤓ Back up all data to a file</button>
       <button class="ghostbtn" id="importBtn">⤒ Restore from a backup file</button>
       <input type="file" id="restoreInput" accept=".json,application/json" hidden>
@@ -416,7 +437,7 @@ function seed(){
 /* ===== state & nav ===== */
 let state=seed();
 let screen="setlists";
-let curSetlist=null,curSongId=null,curIndex=-1;
+let curSetlist=null,curSongId=null,curIndex=-1,curSetTranspose=0,stageMode=false;
 let transpose=0,preferFlats=false,fontSize=1.35,scrollSpeed=3;
 let scrolling=false,scrollRAF=null,scrollAccum=0,swipeHintTimer=null;
 let editingId=null,editorReturn="setlists",wakeLock=null,addingSongId=null,editingSetlistId=null;
@@ -547,7 +568,10 @@ function show(name){
   const back=document.getElementById("backBtn"),brand=document.getElementById("brand"),ht=document.getElementById("headerTitle");
   if(name==="setlists"){back.style.display="none";brand.style.display="";ht.style.display="none";}
   else{back.style.display="";brand.style.display="none";ht.style.display="";}
-  if(name==="setSongs"){ht.textContent=(state.setlists.find(s=>s.id===curSetlist)||{}).name||"";document.getElementById("backLabel").textContent="Setlists";}
+  if(name==="setSongs"){ht.textContent=(state.setlists.find(s=>s.id===curSetlist)||{}).name||"";document.getElementById("backLabel").textContent="Setlists";
+    document.getElementById("setSongsScreen").toggleAttribute("data-stage",stageMode);
+    document.getElementById("stageBtn").textContent=stageMode?"✎ Edit":"▶ Stage";}
+  if(name==="setlists"){stageMode=false;document.getElementById("setSongsScreen").removeAttribute("data-stage");}
   if(name==="song"){const s=state.songs.find(x=>x.id===curSongId);ht.textContent=s?s.title:"";document.getElementById("backLabel").textContent=curIndex>=0?"Set":"Home";}
   if(name==="song"){if(!wakeLock)requestWake();}
   else{stopScroll();releaseWake();}
@@ -574,6 +598,7 @@ function renderSetSongs(){
   const sl=state.setlists.find(s=>s.id===curSetlist);if(!sl){show("setlists");return;}
   document.getElementById("playSet").style.display=sl.songIds.length?"":"none";
   document.getElementById("setNotes").textContent=sl.notes||"";
+  const st=sl.setTranspose||0;document.getElementById("setTrVal").textContent=st===0?"±0":(st>0?"+":"")+st;
   const wrap=document.getElementById("setSongList");
   if(!sl.songIds.length){wrap.innerHTML='<div class="empty"><div class="big">♪</div>No songs in this set yet.</div>';return;}
   wrap.innerHTML=sl.songIds.map((id,i)=>{
@@ -594,11 +619,11 @@ function renderAllSongs(){
 }
 
 /* ===== open song ===== */
-function openSongInSet(index){const sl=state.setlists.find(s=>s.id===curSetlist);if(!sl)return;curIndex=index;curSongId=sl.songIds[index];openCurrent();}
-function openSongStandalone(id){curIndex=-1;curSongId=id;openCurrent();}
+function openSongInSet(index){const sl=state.setlists.find(s=>s.id===curSetlist);if(!sl)return;curIndex=index;curSongId=sl.songIds[index];curSetTranspose=sl.setTranspose||0;openCurrent();}
+function openSongStandalone(id){curIndex=-1;curSongId=id;curSetTranspose=0;openCurrent();}
 function openCurrent(){
   const s=state.songs.find(x=>x.id===curSongId);if(!s)return;
-  transpose=s.defaultTranspose||0;stopScroll();document.getElementById("trVal").textContent=(transpose>0?"+":"")+transpose;
+  transpose=(s.defaultTranspose||0)+curSetTranspose;stopScroll();document.getElementById("trVal").textContent=(transpose>0?"+":"")+transpose;
   renderSheet(s);show("song");document.getElementById("songView").scrollTop=0;
   const ctlNav=document.getElementById("prevSong").parentElement;
   const hint=document.getElementById("swipeHint");
@@ -726,7 +751,7 @@ function restoreData(file){
 /* Unzip a .zip file and return [{name, text}] for each song-like entry.
    Uses the browser's native DecompressionStream (deflate-raw) — no library needed.
    Skips directories, macOS metadata (__MACOSX / ._), and non-song file types. */
-const SONG_EXT=/\.(onsong|txt|cho|chordpro|chopro|pro|crd)$/i;
+const SONG_EXT=/\.(onsong|txt|cho|chordpro|chopro|pro|crd|xml)$/i;
 async function unzip(file){
   const buf=await file.arrayBuffer();
   const bytes=new Uint8Array(buf);
@@ -781,11 +806,37 @@ async function expandFiles(files){
   return entries;
 }
 
+/* Parse an OpenSong XML song file into our model. */
+function parseOpenSong(text,fallbackName){
+  try{
+    const doc=new DOMParser().parseFromString(text,"text/xml");
+    if(doc.querySelector("parsererror"))return null;
+    const s=doc.querySelector("song");if(!s)return null;
+    const title=(s.querySelector("title")?.textContent||"").trim()||fallbackName||"Untitled";
+    const sub=(s.querySelector("author,artist")?.textContent||"").trim();
+    const key=(s.querySelector("key")?.textContent||"").trim();
+    const raw=(s.querySelector("lyrics")?.textContent||"");
+    const secMap={V:"Verse",C:"Chorus",B:"Bridge",P:"Pre-Chorus",T:"Tag",I:"Intro",O:"Outro"};
+    const body=raw.replace(/\r/g,"").split("\n").map(l=>{
+      if(l.startsWith("[")){
+        const tag=l.replace(/[\[\]]/g,"").trim();
+        const m=tag.match(/^([VCBPTIO])(\d*)$/i);
+        return m?(secMap[m[1].toUpperCase()]||(m[1]))+(m[2]?" "+m[2]:"")+":":tag+":";
+      }
+      if(l.startsWith("."))return l.slice(1);       // chord line
+      if(l.startsWith(" ")||l.startsWith("\t"))return l.trim(); // lyric line
+      return l;
+    });
+    return{title,sub,key,body:body.join("\n").replace(/\s+$/,"")};
+  }catch(_){return null;}
+}
+
 /* Parse an OnSong / ChordPro / plain-text song into our model.
    Handles: ChordPro {title}/{subtitle}/{artist}/{key} directives anywhere near top,
    OnSong plain header (title line, artist line) + metadata lines (Key:, Tempo:, …).
    Keeps section labels (Verse:, Chorus:) and the chord/lyric body intact. */
 function parseImport(text,fallbackName){
+  if((text||"").trimStart().startsWith("<")){const r=parseOpenSong(text,fallbackName);if(r)return r;}
   let lines=(text||"").replace(/\r/g,"").split("\n");
   let title="",sub="",key="";
   // 1) lift ChordPro directives, removing those lines
@@ -924,11 +975,34 @@ document.getElementById("exportBtn").addEventListener("click",exportData);
 document.getElementById("importBtn").addEventListener("click",()=>document.getElementById("restoreInput").click());
 document.getElementById("restoreInput").addEventListener("change",e=>{if(e.target.files[0])restoreData(e.target.files[0]);e.target.value="";});
 
-document.getElementById("trUp").addEventListener("click",()=>{transpose++;document.getElementById("trVal").textContent=(transpose>0?"+":"")+transpose;const _s=state.songs.find(x=>x.id===curSongId);if(_s){_s.defaultTranspose=transpose;persist();}reRender();});
-document.getElementById("trDown").addEventListener("click",()=>{transpose--;document.getElementById("trVal").textContent=(transpose>0?"+":"")+transpose;const _s=state.songs.find(x=>x.id===curSongId);if(_s){_s.defaultTranspose=transpose;persist();}reRender();});
+document.getElementById("trUp").addEventListener("click",()=>{transpose++;document.getElementById("trVal").textContent=(transpose>0?"+":"")+transpose;const _s=state.songs.find(x=>x.id===curSongId);if(_s){_s.defaultTranspose=transpose-curSetTranspose;persist();}reRender();});
+document.getElementById("trDown").addEventListener("click",()=>{transpose--;document.getElementById("trVal").textContent=(transpose>0?"+":"")+transpose;const _s=state.songs.find(x=>x.id===curSongId);if(_s){_s.defaultTranspose=transpose-curSetTranspose;persist();}reRender();});
 document.getElementById("flatBtn").addEventListener("click",e=>{preferFlats=!preferFlats;state.preferFlats=preferFlats;persist();e.target.classList.toggle("on",preferFlats);reRender();});
 document.getElementById("fontUp").addEventListener("click",()=>{fontSize=Math.min(2.4,Math.round((fontSize+0.1)*10)/10);state.fontSize=fontSize;persist();document.getElementById("sheet").style.setProperty("--sheet-size",fontSize+"rem");});
 document.getElementById("fontDown").addEventListener("click",()=>{fontSize=Math.max(0.7,Math.round((fontSize-0.1)*10)/10);state.fontSize=fontSize;persist();document.getElementById("sheet").style.setProperty("--sheet-size",fontSize+"rem");});
+document.getElementById("fontFit").addEventListener("click",()=>{
+  requestAnimationFrame(()=>{
+    const sv=document.getElementById("songView"),sh=document.getElementById("sheet");
+    const avail=sv.clientHeight-(sv.querySelector(".svhead")?.offsetHeight||70)-(sv.querySelector(".dock")?.offsetHeight||88)-24;
+    if(avail<=0||sh.scrollHeight<=avail)return;
+    const newSize=Math.max(0.9,Math.min(2.4,parseFloat((fontSize*avail/sh.scrollHeight).toFixed(2))));
+    if(Math.abs(newSize-fontSize)<0.04)return;
+    fontSize=newSize;state.fontSize=fontSize;persist();sh.style.setProperty("--sheet-size",fontSize+"rem");reRender();
+  });
+});
+document.getElementById("stageBtn").addEventListener("click",()=>{
+  stageMode=!stageMode;
+  document.getElementById("setSongsScreen").toggleAttribute("data-stage",stageMode);
+  document.getElementById("stageBtn").textContent=stageMode?"✎ Edit":"▶ Stage";
+});
+document.getElementById("setTrUp").addEventListener("click",()=>{
+  const sl=state.setlists.find(s=>s.id===curSetlist);if(!sl)return;
+  sl.setTranspose=(sl.setTranspose||0)+1;persist();renderSetSongs();
+});
+document.getElementById("setTrDown").addEventListener("click",()=>{
+  const sl=state.setlists.find(s=>s.id===curSetlist);if(!sl)return;
+  sl.setTranspose=(sl.setTranspose||0)-1;persist();renderSetSongs();
+});
 document.getElementById("scrollBtn").addEventListener("click",()=>{scrolling?stopScroll():startScroll();});
 document.getElementById("scrollUp").addEventListener("click",()=>{scrollSpeed=Math.min(9,scrollSpeed+1);state.scrollSpeed=scrollSpeed;persist();document.getElementById("speedVal").textContent=scrollSpeed;});
 document.getElementById("scrollDown").addEventListener("click",()=>{scrollSpeed=Math.max(1,scrollSpeed-1);state.scrollSpeed=scrollSpeed;persist();document.getElementById("speedVal").textContent=scrollSpeed;});
