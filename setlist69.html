@@ -21,6 +21,7 @@
                    haptic + visual flash; current song highlighted in set view; search debounced 150ms.
   v2026.06.08.004  Stage mode (hides editing chrome during performance); fit-to-screen font; global set
                    transpose; OpenSong XML import.
+  v2026.06.09.001  Fit-to-screen: two-pass correction so re-wrapping at smaller size doesn't overshoot.
 -->
 <html lang="en">
 <head>
@@ -245,7 +246,7 @@
 <div class="app">
   <header>
     <button class="back" id="backBtn" style="display:none">‹ <span id="backLabel">Back</span></button>
-    <div class="brand" id="brand"><span class="dot"></span>SetList69<small>v2026.06.08.004</small></div>
+    <div class="brand" id="brand"><span class="dot"></span>SetList69<small>v2026.06.09.001</small></div>
     <div class="htitle" id="headerTitle" style="display:none"></div>
     <div class="spacer"></div>
     <button class="iconbtn" id="menuBtn" title="Tools &amp; backup">≡</button>
@@ -988,6 +989,13 @@ document.getElementById("fontFit").addEventListener("click",()=>{
     const newSize=Math.max(0.9,Math.min(2.4,parseFloat((fontSize*avail/sh.scrollHeight).toFixed(2))));
     if(Math.abs(newSize-fontSize)<0.04)return;
     fontSize=newSize;state.fontSize=fontSize;persist();sh.style.setProperty("--sheet-size",fontSize+"rem");reRender();
+    // second pass: re-wrapping at the smaller size may still overflow; correct once more
+    requestAnimationFrame(()=>{
+      if(sh.scrollHeight>avail&&fontSize>0.9){
+        fontSize=Math.max(0.9,parseFloat((fontSize*avail/sh.scrollHeight).toFixed(2)));
+        state.fontSize=fontSize;persist();sh.style.setProperty("--sheet-size",fontSize+"rem");reRender();
+      }
+    });
   });
 });
 document.getElementById("stageBtn").addEventListener("click",()=>{
