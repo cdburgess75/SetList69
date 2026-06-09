@@ -26,6 +26,7 @@
                    tab, paste result back — drops straight into editor pre-filled.
   v2026.06.09.003  Replaced Ultimate Guitar with Chordie / E-Chords / Cifraclub (no forced signup);
                    added Google "chords lyrics" search; two-row layout with section labels.
+  v2026.06.09.004  Editor "Find chords" button now opens the paste modal instead of going straight to UG.
 -->
 <html lang="en">
 <head>
@@ -255,7 +256,7 @@
 <div class="app">
   <header>
     <button class="back" id="backBtn" style="display:none">‹ <span id="backLabel">Back</span></button>
-    <div class="brand" id="brand"><span class="dot"></span>SetList69<small>v2026.06.09.003</small></div>
+    <div class="brand" id="brand"><span class="dot"></span>SetList69<small>v2026.06.09.004</small></div>
     <div class="htitle" id="headerTitle" style="display:none"></div>
     <div class="spacer"></div>
     <button class="iconbtn" id="menuBtn" title="Tools &amp; backup">≡</button>
@@ -1069,9 +1070,11 @@ document.getElementById("deleteSong").addEventListener("click",()=>{
 document.getElementById("findChordsBtn").addEventListener("click",()=>{
   const title=document.getElementById("fTitle").value.trim();
   const artist=document.getElementById("fSub").value.trim();
-  if(!title){toast("Enter a title first");return;}
-  window.open("https://www.ultimate-guitar.com/search.php?search_type=title&value="+encodeURIComponent((artist?artist+" ":"")+title),"_blank");
-  toast("Find the song, copy the chords, paste into the box");
+  const q=(artist?artist+" ":"")+title;
+  document.getElementById("pasteSearch").value=q;
+  document.getElementById("pasteBody").value="";
+  document.getElementById("pasteModal").classList.add("show");
+  setTimeout(()=>document.getElementById("pasteBody").focus(),120);
 });
 document.getElementById("fileInput").addEventListener("change",e=>{const f=e.target.files[0];if(!f)return;
   const r=new FileReader();r.onload=()=>{const text=r.result;document.getElementById("fBody").value=text;
