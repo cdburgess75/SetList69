@@ -28,6 +28,8 @@
                    added Google "chords lyrics" search; two-row layout with section labels.
   v2026.06.09.004  Editor "Find chords" button now opens the paste modal instead of going straight to UG.
   v2026.06.09.005  Auto-clean Chordie embedded chords on paste: "Gmget"→"[Gm]get" etc.
+  v2026.06.09.006  Fix chord detection: "Gm!" accent marker now recognised; "/" and "-" separators
+                   allowed in chord lines so "Cm / Bb / Dm - D" parses correctly.
 -->
 <html lang="en">
 <head>
@@ -257,7 +259,7 @@
 <div class="app">
   <header>
     <button class="back" id="backBtn" style="display:none">‹ <span id="backLabel">Back</span></button>
-    <div class="brand" id="brand"><span class="dot"></span>SetList69<small>v2026.06.09.005</small></div>
+    <div class="brand" id="brand"><span class="dot"></span>SetList69<small>v2026.06.09.006</small></div>
     <div class="htitle" id="headerTitle" style="display:none"></div>
     <div class="spacer"></div>
     <button class="iconbtn" id="menuBtn" title="Tools &amp; backup">≡</button>
@@ -486,8 +488,8 @@ const IDX={C:0,"C#":1,Db:1,D:2,"D#":3,Eb:3,E:4,"E#":5,Fb:4,F:5,"F#":6,Gb:6,G:7,"
 const CHORD_RE=/^([A-G][#b]?)(.*)$/;
 function transposeNote(n){if(!(n in IDX))return n;const v=((IDX[n]+transpose)%12+12)%12;return preferFlats?FLAT[v]:SHARP[v];}
 function transposeChord(ch){if(!ch)return ch;return ch.split("/").map(p=>{const m=p.match(CHORD_RE);return m?transposeNote(m[1])+m[2]:p;}).join("/");}
-function looksChord(t){return /^[A-G][#b]?(m|maj|min|dim|aug|sus|add)?[0-9]*(\([^)]*\))?(\/[A-G][#b]?)?$/.test(t);}
-function isChordLine(line){const toks=line.trim().split(/\s+/).filter(Boolean);if(!toks.length)return false;let h=0;for(const t of toks)if(looksChord(t))h++;return h===toks.length&&h>0;}
+function looksChord(t){return /^[A-G][#b]?(m|maj|min|dim|aug|sus|add)?[0-9]*(\([^)]*\))?(\/[A-G][#b]?)?[!*]?$/.test(t);}
+function isChordLine(line){const toks=line.trim().split(/\s+/).filter(Boolean);if(!toks.length)return false;let chords=0;for(const t of toks){if(looksChord(t))chords++;else if(/^[\/\-|]+$/.test(t))continue;else return false;}return chords>0;}
 function pitchClass(key){const m=(key||"").match(CHORD_RE);return m&&m[1]in IDX?IDX[m[1]]:-1;}
 function keyColor(key){const pc=pitchClass(key);if(pc<0)return"#7a7160";const hue=(pc*30)%360;return"hsl("+hue+" 52% 42%)";}
 
@@ -871,8 +873,6 @@ function parseOpenSong(text,fallbackName){
    Handles: ChordPro {title}/{subtitle}/{artist}/{key} directives anywhere near top,
    OnSong plain header (title line, artist line) + metadata lines (Key:, Tempo:, …).
    Keeps section labels (Verse:, Chorus:) and the chord/lyric body intact. */
-/* Detect and fix Chordie-style embedded chords: chord names stuffed directly
-   into words without brackets, e.g. "Gmget"→"[Gm]get", "lGmight"→"l[Gm]ight" */
 /* Convert Chordie-style embedded chords (chord names stuffed into words without
    brackets) to ChordPro inline format.
    "Gmget" → "[Gm]get",  "lGmight" → "l[Gm]ight",  "And" stays "And". */
