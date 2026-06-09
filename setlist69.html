@@ -27,6 +27,7 @@
   v2026.06.09.003  Replaced Ultimate Guitar with Chordie / E-Chords / Cifraclub (no forced signup);
                    added Google "chords lyrics" search; two-row layout with section labels.
   v2026.06.09.004  Editor "Find chords" button now opens the paste modal instead of going straight to UG.
+  v2026.06.09.005  Auto-clean Chordie embedded chords on paste: "Gmget"→"[Gm]get" etc.
 -->
 <html lang="en">
 <head>
@@ -256,7 +257,7 @@
 <div class="app">
   <header>
     <button class="back" id="backBtn" style="display:none">‹ <span id="backLabel">Back</span></button>
-    <div class="brand" id="brand"><span class="dot"></span>SetList69<small>v2026.06.09.004</small></div>
+    <div class="brand" id="brand"><span class="dot"></span>SetList69<small>v2026.06.09.005</small></div>
     <div class="htitle" id="headerTitle" style="display:none"></div>
     <div class="spacer"></div>
     <button class="iconbtn" id="menuBtn" title="Tools &amp; backup">≡</button>
@@ -870,8 +871,30 @@ function parseOpenSong(text,fallbackName){
    Handles: ChordPro {title}/{subtitle}/{artist}/{key} directives anywhere near top,
    OnSong plain header (title line, artist line) + metadata lines (Key:, Tempo:, …).
    Keeps section labels (Verse:, Chorus:) and the chord/lyric body intact. */
+/* Detect and fix Chordie-style embedded chords: chord names stuffed directly
+   into words without brackets, e.g. "Gmget"→"[Gm]get", "lGmight"→"l[Gm]ight" */
+/* Convert Chordie-style embedded chords (chord names stuffed into words without
+   brackets) to ChordPro inline format.
+   "Gmget" → "[Gm]get",  "lGmight" → "l[Gm]ight",  "And" stays "And". */
+function cleanEmbeddedChords(text){
+  const sfx='(?:maj7?|min7?|m7?|dim7?|aug|sus[24]?|add\\d?|[679]|11|13)';
+  const bass='(?:\\/[A-G][#b]?)?';
+  // mid-word: any chord preceded by a lowercase letter (unambiguous)
+  const midRe=new RegExp('([a-z])([A-G][#b]?'+sfx+'?'+bass+')([a-z]{2,})','g');
+  // word-start: only chords with accidental or suffix — bare A-G are too ambiguous
+  const startRe=new RegExp('(^|[ \\t])([A-G][#b]'+sfx+'?'+bass+'|[A-G]'+sfx+bass+')([a-z]{2,})','gm');
+  if(!midRe.test(text)&&!startRe.test(text))return text;
+  midRe.lastIndex=0;startRe.lastIndex=0;
+  return text.split('\n').map(l=>{
+    l=l.replace(midRe,(_,pre,ch,cont)=>pre+'['+ch+']'+cont);
+    l=l.replace(startRe,(_,sp,ch,cont)=>sp+'['+ch+']'+cont);
+    return l;
+  }).join('\n');
+}
+
 function parseImport(text,fallbackName){
   if((text||"").trimStart().startsWith("<")){const r=parseOpenSong(text,fallbackName);if(r)return r;}
+  text=cleanEmbeddedChords(text);
   let lines=(text||"").replace(/\r/g,"").split("\n");
   let title="",sub="",key="";
   // 1) lift ChordPro directives, removing those lines
