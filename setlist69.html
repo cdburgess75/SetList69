@@ -22,6 +22,8 @@
   v2026.06.08.004  Stage mode (hides editing chrome during performance); fit-to-screen font; global set
                    transpose; OpenSong XML import.
   v2026.06.09.001  Fit-to-screen: two-pass correction so re-wrapping at smaller size doesn't overshoot.
+  v2026.06.09.002  Search & paste modal: type song name, open Ultimate Guitar / AZLyrics / Genius in new
+                   tab, paste result back — drops straight into editor pre-filled.
 -->
 <html lang="en">
 <head>
@@ -234,6 +236,10 @@
   .lookuprow{display:flex;gap:.5rem;}
   .lookuprow .ghostbtn{flex:1;margin-bottom:0;font-size:.8rem;padding:.55rem .4rem;}
 
+  .paste-ta{width:100%;min-height:200px;resize:vertical;background:var(--panel);color:var(--ink);
+    border:1px solid var(--line);border-radius:10px;padding:.75rem;font-family:var(--mono);
+    font-size:.85rem;line-height:1.55;box-sizing:border-box;}
+  .paste-ta:focus{outline:none;border-color:var(--accent);}
   .toast{position:fixed;left:50%;bottom:2rem;transform:translateX(-50%) translateY(2rem);background:var(--ink);
     color:var(--bg);padding:.6rem 1rem;border-radius:30px;font-size:.85rem;font-weight:600;opacity:0;
     pointer-events:none;transition:.25s;z-index:60;max-width:90vw;text-align:center;}
@@ -246,7 +252,7 @@
 <div class="app">
   <header>
     <button class="back" id="backBtn" style="display:none">‹ <span id="backLabel">Back</span></button>
-    <div class="brand" id="brand"><span class="dot"></span>SetList69<small>v2026.06.09.001</small></div>
+    <div class="brand" id="brand"><span class="dot"></span>SetList69<small>v2026.06.09.002</small></div>
     <div class="htitle" id="headerTitle" style="display:none"></div>
     <div class="spacer"></div>
     <button class="iconbtn" id="menuBtn" title="Tools &amp; backup">≡</button>
@@ -393,12 +399,29 @@
   <div class="sheetwrap" style="max-height:50dvh">
     <div class="mhead"><h3>Library tools</h3><button class="iconbtn" id="closeTools">✕</button></div>
     <div class="mbody">
+      <button class="ghostbtn" id="pasteBtn">↗ Search &amp; paste lyrics</button>
       <button class="ghostbtn" id="onsongBtn">♫ Import songs — OnSong · ChordPro · OpenSong · .zip</button>
       <input type="file" id="onsongInput" accept=".onsong,.txt,.cho,.chordpro,.chopro,.pro,.crd,.xml,.zip,text/plain,application/zip" multiple hidden>
       <button class="ghostbtn" id="exportBtn">⤓ Back up all data to a file</button>
       <button class="ghostbtn" id="importBtn">⤒ Restore from a backup file</button>
       <input type="file" id="restoreInput" accept=".json,application/json" hidden>
     </div>
+  </div>
+</div>
+
+<div class="modal bottom" id="pasteModal">
+  <div class="sheetwrap" style="max-height:88dvh">
+    <div class="mhead"><h3>Search &amp; paste lyrics</h3><button class="iconbtn" id="closePasteModal">✕</button></div>
+    <div class="mbody">
+      <div class="field"><input id="pasteSearch" placeholder="Song title or title + artist" autocomplete="off" autocorrect="off" spellcheck="false"></div>
+      <div class="lookuprow">
+        <button class="ghostbtn" id="lookupUG">Ultimate Guitar</button>
+        <button class="ghostbtn" id="lookupAZ">AZLyrics</button>
+        <button class="ghostbtn" id="lookupGenius">Genius</button>
+      </div>
+      <textarea id="pasteBody" placeholder="Paste chords &amp; lyrics here…" class="paste-ta"></textarea>
+    </div>
+    <div class="mfoot"><button class="btn ghost" id="pasteCancelBtn">Cancel</button><button class="btn primary" id="pasteImportBtn">Import song →</button></div>
   </div>
 </div>
 
@@ -1048,6 +1071,39 @@ document.getElementById("fileInput").addEventListener("change",e=>{const f=e.tar
     const km=text.match(/\{\s*key\s*:\s*(.+?)\s*\}/i);if(km)document.getElementById("fKey").value=km[1];};r.readAsText(f);e.target.value="";});
 
 document.getElementById("closeTools").addEventListener("click",()=>document.getElementById("toolsSheet").classList.remove("show"));
+
+/* ---- paste / search modal ---- */
+document.getElementById("pasteBtn").addEventListener("click",()=>{
+  document.getElementById("toolsSheet").classList.remove("show");
+  document.getElementById("pasteSearch").value="";
+  document.getElementById("pasteBody").value="";
+  document.getElementById("pasteModal").classList.add("show");
+  setTimeout(()=>document.getElementById("pasteSearch").focus(),120);
+});
+document.getElementById("closePasteModal").addEventListener("click",()=>document.getElementById("pasteModal").classList.remove("show"));
+document.getElementById("pasteCancelBtn").addEventListener("click",()=>document.getElementById("pasteModal").classList.remove("show"));
+function openPasteSearch(urlFn){
+  const q=document.getElementById("pasteSearch").value.trim();
+  if(!q){toast("Enter a song name first");return;}
+  window.open(urlFn(encodeURIComponent(q)),"_blank");
+  toast("Copy the lyrics, come back and paste below ↓");
+}
+document.getElementById("lookupUG").addEventListener("click",()=>openPasteSearch(q=>"https://www.ultimate-guitar.com/search.php?search_type=title&value="+q));
+document.getElementById("lookupAZ").addEventListener("click",()=>openPasteSearch(q=>"https://search.azlyrics.com/search.php?q="+q));
+document.getElementById("lookupGenius").addEventListener("click",()=>openPasteSearch(q=>"https://genius.com/search?q="+q));
+document.getElementById("pasteImportBtn").addEventListener("click",()=>{
+  const text=document.getElementById("pasteBody").value.trim();
+  const q=document.getElementById("pasteSearch").value.trim();
+  if(!text){toast("Paste some lyrics first");return;}
+  const parsed=parseImport(text,q||"New Song");
+  if(!parsed){toast("Couldn't parse — try pasting in ChordPro format");return;}
+  document.getElementById("pasteModal").classList.remove("show");
+  openEditor(null);
+  document.getElementById("fTitle").value=parsed.title||q||"";
+  document.getElementById("fSub").value=parsed.sub||"";
+  document.getElementById("fKey").value=parsed.key||"";
+  document.getElementById("fBody").value=parsed.body||"";
+});
 document.getElementById("closeAdder").addEventListener("click",closeAdder);
 document.getElementById("adderDone").addEventListener("click",closeAdder);
 document.getElementById("adderList").addEventListener("click",e=>{
