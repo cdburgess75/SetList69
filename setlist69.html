@@ -30,6 +30,9 @@
   v2026.06.09.005  Auto-clean Chordie embedded chords on paste: "Gmget"→"[Gm]get" etc.
   v2026.06.09.006  Fix chord detection: "Gm!" accent marker now recognised; "/" and "-" separators
                    allowed in chord lines so "Cm / Bb / Dm - D" parses correctly.
+  v2026.06.09.007  Capo support: per-song capo field in editor (0-11), chords display as fingering
+                   shapes, "Capo N" badge in song view, OnSong Capo: metadata imported.
+                   Strip tab notes button in editor removes := lines and pure parentheticals.
 -->
 <html lang="en">
 <head>
@@ -241,6 +244,7 @@
   .adderbtn.in{color:var(--ok);}
   .lookuprow{display:flex;gap:.5rem;}
   .lookuprow .ghostbtn{flex:1;margin-bottom:0;font-size:.8rem;padding:.55rem .4rem;}
+  .capo-badge{font-family:var(--mono);font-size:.72rem;font-weight:700;color:var(--chord);background:var(--panel);border:1px solid var(--chord);border-radius:6px;padding:.15rem .45rem;white-space:nowrap;}
 
   .lookup-label{font-size:.7rem;color:var(--muted);font-family:var(--mono);margin:0 0 -.2rem;text-transform:uppercase;letter-spacing:.5px;}
   .paste-ta{width:100%;min-height:200px;resize:vertical;background:var(--panel);color:var(--ink);
@@ -259,7 +263,7 @@
 <div class="app">
   <header>
     <button class="back" id="backBtn" style="display:none">‹ <span id="backLabel">Back</span></button>
-    <div class="brand" id="brand"><span class="dot"></span>SetList69<small>v2026.06.09.006</small></div>
+    <div class="brand" id="brand"><span class="dot"></span>SetList69<small>v2026.06.09.007</small></div>
     <div class="htitle" id="headerTitle" style="display:none"></div>
     <div class="spacer"></div>
     <button class="iconbtn" id="menuBtn" title="Tools &amp; backup">≡</button>
@@ -299,7 +303,10 @@
     <section class="screen" id="songView">
       <div class="svhead">
         <div><div class="svtitle" id="svTitle"></div><div class="svsub" id="svSub"></div></div>
-        <span class="songkey" id="svKey" style="display:none"></span>
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:.3rem">
+          <span class="songkey" id="svKey" style="display:none"></span>
+          <span class="capo-badge" id="svCapo" style="display:none"></span>
+        </div>
       </div>
       <div class="sheet" id="sheet"></div>
       <div class="swipehint" id="swipeHint">‹ swipe to change song ›</div>
@@ -322,13 +329,15 @@
     <div class="mbody">
       <div class="row2">
         <div class="field"><label>Title</label><input id="fTitle" placeholder="Song title"></div>
-        <div class="field" style="flex:0 0 6rem"><label>Key</label><input id="fKey" placeholder="G"></div>
+        <div class="field" style="flex:0 0 5rem"><label>Key</label><input id="fKey" placeholder="G"></div>
+        <div class="field" style="flex:0 0 6.8rem"><label>Capo</label><div class="ctl"><button id="capoEdDown">−</button><span class="val" id="fCapo">0</span><button id="capoEdUp">+</button></div></div>
       </div>
       <div class="field"><label>Artist / note</label><input id="fSub" placeholder="Artist"></div>
       <div class="field"><label>Chords &amp; lyrics</label>
         <textarea id="fBody" placeholder="[G]Amazing [G7]grace how [C]sweet the [G]sound&#10;&#10;…or paste chord lines above lyric lines."></textarea></div>
       <div class="hint">Inline <code>[C]</code> or chords-above-lyrics both work — it always renders chords above the words.
         Directives <code>{key:}</code>, <code>{soc}/{eoc}</code>, <code>{c:note}</code> supported.</div>
+      <button class="ghostbtn" id="stripNotesBtn">✕ Strip tab / performance notes</button>
       <button class="ghostbtn" id="findChordsBtn">↗ Find chords &amp; lyrics online</button>
       <div class="fileimport">Import file:
         <label>.cho / .chordpro / .pro / .onsong / .txt<input type="file" id="fileInput" accept=".cho,.chordpro,.pro,.crd,.onsong,.txt,text/plain" hidden></label></div>
@@ -475,7 +484,7 @@ function seed(){
 /* ===== state & nav ===== */
 let state=seed();
 let screen="setlists";
-let curSetlist=null,curSongId=null,curIndex=-1,curSetTranspose=0,stageMode=false;
+let curSetlist=null,curSongId=null,curIndex=-1,curSetTranspose=0,stageMode=false,capoVal=0;
 let transpose=0,preferFlats=false,fontSize=1.35,scrollSpeed=3;
 let scrolling=false,scrollRAF=null,scrollAccum=0,swipeHintTimer=null;
 let editingId=null,editorReturn="setlists",wakeLock=null,addingSongId=null,editingSetlistId=null;
@@ -588,6 +597,9 @@ function renderSheet(song){
   if(meta.key){const tk=transposeChord(meta.key);keyEl.style.display="";
     keyEl.textContent="Key "+tk+(transpose?" ("+(transpose>0?"+":"")+transpose+")":"");}
   else keyEl.style.display="none";
+  const capoEl=document.getElementById("svCapo");
+  if(capoVal>0){capoEl.style.display="";capoEl.textContent="Capo "+capoVal;}
+  else capoEl.style.display="none";
   let html="";
   for(const ln of r.lines){
     if(ln.type==="blank"){html+='<div class="ln empty-line blank"></div>';continue;}
@@ -661,7 +673,8 @@ function openSongInSet(index){const sl=state.setlists.find(s=>s.id===curSetlist)
 function openSongStandalone(id){curIndex=-1;curSongId=id;curSetTranspose=0;openCurrent();}
 function openCurrent(){
   const s=state.songs.find(x=>x.id===curSongId);if(!s)return;
-  transpose=(s.defaultTranspose||0)+curSetTranspose;stopScroll();document.getElementById("trVal").textContent=(transpose>0?"+":"")+transpose;
+  capoVal=s.capo||0;
+  transpose=(s.defaultTranspose||0)+curSetTranspose-capoVal;stopScroll();document.getElementById("trVal").textContent=(transpose>0?"+":"")+transpose;
   renderSheet(s);show("song");document.getElementById("songView").scrollTop=0;
   const ctlNav=document.getElementById("prevSong").parentElement;
   const hint=document.getElementById("swipeHint");
@@ -701,6 +714,7 @@ function openEditor(id,ret){editingId=id;editorReturn=ret||screen;
   document.getElementById("fTitle").value=s?s.title:"";
   document.getElementById("fSub").value=s?(s.sub||""):"";
   document.getElementById("fKey").value=s?(s.key||""):"";
+  document.getElementById("fCapo").textContent=s?(s.capo||0):0;
   document.getElementById("fBody").value=s?s.body:"";
   document.getElementById("deleteSong").style.display=s?"block":"none";
   document.getElementById("editor").classList.add("show");}
@@ -709,10 +723,11 @@ function saveSong(){
   const title=document.getElementById("fTitle").value.trim()||"Untitled";
   const sub=document.getElementById("fSub").value.trim();
   const key=document.getElementById("fKey").value.trim();
+  const capo=parseInt(document.getElementById("fCapo").textContent)||0;
   const body=document.getElementById("fBody").value;
   let newId=editingId;
-  if(editingId){Object.assign(state.songs.find(x=>x.id===editingId),{title,sub,key,body});}
-  else{newId="s"+Date.now();state.songs.push({id:newId,title,sub,key,body});}
+  if(editingId){Object.assign(state.songs.find(x=>x.id===editingId),{title,sub,key,capo,body});}
+  else{newId="s"+Date.now();state.songs.push({id:newId,title,sub,key,capo,body});}
   persist();closeEditor();
   if(curSongId===editingId&&screen==="song")reRender();
   renderAllSongs();renderSetSongs();renderSetlists();toast("Saved");return newId;}
@@ -915,7 +930,7 @@ function parseImport(text,fallbackName){
   if(!sub&&i<lines.length&&lines[i].trim()!==""&&!looksChordy(lines[i])&&!metaRe.test(lines[i])){sub=lines[i].trim();lines.splice(i,1);}
   // 3) consume known metadata at the top; keep everything else as body
   const known=["key","tempo","time","capo","duration","flow","copyright","ccli","book","number","year","keywords","topic","pages","midi","tags","album","subtitle","artist"];
-  const body=[];let inBody=false;
+  const body=[];let inBody=false;let capo=0;
   for(const l of lines){
     if(!inBody){
       const mm=l.match(metaRe);
@@ -923,6 +938,7 @@ function parseImport(text,fallbackName){
         const k=mm[1].toLowerCase().trim();
         if(k==="key"){if(!key)key=mm[2].trim();continue;}
         if((k==="artist"||k==="subtitle")){if(!sub)sub=mm[2].trim();continue;}
+        if(k==="capo"){capo=parseInt(mm[2])||0;continue;}
         if(known.includes(k))continue;
       }
       if(l.trim()!=="")inBody=true;
@@ -930,7 +946,7 @@ function parseImport(text,fallbackName){
     body.push(l);
   }
   while(body.length&&body[0].trim()==="")body.shift();
-  return {title:title||fallbackName||"Untitled",sub:sub,key:key,body:body.join("\n").replace(/\s+$/,"")};
+  return {title:title||fallbackName||"Untitled",sub,key,capo,body:body.join("\n").replace(/\s+$/,"")};
 }
 
 /* ===== misc ===== */
@@ -1033,8 +1049,8 @@ document.getElementById("exportBtn").addEventListener("click",exportData);
 document.getElementById("importBtn").addEventListener("click",()=>document.getElementById("restoreInput").click());
 document.getElementById("restoreInput").addEventListener("change",e=>{if(e.target.files[0])restoreData(e.target.files[0]);e.target.value="";});
 
-document.getElementById("trUp").addEventListener("click",()=>{transpose++;document.getElementById("trVal").textContent=(transpose>0?"+":"")+transpose;const _s=state.songs.find(x=>x.id===curSongId);if(_s){_s.defaultTranspose=transpose-curSetTranspose;persist();}reRender();});
-document.getElementById("trDown").addEventListener("click",()=>{transpose--;document.getElementById("trVal").textContent=(transpose>0?"+":"")+transpose;const _s=state.songs.find(x=>x.id===curSongId);if(_s){_s.defaultTranspose=transpose-curSetTranspose;persist();}reRender();});
+document.getElementById("trUp").addEventListener("click",()=>{transpose++;document.getElementById("trVal").textContent=(transpose>0?"+":"")+transpose;const _s=state.songs.find(x=>x.id===curSongId);if(_s){_s.defaultTranspose=transpose+capoVal-curSetTranspose;persist();}reRender();});
+document.getElementById("trDown").addEventListener("click",()=>{transpose--;document.getElementById("trVal").textContent=(transpose>0?"+":"")+transpose;const _s=state.songs.find(x=>x.id===curSongId);if(_s){_s.defaultTranspose=transpose+capoVal-curSetTranspose;persist();}reRender();});
 document.getElementById("flatBtn").addEventListener("click",e=>{preferFlats=!preferFlats;state.preferFlats=preferFlats;persist();e.target.classList.toggle("on",preferFlats);reRender();});
 document.getElementById("fontUp").addEventListener("click",()=>{fontSize=Math.min(2.4,Math.round((fontSize+0.1)*10)/10);state.fontSize=fontSize;persist();document.getElementById("sheet").style.setProperty("--sheet-size",fontSize+"rem");});
 document.getElementById("fontDown").addEventListener("click",()=>{fontSize=Math.max(0.7,Math.round((fontSize-0.1)*10)/10);state.fontSize=fontSize;persist();document.getElementById("sheet").style.setProperty("--sheet-size",fontSize+"rem");});
@@ -1141,7 +1157,26 @@ document.getElementById("pasteImportBtn").addEventListener("click",()=>{
   document.getElementById("fTitle").value=parsed.title||q||"";
   document.getElementById("fSub").value=parsed.sub||"";
   document.getElementById("fKey").value=parsed.key||"";
+  document.getElementById("fCapo").textContent=parsed.capo||0;
   document.getElementById("fBody").value=parsed.body||"";
+});
+document.getElementById("capoEdUp").addEventListener("click",()=>{
+  const el=document.getElementById("fCapo");el.textContent=Math.min(11,(parseInt(el.textContent)||0)+1);});
+document.getElementById("capoEdDown").addEventListener("click",()=>{
+  const el=document.getElementById("fCapo");el.textContent=Math.max(0,(parseInt(el.textContent)||0)-1);});
+document.getElementById("stripNotesBtn").addEventListener("click",()=>{
+  const ta=document.getElementById("fBody");
+  const lines=ta.value.split('\n');
+  const filtered=lines.filter(l=>{
+    const t=l.trim();
+    if(t==='')return true;
+    if(t.includes(':='))return false;
+    if(/^\([^)]*\)$/.test(t)&&!isChordLine(l)&&!/\[[^\]]+\]/.test(l))return false;
+    return true;
+  });
+  const removed=lines.length-filtered.length;
+  ta.value=filtered.join('\n').replace(/\n{3,}/g,'\n\n');
+  toast(removed>0?`Removed ${removed} line${removed>1?'s':''}`:'Nothing to strip');
 });
 document.getElementById("closeAdder").addEventListener("click",closeAdder);
 document.getElementById("adderDone").addEventListener("click",closeAdder);
