@@ -1,21 +1,23 @@
 # SetList69 — Handoff Document
 
-> For whoever (or whatever) picks this up next, including Claude Code. This describes the project as of revision **v2026.06.07.002**. You can drop this file into the repo as-is, or rename it `CLAUDE.md` so Claude Code reads it automatically as project context.
+> For whoever (or whatever) picks this up next, including Claude Code. This describes the project as of revision **v2026.06.09.007**. Kept in the repo as `CLAUDE.md` so Claude Code reads it automatically as project context.
 
 -----
 
 ## 1. What this is
 
-SetList69 is a self-contained, offline-first web app for performing musicians: it stores songs (lyrics with chords), groups them into setlists, and displays them in a large, high-contrast, hands-free reading view for use while playing an instrument. It is the spiritual cousin of OnSong, rebuilt as a single HTML file the owner controls.
+SetList69 is an offline-first web app for performing musicians: it stores songs (lyrics with chords), groups them into setlists, and displays them in a large, high-contrast, hands-free reading view for use while playing. It is the spiritual cousin of OnSong, rebuilt as a small static bundle the owner controls.
 
-It is **one file**: `setlist69.html`. No build step, no framework, no package manager, no external runtime dependencies. Open it in a browser and it runs. Deployment target is GitHub Pages (static hosting) and "Add to Home Screen" on iPhone/iPad.
+Deployment target: GitHub Pages + "Add to Home Screen" on iPhone/iPad.
 
 Design priorities, in order:
 
-1. **Reliability** — never lose a song; never let the screen sleep mid-verse. An app that loses data is worse than paper.
-1. **Readability while playing** — big text, high contrast, chords clearly tied to syllables, no horizontal scrolling.
-1. **Offline** — works at a gig with zero signal.
-1. **Ownership** — plain code the owner can read, fork, and host himself.
+1. **Reliability** — never lose a song; never let the screen sleep mid-verse.
+2. **Readability while playing** — big text, high contrast, chords tied to syllables, no horizontal scrolling.
+3. **Offline** — works at a gig with zero signal.
+4. **Ownership** — plain code the owner can read, fork, and host himself.
+
+The project was previously called **ChordStand**. Internal storage identifiers remain `chordstand` (see §7) so the rename didn't wipe existing saved data. Do not rename them without a migration.
 
 -----
 
@@ -27,61 +29,112 @@ Revision scheme: **`vYYYY.MM.DD.NNN`**
 - The date segment tracks the calendar; the first change on a new day resets `NNN` to `001`.
 - **Every change ships a revision bump.** No silent edits.
 
-On each change you MUST:
+On each change you MUST update **three** places:
 
-1. Bump the version in **two** places: the HTML comment changelog at the very top of the file, and the `<small>` tag inside the `.brand` element in the header (`id="brand"`).
-1. Add a one-line entry to the top-of-file changelog comment describing the change.
+1. The HTML comment changelog at the very top of `setlist69.html`.
+2. The `<small>` version tag inside the `.brand` element (`id="brand"`) in `setlist69.html`.
+3. The `CACHE` constant at the top of `sw.js` — must match the HTML version exactly (`setlist69-vYYYY.MM.DD.NNN`).
 
-Current changelog (top of file):
+Current changelog:
 
 ```
 v2026.06.07.001  Renamed project ChordStand -> SetList69; adopted dated revisions.
 v2026.06.07.002  Fixed control dock drifting into mid-page on long songs (now pinned to viewport).
+v2026.06.07.003  PWA wrapper: manifest, service worker, self-hosted fonts, app icons.
+v2026.06.07.004  Add-to-setlist from All Songs; picker import option; lyrics fetch + chord search.
+v2026.06.07.005  Bug fixes: persist font/speed/flats; custom prompt/confirm modals; goBack fix;
+                 hide Play FAB on empty sets; swipe hint auto-hide; backdrop tap closes modals;
+                 card hover theme fix; font size CSS-only update; simplified chord lookup.
+v2026.06.07.006  Live search in All Songs + Picker; setlist settings (rename, notes, reorder,
+                 duplicate); preferred transpose persisted per song; narrow-screen card fix.
+v2026.06.07.007  Long-press context menu on songs (edit/move/remove/delete); drag-to-reorder
+                 songs in a set via ≡ handle; removes ▲▼ buttons.
+v2026.06.07.008  Fix long-press context menu not firing on All Songs screen.
+v2026.06.08.001  Unified home screen: setlists and songs together; backup/import moved to tools sheet.
+v2026.06.08.002  ZIP bundle import: .zip files containing .onsong/.chordpro/.txt expand on import.
+v2026.06.08.003  Gig fixes: wake lock no longer drops between songs; swipe threshold 60→40px;
+                 scroll-end haptic + visual flash; current song highlighted in set view;
+                 search debounced 150ms.
+v2026.06.08.004  Stage mode (hides editing chrome during performance); fit-to-screen font button;
+                 global set transpose; OpenSong XML import.
+v2026.06.09.001  Fit-to-screen two-pass correction so re-wrapping at smaller size doesn't overshoot.
+v2026.06.09.002  Search & paste modal: type song name, open chord sites in new tab, paste result
+                 back — drops straight into editor pre-filled.
+v2026.06.09.003  Replaced Ultimate Guitar with Chordie/E-Chords/Cifraclub (no forced signup);
+                 added Google "chords lyrics" search; two-row layout with section labels.
+v2026.06.09.004  Editor "Find chords" button now opens the paste modal instead of going to UG.
+v2026.06.09.005  Auto-clean Chordie embedded chords on paste: "Gmget"→"[Gm]get" etc.
+v2026.06.09.006  Fix chord detection: "Gm!" accent marker recognised; "/" and "-" separators
+                 allowed in chord lines so "Cm / Bb / Dm - D" parses correctly.
+v2026.06.09.007  Capo support: per-song capo field in editor (0-11), chords display as fingering
+                 shapes, "Capo N" badge in song view, OnSong Capo: metadata imported.
+                 Strip tab notes button in editor removes := lines and pure parentheticals.
 ```
-
-Note: the project was previously called **ChordStand**. Internal storage identifiers were deliberately left as `chordstand` (see §7) so the rename didn't wipe existing saved data. Do not rename them without a migration.
 
 -----
 
-## 3. Tech constraints (read before editing)
+## 3. File structure
 
-- **Single self-contained file.** All HTML, CSS, and JS live in `setlist69.html`. Keep it that way unless intentionally moving to the PWA bundle (see §13).
-- **Vanilla JS only.** No React, no jQuery, no bundler. ES2017+ is fine (async/await, spread, template literals).
-- **No external JS/CSS dependencies** except web fonts from Google Fonts (`Fraunces`, `Hanken Grotesk`, `JetBrains Mono`) loaded via `<link>`, with system fallbacks so it still works offline (fonts just fall back). For true offline fidelity these should eventually be self-hosted.
-- **Browser-storage caveat:** when viewed inside the Claude artifact preview, IndexedDB / localStorage / the share sheet / file pickers are sandboxed and may not work. These all behave correctly when the file is run standalone (Safari, served, or installed). Don't "fix" non-persistence in the preview — it's expected.
+The PWA wrapper is complete. The repo contains:
+
+```
+setlist69.html      — the entire app (HTML + CSS + JS)
+sw.js               — service worker (cache-first, precaches all assets)
+manifest.json       — PWA manifest (name, icons, display:standalone)
+fonts/
+  fraunces-latin.woff2
+  hanken-grotesk-latin.woff2
+  jetbrains-mono-latin.woff2
+icons/
+  icon-192.png
+  icon-512.png
+  apple-touch-icon.png
+```
+
+All app logic lives in `setlist69.html`. The other files exist solely to make it installable and offline-capable.
+
+**Tech constraints:**
+
+- **Vanilla JS only.** No React, no jQuery, no bundler. ES2017+ is fine.
+- **No external JS/CSS dependencies.** Fonts are self-hosted WOFF2 (offline-safe).
+- **Browser-storage caveat:** when viewed inside the Claude artifact preview, IndexedDB / localStorage / the share sheet / file pickers are sandboxed. These behave correctly when run standalone. Don't "fix" non-persistence in the preview — it's expected.
 - **Touch features** (swipe) require a real touchscreen; they no-op on desktop.
 
 -----
 
 ## 4. Architecture overview
 
-Single-page app with a manual screen router. Layout is a flex column (`.app`): a fixed **header**, a flexible **`main`** holding four absolutely-positioned full-screen `.screen` sections (only one `.show` at a time), and two `.modal` overlays.
+Single-page app with a manual screen router. Layout is a flex column (`.app`): a fixed **header**, a flexible **`main`** holding four absolutely-positioned full-screen `.screen` sections (only one `.show` at a time), and modal overlays.
 
 **Screens** (`<section class="screen">`):
 
-|id              |Purpose                                       |
-|----------------|----------------------------------------------|
-|`setlistsScreen`|Home / index. Lists all setlists.             |
-|`setSongsScreen`|Songs inside the selected setlist, in order.  |
-|`songView`      |The performance view for one song.            |
-|`allSongsScreen`|Master song library + backup/restore + import.|
+| id | Purpose |
+|----|---------|
+| `setlistsScreen` | Home / index. Lists all setlists + song library. |
+| `setSongsScreen` | Songs inside the selected setlist, in order. |
+| `songView` | Performance view for one song. |
+| `allSongsScreen` | *(Legacy — unified into home in v2026.06.08.001, may be vestigial)* |
 
 **Modals** (`<div class="modal">`):
 
-|id      |Purpose                                          |
-|--------|-------------------------------------------------|
-|`editor`|Create/edit/delete a song.                       |
-|`picker`|Add existing or new songs to the current setlist.|
+| id | Purpose |
+|----|---------|
+| `editor` | Create/edit/delete a song. |
+| `picker` | Add existing or new songs to the current setlist. |
+| `pasteModal` | Search-and-paste lyrics assistant (opens chord sites, parses pasted text). |
 
-**Navigation** is driven by `show(name)` where `name` ∈ `setlists | setSongs | song | allSongs`. It toggles `.show`, swaps the header between brand/back-button/title, manages the wake lock, and stops auto-scroll on leave. `goBack()` implements the back button's contextual target.
+**Navigation** is driven by `show(name)` where `name` ∈ `setlists | setSongs | song`. It toggles `.show`, swaps the header, manages the wake lock, and stops auto-scroll on leave. `goBack()` implements contextual back.
 
-Navigation state globals:
+**Navigation state globals:**
 
 - `screen` — current screen name.
 - `curSetlist` — id of the setlist being viewed.
 - `curSongId` — id of the song in the song view.
-- `curIndex` — index of the current song *within* `curSetlist` (`-1` if opened standalone from All Songs; disables prev/next + swipe).
+- `curIndex` — index of the current song within `curSetlist` (`-1` = opened standalone; disables prev/next + swipe).
 - `cameFromAll` — whether the song view was entered from All Songs (controls back target).
+- `curSetTranspose` — global semitone offset applied to every song in the current set.
+- `stageMode` — boolean; hides editing chrome and enlarges cards for hands-free reading.
+- `capoVal` — capo fret number for the current song (0 = no capo); used in transpose math.
 
 -----
 
@@ -92,7 +145,15 @@ A single in-memory `state` object, persisted whole (see §7):
 ```js
 state = {
   songs: [
-    { id: "am", title: "Amazing Grace", sub: "Traditional", key: "G", body: "[G]Amazing [G7]grace..." }
+    {
+      id: "am",
+      title: "Amazing Grace",
+      sub: "Traditional",
+      key: "G",
+      capo: 0,               // optional; 0 or absent = no capo
+      defaultTranspose: 0,   // semitones saved from last session
+      body: "[G]Amazing [G7]grace..."
+    }
   ],
   setlists: [
     { id: "set1", name: "Front Porch", songIds: ["hr", "wf", "sf"] }
@@ -103,19 +164,19 @@ state = {
 
 Key relationships:
 
-- **Songs are a shared master store.** A song exists once in `state.songs`. Edit it once, every setlist referencing it updates.
-- **Setlists reference songs by id.** `setlist.songIds` is an ordered array of `song.id`. The same id may appear in multiple setlists — that is the intended "one song, many setlists" behavior.
-- Deleting a song from a setlist removes the id from that `songIds` array only. Deleting a song from All Songs removes it from `state.songs` **and** scrubs its id from every setlist.
-- `song.body` is freeform text in either inline-ChordPro (`[C]word`) or chords-above-lyrics format (see §6).
+- **Songs are a shared master store.** Edit a song once, every setlist referencing it updates.
+- **Setlists reference songs by id.** `setlist.songIds` is an ordered array. Same song can appear in multiple setlists.
+- Deleting from a setlist removes the id from that `songIds` only. Deleting from All Songs scrubs it from every setlist.
+- `song.body` is freeform text — inline ChordPro (`[C]word`) or chords-above-lyrics.
 - Ids: seed songs use short literals; runtime songs use `"s" + Date.now()` (+ random for imports); setlists use `uid("set")`.
 
-The seed (`seed()`) ships 6 public-domain songs (Amazing Grace, House of the Rising Sun, Wayfaring Stranger, Will the Circle Be Unbroken, Scarborough Fair, When the Saints Go Marching In) and 2 demo setlists. It runs only when no saved state is found.
+The seed (`seed()`) ships 6 public-domain songs and 2 demo setlists. Runs only when no saved state is found.
 
 -----
 
 ## 6. The rendering engine (most complex part — read carefully)
 
-This is the heart of the app and where most subtle bugs live. Goal: render chords stacked directly above the correct syllable, wrapping to the screen width, **never** splitting a word across a line break, **never** scrolling horizontally.
+Goal: render chords stacked directly above the correct syllable, wrapping to screen width, **never** splitting a word across a line break, **never** scrolling horizontally.
 
 ### Pipeline
 
@@ -123,45 +184,62 @@ This is the heart of the app and where most subtle bugs live. Goal: render chord
 
 **`parseSong(song)`** returns `{ meta, lines }`:
 
-- `meta` = `{ title, sub, key }`, seeded from the song fields and overridden by any `{title}`/`{subtitle}`/`{key}` ChordPro directives found in the body.
+- `meta` = `{ title, sub, key }`, seeded from song fields and overridden by ChordPro directives.
 - `lines` = array of `{ type, ... }`:
   - `{ type:"blank" }` — empty line.
   - `{ type:"comment", text }` — from `{c:...}` / `{comment:...}`.
-  - `{ type:"segs", segs:[{chord,text}], chorus }` — a content line. `chorus` is true between `{soc}`/`{eoc}`.
-- Detects per-song whether to use inline parsing (`hasInline` = body contains `[...]`) vs. chords-above parsing.
+  - `{ type:"segs", segs:[{chord,text}], chorus }` — a content line.
+- Detects per-song whether to use inline parsing (`hasInline` = body contains `[...]`) vs. chords-above.
 
-**Segment producers** (both return raw, *un-transposed* `[{chord, text}]`):
+**Segment producers** (return raw, *un-transposed* `[{chord, text}]`):
 
 - `inlineToSegs(line)` — splits `[C]lyric` into chord+following-text segments.
-- `pairToSegs(chordStr, lyricStr)` — for chords-above format: finds each chord's column in the chord line and slices the lyric line at those columns.
+- `pairToSegs(chordStr, lyricStr)` — for chords-above format; finds each chord's column and slices the lyric.
 
 **`renderLine(segs)`** — the wrapping/alignment logic:
 
-1. Chords are transposed here (calls `transposeChord`, using the global `transpose`), so re-rendering after a transpose change is just a re-run.
-1. Splits text into **word-groups** at spaces. A word-group is wrapped in `.wg` (`white-space:nowrap`) so it cannot break internally — this is what prevents mid-word splits when a chord changes mid-word (e.g. "Or[Am]leans" keeps "Orleans" intact with Am over "leans").
-1. Break opportunities (a `.wgspace`) are inserted only *between* word-groups.
-1. Each cell renders as `.seg` → `.c` (chord row) over `.l` (lyric). The chord is a `.chordpill` with `background:keyColor(chord)`.
-1. **Lines with no chords skip the chord row entirely**, so pure-lyric lines stay vertically compact.
+1. Chords are transposed here (calls `transposeChord` with global `transpose`); re-rendering after a change is just a re-run.
+2. Splits text into **word-groups** (`.wg`, `white-space:nowrap`) — prevents mid-word splits.
+3. Break opportunities (`.wgspace`) inserted only *between* word-groups.
+4. Each cell: `.seg` → `.c` (chord row) over `.l` (lyric). Chord is `.chordpill` with `background:keyColor(chord)`.
+5. Lines with no chords skip the chord row entirely.
 
-### Transposition
+### Transposition & capo
 
-- `SHARP` / `FLAT` arrays, `IDX` map (note name → pitch class 0–11, includes enharmonics like `Db`, `E#`, `Cb`).
-- `transposeNote(n)` shifts a single root by the global `transpose` (semitones), honoring the global `preferFlats`.
-- `transposeChord(ch)` handles full chords and slash chords (`C/E`) by splitting on `/` and transposing each root, preserving suffixes (`m7`, `sus4`, etc.) via `CHORD_RE = /^([A-G][#b]?)(.*)$/`.
-- `looksChord(tok)` / `isChordLine(line)` — heuristics for detecting chords and chord-only lines (used by chords-above detection and the importer).
+- `SHARP` / `FLAT` arrays, `IDX` map (note name → pitch class 0–11).
+- `transposeNote(n)` shifts a single root by global `transpose`, honoring `preferFlats`.
+- `transposeChord(ch)` handles slash chords (`C/E`) and preserves suffixes via `CHORD_RE = /^([A-G][#b]?)(.*)$/`.
+- **Capo math in `openCurrent`:** `transpose = (song.defaultTranspose || 0) + curSetTranspose - capoVal`. Subtracting `capoVal` means chords display as fingering shapes (what your fingers fret), not sounding pitch.
+- **Saving transpose back:** `song.defaultTranspose = transpose + capoVal - curSetTranspose` — stores the sounding key, not the capo-relative value, so it survives capo changes.
+
+### Chord detection
+
+`looksChord(tok)` — regex heuristic; accepts trailing `!` and `*` (E-Chords accent markers):
+```js
+/^[A-G][#b]?(m|maj|min|dim|aug|sus|add)?[0-9]*(\([^)]*\))?(\/[A-G][#b]?)?[!*]?$/
+```
+
+`isChordLine(line)` — all tokens must be chords OR pure separators (`/`, `-`, `|`); at least one chord required. This handles "Cm / Bb / Dm - D" correctly.
+
+### Chordie auto-clean
+
+`cleanEmbeddedChords(text)` runs as a pre-pass in `parseImport()`. Converts Chordie's embedded format (chord names stuffed directly into words) to inline ChordPro:
+
+- **Mid-word:** chord preceded by a lowercase letter → `"Gmget"` after `"li"` becomes `"li[Gm]get"`.
+- **Word-start:** only matches chords with accidentals or suffixes — bare `A–G` are skipped to prevent `"And"` → `"[A]nd"`.
 
 ### Color coding
 
-`keyColor(key)` maps a chord/key's root pitch class to a hue: `hue = pitchClass * 30`, returned as `hsl(hue 52% 42%)`. Used for chord pills, the per-song key pills in lists, and the colored dots on setlist cards. Same root = same color everywhere. Unknown/no root → neutral grey `#7a7160`.
+`keyColor(key)` maps root pitch class to `hsl(pitchClass*30 52% 42%)`. Unknown root → `#7a7160`.
 
 -----
 
 ## 7. Persistence
 
-- **Primary:** IndexedDB. `idbOpen()` opens db `"chordstand"`, object store `"kv"`; the entire `state` is stored under key `"state"`. `idbGet`/`idbSet` are thin promise wrappers.
-- `persist()` is **debounced 250ms** and serializes the whole state to IndexedDB. On failure it sets `canPersist=false` and falls back to `localStorage["chordstand.fallback"]`; if that also fails it toasts a storage-blocked warning.
-- `boot()` loads `state` from IndexedDB on startup (falling back to localStorage, then to `seed()`), normalizes missing fields, applies theme, renders, and shows the setlists screen. If persistence is unavailable it toasts "Preview mode."
-- **Internal names remain `chordstand`** intentionally (data continuity across the rename). Don't change without a migration that reads the old db/key first.
+- **Primary:** IndexedDB. `idbOpen()` opens db `"chordstand"`, object store `"kv"`; the entire `state` is stored under key `"state"`.
+- `persist()` is **debounced 250ms**. On failure falls back to `localStorage["chordstand.fallback"]`; if that also fails, toasts a warning.
+- `boot()` loads state from IndexedDB (falling back to localStorage, then `seed()`), normalizes missing fields, applies theme, renders.
+- **Internal names remain `chordstand`** — don't rename without a migration.
 
 Call `persist()` after every mutation of `state`.
 
@@ -169,117 +247,143 @@ Call `persist()` after every mutation of `state`.
 
 ## 8. Backup, restore, and import
 
-- **Backup** — `exportData()` (async), tiered so the user can choose a destination:
-1. `window.showSaveFilePicker` (desktop Chromium) → real save dialog.
-1. `navigator.share({files})` (iOS/iPadOS) → share sheet → Save to Files / send anywhere.
-1. Anchor `download` fallback.
-   Filename: `setlist69-backup-YYYY-MM-DD.json`. Payload is the full `state`.
-- **Restore** — `restoreData(file)` parses a backup JSON, confirms, replaces `state` wholesale, persists, re-renders.
-- **Import** — `parseImport(text, fallbackName)` ingests **OnSong native**, **ChordPro**, and **plain text**:
-  - Lifts ChordPro `{title}/{subtitle}/{artist}/{key}` directives out of the body.
-  - Reads OnSong plain header (first content line = title, next = artist) and `Key:` metadata.
-  - Drops known OnSong metadata keys (`tempo`, `time`, `capo`, `ccli`, etc.) but **keeps section labels** like `Verse:`/`Chorus:` in the body.
-  - Falls back to the filename for the title.
-  - Wired to a **multi-file** picker on All Songs (`onsongInput`), so it doubles as bulk import. Each file becomes a new song in the library.
-  - **Supported:** `.zip` bundles containing `.onsong`/ChordPro/`.txt` files — `expandFiles()` unzips using native `DecompressionStream` then passes each entry to `parseImport()`. Works in both the tools sheet importer and the picker importer.
-  - **Not supported:** `.onsongarchive` / `.onsongbook` — these are proprietary binary formats (not ZIPs), readable only by OnSong. `.backup` is a ZIP but its song content lives in an SQLite3 database, also not practical. For bulk migration from OnSong, the path is: export songs as `.onsong` or ChordPro individually, zip them, import the zip.
+**Backup** — `exportData()` (async), tiered:
+1. `window.showSaveFilePicker` (desktop Chromium) → save dialog.
+2. `navigator.share({files})` (iOS/iPadOS) → share sheet.
+3. Anchor `download` fallback.
+
+Filename: `setlist69-backup-YYYY-MM-DD.json`. Payload: full `state`.
+
+**Restore** — `restoreData(file)` parses JSON, confirms, replaces state wholesale, persists, re-renders.
+
+**Import** — `parseImport(text, fallbackName)` ingests multiple formats:
+
+| Format | Notes |
+|--------|-------|
+| ChordPro (`.cho`, `.chordpro`, `.pro`) | Full; lifts `{title}`, `{subtitle}`, `{artist}`, `{key}` directives |
+| OnSong (`.onsong`, `.txt`) | Full; reads `Key:`, `Capo:` metadata; drops `Tempo:`, `Time:`, `CCLI:` etc. |
+| OpenSong XML (`.xml`) | `DOMParser`-based; reads `<lyrics>`, `<title>`, `<author>`, `<key>`, `<capo>` |
+| Plain chords-above-lyrics | Full |
+| Chordie embedded format | Auto-cleaned to inline ChordPro by `cleanEmbeddedChords()` |
+| ZIP bundle | `expandFiles()` decompresses with native `DecompressionStream`, passes each entry to `parseImport()` |
+
+**Not supported:** `.onsongarchive` / `.onsongbook` (proprietary binary), `.backup` (ZIP but SQLite inside). Bulk OnSong export path: export individual songs as `.onsong`, zip them, import the zip.
+
+**Search & paste modal** (`pasteModal`) — editor has a "Find chords" button that opens this. User types a song name, opens one of 6 linked sites in a new tab (Chordie, E-Chords, Cifraclub, AZLyrics, Genius, Google), copies the result, pastes into the textarea, taps Import. `parseImport()` handles the rest. There is no server-side proxy — CORS prevents fetching arbitrary external sites from the browser; the manual copy-paste step is intentional.
 
 -----
 
 ## 9. Song-view controls & behavior
 
-Globals: `transpose` (semitones), `preferFlats` (bool), `fontSize` (rem, default **1.35**), `scrollSpeed` (1–9, default 3).
+Globals: `transpose` (semitones, 0 on song open), `preferFlats` (bool), `fontSize` (rem, default **1.35**), `scrollSpeed` (1–9, default 3), `capoVal` (fret, 0 if no capo), `curSetTranspose` (set-level offset), `stageMode` (bool).
 
-- **Transpose** `♭−` / `+♯`, with a **`#/b`** toggle for sharp vs flat spelling. Transpose resets to 0 each time a song opens.
-- **Font** `A−` / `A+` (0.7–2.4rem).
-- **Auto-scroll** — `startScroll()` / `stopScroll()` use `requestAnimationFrame` with a fractional pixel accumulator for smooth slow scrolling; stops at the bottom. Speed adjustable live.
-- **Prev/next** — `nextSong()` / `prevSong()` move within `curSetlist` (hidden/disabled when `curIndex < 0`).
-- **Swipe** — left/right on `#songView` calls next/prev (touch handlers; ignores vertical-dominant or slow gestures).
-- **Edit** (✎) opens the editor for the current song.
-- **Wake lock** — `requestWake()` on entering the song view, `releaseWake()` on leaving; re-acquired on `visibilitychange`. Keeps the screen on while performing.
+**Transpose:** `♭−` / `+♯` buttons; `#/b` toggle. Saved as `defaultTranspose` on the song.
 
-The control **dock is `position:fixed`** to the viewport bottom (was `absolute` and drifted into mid-page on long songs — fixed in .002). `#songView` carries `padding-bottom:7.5rem` so the last line clears the dock.
+**Capo:** Set in editor (0–11). Shown as "Capo N" badge in song view (amber, monospaced). Subtracts from `transpose` so chords display as fingering shapes.
+
+**Font:** `A−` / `A+` (0.7–2.4 rem). **`fit`** button scales font so the full song fits the viewport — two-pass (`requestAnimationFrame` after first `reRender()`) to correct for re-wrapping at smaller sizes.
+
+**Auto-scroll:** `startScroll()` / `stopScroll()` use `requestAnimationFrame` with fractional pixel accumulator. Stops at bottom with haptic + amber flash. Speed adjustable live.
+
+**Stage mode:** `stageMode` toggle — hides the editor chrome (context menu, edit button) and enlarges song cards so cards are easier to tap during a performance. ▶ Stage enters; ✎ Edit exits.
+
+**Global set transpose:** `curSetTranspose` offset applied on top of each song's `defaultTranspose`. Set from the set view header control (±N semitones). Resets to 0 when leaving the set.
+
+**Prev/next:** `nextSong()` / `prevSong()` — hidden when `curIndex < 0`. Swipe left/right triggers these (40px threshold, ignores vertical-dominant gestures).
+
+**Wake lock:** `requestWake()` on entering song view. `releaseWake()` only on leaving the app entirely — **not** between songs, so the screen stays on through the whole set. Re-acquired on `visibilitychange`.
+
+The dock is `position:fixed` to the viewport bottom. `#songView` has `padding-bottom:7.5rem` so the last lyric line clears it.
 
 -----
 
-## 10. Theming & design tokens
+## 10. Editor
+
+**Fields:** Title, Artist/Note, Key, Capo (0–11 stepper), Body textarea.
+
+**Capo stepper** (`capoEdUp`/`capoEdDown`): increments the `<span id="fCapo">` value (clamped 0–11). On save, `saveSong()` reads it as `parseInt(fCapo.textContent) || 0`.
+
+**"Find chords" button (`findChordsBtn`):** opens `pasteModal` pre-filled with the song's title + artist as the search query.
+
+**"Strip tab/performance notes" button (`stripNotesBtn`):** removes lines containing `:=` (E-Chords rhythm notation) and lines that are pure parentheticals `(...)` and are not chord lines. Collapses 3+ consecutive blank lines to 2. Conservative — doesn't try to detect all performance annotation formats.
+
+-----
+
+## 11. Theming & design tokens
 
 CSS custom properties define both themes:
 
 - `:root` = **dark** (near-black `--bg:#121110`, near-white `--ink`, gold `--chord:#ffc24d`).
 - `[data-theme="light"]` = **light** (warm white bg, near-black ink, deep red-orange `--chord:#bd3c1c`).
-- Toggle: `themeBtn` (☀/☾) → flips `state.theme`, `applyTheme()` sets `data-theme` and swaps the icon. Persisted.
+- Toggle: `themeBtn` (☀/☾) → flips `state.theme`, `applyTheme()` sets `data-theme`. Persisted.
 
-Backgrounds on `html`, `main`, and `.screen` are explicitly painted with `--bg` (this fixed a dark-mode bug where the song area was transparent in the in-app viewer and light text vanished). Header and dock backgrounds are **solid** `--panel` (gradients were removed per owner preference).
-
-Contrast was verified: lyrics ≈17:1 both modes; chords 11.7:1 dark / 5.2:1 light (all ≥ WCAG AA). Keep new colors above AA.
+Contrast: lyrics ≈17:1 both modes; chords 11.7:1 dark / 5.2:1 light (≥ WCAG AA). Keep new colors above AA.
 
 Fonts: `--display` Fraunces (titles), `--ui` Hanken Grotesk (UI + lyrics), `--mono` JetBrains Mono (chords/version).
 
------
-
-## 11. Function reference (quick map)
-
-Storage: `idbOpen` `idbGet` `idbSet` `persist`
-Seed/init: `seed` `boot` `uid` `applyTheme` `toast`
-Music core: `transposeNote` `transposeChord` `looksChord` `isChordLine` `pitchClass` `keyColor`
-Parse/render: `esc` `parseSong` `inlineToSegs` `pairToSegs` `renderLine` `renderSheet`
-Router/nav: `show` `goBack`
-List renderers: `renderSetlists` `renderSetSongs` `renderAllSongs` `renderPicker`
-Song view: `openSongInSet` `openSongStandalone` `openCurrent` `reRender` `nextSong` `prevSong` `startScroll` `stopScroll` `requestWake` `releaseWake`
-Editor/picker: `openEditor` `closeEditor` `saveSong` `openPicker` `closePicker`
-Backup/import: `exportData` `restoreData` `parseImport`
-
-All DOM event wiring is in one block near the bottom (search "events"). `~728` lines total.
+**Capo badge** (`.capo-badge`): monospaced, amber border, shown beneath the key pill in the song view header when `capoVal > 0`.
 
 -----
 
-## 12. Testing approach (do this before every ship)
+## 12. Function reference (quick map)
 
-There's no test framework — verification is manual but disciplined:
+```
+Storage:       idbOpen  idbGet  idbSet  persist
+Seed/init:     seed  boot  uid  applyTheme  toast
+Music core:    transposeNote  transposeChord  looksChord  isChordLine
+               pitchClass  keyColor  cleanEmbeddedChords
+Parse/render:  esc  parseSong  inlineToSegs  pairToSegs  renderLine  renderSheet
+Router/nav:    show  goBack
+List renders:  renderSetlists  renderSetSongs  renderAllSongs  renderPicker
+Song view:     openSongInSet  openSongStandalone  openCurrent  reRender
+               nextSong  prevSong  startScroll  stopScroll  requestWake  releaseWake
+Editor:        openEditor  closeEditor  saveSong
+Picker:        openPicker  closePicker
+Backup/import: exportData  restoreData  parseImport  expandFiles
+```
 
-1. **Syntax check:** extract the `<script>` body and run `node --check` on it.
-1. **Logic check:** for any change to the music core or parser, write a small Node harness replicating the affected functions and assert against known cases (transpose results, chord-above alignment, word-group splitting, importer field extraction). Examples of cases used historically: `G+2=A`, `Am7+3=Cm7`, `C/E+5=F/A`, "New Or[Am]leans" stays glued, OnSong `Key:`/`Tempo:` handling.
-1. **Visual/touch behaviors** (swipe, share sheet, persistence) can only be confirmed on a real device — call those out to the owner for device testing rather than claiming them verified.
+All DOM event wiring is in one block near the bottom of the script (search `// events`).
 
 -----
 
-## 13. Roadmap & next steps
+## 13. Testing approach (do this before every ship)
 
-**Immediate next piece — PWA wrapper** (the last big structural item; makes it truly installable + offline):
+No test framework — verification is manual:
 
-- Add `manifest.json` (name, icons, `display:standalone`, theme/background colors).
-- Add a service worker that precaches the app shell so it loads with zero signal.
-- Add app icons (owner likes the dark/amber theme; design to match).
-- Self-host the three fonts so offline rendering keeps the intended type.
-- **This is the point where the project stops being one file** and becomes a small static bundle (still trivially GitHub Pages-deployable). Confirm with the owner before splitting the file.
+1. **Syntax check:** `node --check setlist69.html` (Node tolerates the surrounding HTML surprisingly well, or extract the `<script>` body first).
+2. **Logic check for music/parse changes:** write a small Node harness replicating the affected functions and assert against known cases. Historically useful cases: `G+2=A`, `Am7+3=Cm7`, `C/E+5=F/A`, `"New Or[Am]leans"` word stays glued, `Gm!` recognized as chord, `"Cm / Bb / Dm - D"` recognized as chord line, OnSong `Key:`/`Capo:` metadata extracted, Chordie `"Gmget"` cleaned.
+3. **Visual/touch behaviors** (swipe, stage mode, capo display, share sheet) require a real device — flag for owner testing rather than claiming them verified.
+
+-----
+
+## 14. Roadmap & known gaps
 
 **Parked (owner deprioritized; pick up on request):**
 
-- Capo support.
 - Nashville number display.
-- Chord diagrams.
-- Fit-to-width auto-sizing of the song text.
-- OpenSong XML (`.xml`) import — `DOMParser`-based, ~30 lines, covers migration from OpenSong/church projection apps.
+- Chord diagrams / fingering charts.
+- Setlist-level notes shown during performance.
 
-**Explicitly out of scope (by design):** cloud sync and any built-in online song catalog. Both fight the offline-first, copyright-clean, owner-controlled design. Moving songs between devices is handled by backup-to-file.
-
------
-
-## 14. Known limitations / gotchas
-
-- In-app preview (Claude artifact viewer): storage, share sheet, and file pickers are sandboxed — test standalone.
-- Chords-above (non-inline) input relies on column alignment; if the source text's spacing is irregular, chord placement may drift. Inline `[C]` format is the most robust.
-- A chord change in the exact middle of a word keeps the word whole (good) but the chord pill sits over the second fragment — correct musically, occasionally looks tight.
-- Fonts require network on first load; offline they fall back to system fonts until self-hosted (PWA step).
-- The importer handles individual song files, not ZIP archives.
+**Explicitly out of scope (by design):** cloud sync and any built-in online song catalog. Moving songs between devices is handled by backup-to-file.
 
 -----
 
-## 15. How to make a change (checklist)
+## 15. Known limitations / gotchas
 
-1. Edit `setlist69.html` only.
-1. `node --check` the script; logic-test the music/parse core if touched.
-1. Bump `NNN` in the header `<small>` **and** add a changelog line in the top comment.
-1. If you changed storage shape, add a migration in `boot()` (don't break existing saved state).
-1. Hand the owner anything that needs real-device verification (touch, share, install).
+- **In-app preview** (Claude artifact viewer): storage, share sheet, and file pickers are sandboxed — test standalone.
+- **Chords-above format** relies on column alignment; if source spacing is irregular, chord placement may drift. Inline `[C]` format is most robust.
+- **Mid-word chords**: a chord change mid-word keeps the word whole (correct) but the pill sits over the second fragment — correct musically, occasionally looks tight visually.
+- **Chordie auto-clean** is conservative: bare `A–G` at word-start are not converted (to avoid `"And"` → `"[A]nd"`). Unusual bare-note chords at word boundaries may need manual cleanup.
+- **CORS** prevents any client-side fetch of lyrics or chords from external sites. The search-and-paste modal (manual copy) is the correct architecture — do not attempt a server proxy or API that would require serving user content.
+
+-----
+
+## 16. How to make a change (checklist)
+
+1. Edit `setlist69.html` only (for app changes).
+2. Bump the version `NNN` in the `<small>` brand tag in `setlist69.html`.
+3. Add a changelog line in the top `<!-- ... -->` comment of `setlist69.html`.
+4. Bump `CACHE` in `sw.js` to the same version string (`setlist69-vYYYY.MM.DD.NNN`).
+5. `node --check` the script; logic-test music/parse core if touched.
+6. If you changed storage shape, add a migration in `boot()`.
+7. Flag anything needing real-device verification (touch, share, install) to the owner.
