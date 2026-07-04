@@ -188,6 +188,7 @@ v2026.07.04.004  Minimal performance dock (big targets) + ⚙ controls sheet.
 v2026.07.04.005  Scroll progress bar along the top of the dock.
 v2026.07.04.006  One-time install nudge banner (Android prompt / iOS hint).
 v2026.07.04.007  CI workflow: syntax check, version-match check, duplicate-id check.
+v2026.07.04.008  New app icons: setlist rows with a glowing gold "now playing" row.
 ```
 
 ---

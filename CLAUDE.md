@@ -81,6 +81,7 @@ v2026.07.04.005  Scroll progress bar (3px, scaleX) at top edge of dock; hidden w
 v2026.07.04.006  Install nudge banner: beforeinstallprompt on Android/desktop, A2HS hint on iOS
                  Safari; dismissal in localStorage "setlist69.installDismissed" (not state).
 v2026.07.04.007  GitHub Actions check workflow (syntax, version match, duplicate ids); docs.
+v2026.07.04.008  New app icons: setlist rows with glowing gold "now playing" row (512/192/180).
 ```
 
 A GitHub Actions workflow (`.github/workflows/check.yml`) enforces the version discipline on every push: it syntax-checks the extracted inline script and `sw.js`, **fails if the `<small>` brand version ≠ `sw.js` CACHE version**, and fails on duplicate element ids in the markup.
