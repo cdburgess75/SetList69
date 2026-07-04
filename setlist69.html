@@ -40,6 +40,9 @@
   v2026.07.04.003  Share a single setlist: "⇪ Share" in setlist settings exports the set + its
                    songs as a file; importing it on another device MERGES (dedupes songs by
                    title+artist) instead of replacing the library.
+  v2026.07.04.004  Minimal performance dock: prev/next, play/pause and speed stay with bigger
+                   touch targets; transpose, sharp/flat, font and edit move into a ⚙ sheet.
+                   Edit hidden in the sheet while stage mode is on.
 -->
 <html lang="en">
 <head>
@@ -205,6 +208,12 @@
   .ctl .val{font-family:var(--mono);font-size:.76rem;min-width:2.3rem;text-align:center;color:var(--ink);}
   .scrollbtn.playing{color:var(--accent)!important;}
   .pos{font-family:var(--mono);font-size:.72rem;color:var(--faint);padding:0 .3rem;}
+  /* big touch targets for mid-song use */
+  .dock .ctl button{padding:.55rem .65rem;font-size:.95rem;min-width:2.6rem;min-height:2.6rem;}
+  .dock .iconbtn.dockgear{width:2.9rem;height:2.9rem;font-size:1.15rem;}
+  .dockrow{display:flex;align-items:center;gap:.7rem;}
+  .dockrow-label{font-size:.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;font-weight:600;flex:1;}
+  .dockrow .ctl button{padding:.5rem .7rem;min-width:2.6rem;min-height:2.6rem;font-size:.95rem;}
 
   .modal{position:fixed;inset:0;background:#0009;backdrop-filter:blur(3px);z-index:40;display:none;
     align-items:stretch;justify-content:center;}
@@ -274,7 +283,7 @@
 <div class="app">
   <header>
     <button class="back" id="backBtn" style="display:none">‹ <span id="backLabel">Back</span></button>
-    <div class="brand" id="brand"><span class="dot"></span>SetList69<small>v2026.07.04.003</small></div>
+    <div class="brand" id="brand"><span class="dot"></span>SetList69<small>v2026.07.04.004</small></div>
     <div class="htitle" id="headerTitle" style="display:none"></div>
     <div class="spacer"></div>
     <button class="iconbtn" id="menuBtn" title="Tools &amp; backup">≡</button>
@@ -322,12 +331,10 @@
       <div class="sheet" id="sheet"></div>
       <div class="swipehint" id="swipeHint">‹ swipe to change song ›</div>
       <div class="dock">
-        <div class="ctl"><button id="trDown">♭−</button><span class="val" id="trVal">0</span><button id="trUp">+♯</button></div>
-        <div class="ctl"><button id="flatBtn" title="Sharp/flat">♯/♭</button></div>
-        <div class="ctl"><button id="fontDown">A−</button><button id="fontFit" title="Fit to screen" style="font-size:.7rem;letter-spacing:.3px">fit</button><button id="fontUp">A＋</button></div>
-        <div class="ctl"><button class="scrollbtn" id="scrollBtn">▶</button><button id="scrollDown">−</button><span class="val" id="speedVal">3</span><button id="scrollUp">+</button></div>
         <div class="ctl"><button id="prevSong">◀</button><span class="pos" id="setPos"></span><button id="nextSong">▶</button></div>
-        <button class="iconbtn" id="editSong" title="Edit">✎</button>
+        <div class="ctl"><button class="scrollbtn" id="scrollBtn">▶</button></div>
+        <div class="ctl"><button id="scrollDown">−</button><span class="val" id="speedVal">3</span><button id="scrollUp">+</button></div>
+        <button class="iconbtn dockgear" id="dockMore" title="Transpose, font &amp; more">⚙</button>
       </div>
     </section>
 
@@ -403,6 +410,20 @@
       <button class="btn ghost" id="shareSetBtn" title="Share this setlist as a file">⇪ Share</button>
       <button class="btn ghost" id="dupSetlist" title="Duplicate this setlist">⧉</button>
       <button class="btn primary" id="saveSetlistSettings">Save</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal bottom" id="dockSheet">
+  <div class="sheetwrap" style="max-height:55dvh">
+    <div class="mhead"><h3>Song controls</h3><button class="iconbtn" id="closeDockSheet">✕</button></div>
+    <div class="mbody">
+      <div class="dockrow"><span class="dockrow-label">Transpose</span>
+        <div class="ctl"><button id="trDown">♭−</button><span class="val" id="trVal">0</span><button id="trUp">+♯</button></div>
+        <div class="ctl"><button id="flatBtn" title="Sharp/flat">♯/♭</button></div></div>
+      <div class="dockrow"><span class="dockrow-label">Font size</span>
+        <div class="ctl"><button id="fontDown">A−</button><button id="fontFit" title="Fit to screen" style="font-size:.7rem;letter-spacing:.3px">fit</button><button id="fontUp">A＋</button></div></div>
+      <button class="ghostbtn" id="editSong" style="margin:0">✎ Edit song</button>
     </div>
   </div>
 </div>
@@ -1161,7 +1182,14 @@ document.getElementById("scrollUp").addEventListener("click",()=>{scrollSpeed=Ma
 document.getElementById("scrollDown").addEventListener("click",()=>{scrollSpeed=Math.max(1,scrollSpeed-1);state.scrollSpeed=scrollSpeed;persist();document.getElementById("speedVal").textContent=scrollSpeed;});
 document.getElementById("prevSong").addEventListener("click",prevSong);
 document.getElementById("nextSong").addEventListener("click",nextSong);
-document.getElementById("editSong").addEventListener("click",()=>{if(curSongId)openEditor(curSongId,"song");});
+function openDockSheet(){
+  document.getElementById("editSong").style.display=stageMode?"none":""; // stage mode hides editing chrome
+  document.getElementById("dockSheet").classList.add("show");
+}
+function closeDockSheet(){document.getElementById("dockSheet").classList.remove("show");}
+document.getElementById("dockMore").addEventListener("click",openDockSheet);
+document.getElementById("closeDockSheet").addEventListener("click",closeDockSheet);
+document.getElementById("editSong").addEventListener("click",()=>{if(curSongId){closeDockSheet();openEditor(curSongId,"song");}});
 
 document.getElementById("closeEditor").addEventListener("click",closeEditor);
 document.getElementById("cancelEdit").addEventListener("click",closeEditor);
@@ -1441,6 +1469,7 @@ document.querySelectorAll(".modal").forEach(m=>{m.addEventListener("click",e=>{
   else if(m.id==="setlistSettings")closeSetlistSettings();
   else if(m.id==="songContextMenu")closeSongContext();
   else if(m.id==="toolsSheet")document.getElementById("toolsSheet").classList.remove("show");
+  else if(m.id==="dockSheet")closeDockSheet();
   else if(m.id==="promptModal")closePromptModal();
   else if(m.id==="confirmModal")closeConfirmModal();
 });});
