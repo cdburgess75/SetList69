@@ -37,6 +37,9 @@
                    leaving a song takes two taps ("Tap again to leave") within 1.5s.
   v2026.07.04.002  Update pill: installed PWAs now see "⟳ Update ready — tap to refresh" on the
                    home screen after a new version deploys (no more manual cache clearing).
+  v2026.07.04.003  Share a single setlist: "⇪ Share" in setlist settings exports the set + its
+                   songs as a file; importing it on another device MERGES (dedupes songs by
+                   title+artist) instead of replacing the library.
 -->
 <html lang="en">
 <head>
@@ -271,7 +274,7 @@
 <div class="app">
   <header>
     <button class="back" id="backBtn" style="display:none">‹ <span id="backLabel">Back</span></button>
-    <div class="brand" id="brand"><span class="dot"></span>SetList69<small>v2026.07.04.002</small></div>
+    <div class="brand" id="brand"><span class="dot"></span>SetList69<small>v2026.07.04.003</small></div>
     <div class="htitle" id="headerTitle" style="display:none"></div>
     <div class="spacer"></div>
     <button class="iconbtn" id="menuBtn" title="Tools &amp; backup">≡</button>
@@ -397,7 +400,8 @@
       <div class="field"><label>Notes (optional)</label><textarea id="slNotes" placeholder="Venue, date, key reminders…" style="min-height:5rem;resize:none;"></textarea></div>
     </div>
     <div class="mfoot">
-      <button class="btn ghost" id="dupSetlist" title="Duplicate this setlist">⧉ Duplicate</button>
+      <button class="btn ghost" id="shareSetBtn" title="Share this setlist as a file">⇪ Share</button>
+      <button class="btn ghost" id="dupSetlist" title="Duplicate this setlist">⧉</button>
       <button class="btn primary" id="saveSetlistSettings">Save</button>
     </div>
   </div>
@@ -775,34 +779,76 @@ function renderAdder(){
   }).join("");
 }
 
-/* ===== backup/restore ===== */
-async function exportData(){
-  const name="setlist69-backup-"+new Date().toISOString().slice(0,10)+".json";
-  const json=JSON.stringify(state,null,2);
+/* ===== backup/restore/share ===== */
+async function saveJsonFile(name,json,title){
   // 1) Desktop browsers: real save-location picker
   if(window.showSaveFilePicker){
     try{
       const handle=await window.showSaveFilePicker({suggestedName:name,
-        types:[{description:"SetList69 backup",accept:{"application/json":[".json"]}}]});
+        types:[{description:title||"SetList69 file",accept:{"application/json":[".json"]}}]});
       const w=await handle.createWritable();await w.write(json);await w.close();
-      toast("Backup saved");return;
+      toast("Saved");return;
     }catch(e){if(e&&e.name==="AbortError")return;}
   }
   // 2) iPhone/iPad: share sheet -> Save to Files (pick a folder) or send anywhere
   try{
     const file=new File([json],name,{type:"application/json"});
     if(navigator.canShare&&navigator.canShare({files:[file]})){
-      await navigator.share({files:[file],title:"SetList69 backup"});return;
+      await navigator.share({files:[file],title:title||name});return;
     }
   }catch(e){if(e&&e.name==="AbortError")return;}
   // 3) Fallback: direct download
   const blob=new Blob([json],{type:"application/json"});
   const url=URL.createObjectURL(blob),a=document.createElement("a");
   a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);
-  toast("Backup downloaded");
+  toast("Downloaded");
+}
+async function exportData(){
+  const name="setlist69-backup-"+new Date().toISOString().slice(0,10)+".json";
+  await saveJsonFile(name,JSON.stringify(state,null,2),"SetList69 backup");
+}
+async function shareSetlist(id){
+  const sl=state.setlists.find(s=>s.id===id);if(!sl)return;
+  const songs=sl.songIds.map(sid=>state.songs.find(s=>s.id===sid)).filter(Boolean);
+  const payload={app:"setlist69",kind:"set",version:1,
+    setlist:{name:sl.name,notes:sl.notes||"",setTranspose:sl.setTranspose||0},
+    songs};
+  const safe=(sl.name||"set").toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-+|-+$/g,"")||"set";
+  await saveJsonFile("setlist69-set-"+safe+".json",JSON.stringify(payload,null,2),'Setlist "'+sl.name+'"');
+}
+/* Merge a shared-set payload into the library.
+   Song identity = title+sub, case-insensitive, trimmed. Existing songs are reused
+   (their body/key/capo are NOT overwritten); unknown songs are added with fresh ids. */
+function mergeSetImport(d){
+  const keyOf=s=>((s.title||"").trim().toLowerCase())+"\u0000"+((s.sub||"").trim().toLowerCase());
+  const byKey=new Map(state.songs.map(s=>[keyOf(s),s.id]));
+  const idMap=new Map();let added=0;
+  for(const song of d.songs){
+    if(!song||typeof song!=="object"||!song.id)continue;
+    const existing=byKey.get(keyOf(song));
+    if(existing){idMap.set(song.id,existing);continue;}
+    const nid="s"+Date.now()+Math.floor(Math.random()*1e4);
+    state.songs.push({id:nid,title:(song.title||"Untitled"),sub:song.sub||"",key:song.key||"",
+      capo:song.capo||0,body:song.body||"",
+      ...(song.defaultTranspose?{defaultTranspose:song.defaultTranspose}:{})});
+    byKey.set(keyOf(song),nid);          // dedupes repeats within the same payload
+    idMap.set(song.id,nid);added++;
+  }
+  state.setlists.push({id:uid("set"),name:(d.setlist.name||"Imported set"),
+    notes:d.setlist.notes||"",setTranspose:d.setlist.setTranspose||0,
+    songIds:d.songs.map(s=>idMap.get(s&&s.id)).filter(Boolean)});
+  persist();renderSetlists();renderAllSongs();
+  return added;
 }
 function restoreData(file){
   const r=new FileReader();r.onload=()=>{try{const d=JSON.parse(r.result);
+    // Shared single setlist -> merge, don't replace
+    if(d&&d.kind==="set"&&d.setlist&&Array.isArray(d.songs)){
+      showConfirm("Import setlist",'Add setlist "'+(d.setlist.name||"Imported set")+'" with '+d.songs.length+' song'+(d.songs.length!==1?"s":"")+'?',"Add",()=>{
+        const added=mergeSetImport(d);show("setlists");
+        toast("Setlist added ("+added+" new song"+(added!==1?"s":"")+")");
+      });return;
+    }
     if(!d.songs||!d.setlists)throw 0;
     showConfirm("Restore backup","Replace all current songs and setlists with this backup?","Restore",()=>{
       state=d;if(!state.theme)state.theme="dark";persist();applyTheme();
@@ -1369,6 +1415,9 @@ document.getElementById("dupSetlist").addEventListener("click",()=>{
   const sl=state.setlists.find(s=>s.id===editingSetlistId);if(!sl)return;
   state.setlists.push({id:uid("set"),name:"Copy of "+sl.name,songIds:[...sl.songIds],notes:sl.notes||""});
   persist();renderSetlists();closeSetlistSettings();toast("Duplicated");
+});
+document.getElementById("shareSetBtn").addEventListener("click",()=>{
+  const id=editingSetlistId;closeSetlistSettings();if(id)shareSetlist(id); // capture id first: close nulls it
 });
 let searchT;
 document.getElementById("allSearch").addEventListener("input",e=>{clearTimeout(searchT);searchT=setTimeout(()=>{allSearchQ=e.target.value.toLowerCase();renderAllSongs();},150);});
