@@ -45,6 +45,9 @@
                    Edit hidden in the sheet while stage mode is on.
   v2026.07.04.005  Scroll progress bar along the top edge of the dock — shows how much song is
                    left during auto-scroll or manual scrolling; hidden when the song fits.
+  v2026.07.04.006  Install nudge: one-time dismissible home-screen banner — native install prompt
+                   on Android/desktop Chrome, Add-to-Home-Screen hint on iOS Safari. Dismissal
+                   kept in localStorage so it never rides along in backups.
 -->
 <html lang="en">
 <head>
@@ -219,6 +222,11 @@
   .scrollprog{position:absolute;left:0;right:0;top:-1px;height:3px;pointer-events:none;overflow:hidden;}
   .scrollprog .bar{height:100%;background:var(--accent);transform-origin:0 50%;transform:scaleX(0);will-change:transform;}
   .scrollprog[hidden]{display:none;}
+  .install-banner{display:flex;align-items:center;gap:.6rem;background:var(--panel);border:1px solid var(--line);
+    border-radius:var(--radius);padding:.7rem .9rem;margin-bottom:.9rem;font-size:.85rem;color:var(--muted);}
+  .install-banner[hidden]{display:none;}
+  .ib-msg{flex:1;line-height:1.4;}
+  .ib-go{background:var(--accent);color:#fff;font-weight:700;font-size:.82rem;padding:.45rem .8rem;border-radius:9px;flex:0 0 auto;}
 
   .modal{position:fixed;inset:0;background:#0009;backdrop-filter:blur(3px);z-index:40;display:none;
     align-items:stretch;justify-content:center;}
@@ -288,7 +296,7 @@
 <div class="app">
   <header>
     <button class="back" id="backBtn" style="display:none">‹ <span id="backLabel">Back</span></button>
-    <div class="brand" id="brand"><span class="dot"></span>SetList69<small>v2026.07.04.005</small></div>
+    <div class="brand" id="brand"><span class="dot"></span>SetList69<small>v2026.07.04.006</small></div>
     <div class="htitle" id="headerTitle" style="display:none"></div>
     <div class="spacer"></div>
     <button class="iconbtn" id="menuBtn" title="Tools &amp; backup">≡</button>
@@ -297,6 +305,11 @@
 
   <main>
     <section class="screen show" id="setlistsScreen">
+      <div class="install-banner" id="installBanner" hidden>
+        <span class="ib-msg" id="installMsg">Install SetList69 for reliable offline gigs</span>
+        <button class="ib-go" id="installGo">Install</button>
+        <button class="iconbtn" id="installDismiss" title="Dismiss">✕</button>
+      </div>
       <div class="listhead">
         <h2>Setlists</h2><span class="count" id="setlistCount"></span>
         <div class="spacer"></div>
@@ -1450,6 +1463,7 @@ async function boot(){
   document.getElementById("flatBtn").classList.toggle("on",preferFlats);
   renderSetlists();renderAllSongs();show("setlists");
   if(!canPersist)setTimeout(()=>toast("Preview mode — use Back up to a file to keep songs"),700);
+  setTimeout(maybeShowInstallBanner,600);
 }
 boot();
 
@@ -1497,6 +1511,37 @@ document.querySelectorAll(".modal").forEach(m=>{m.addEventListener("click",e=>{
   else if(m.id==="promptModal")closePromptModal();
   else if(m.id==="confirmModal")closeConfirmModal();
 });});
+
+/* ===== install nudge (one-time, dismissible; flag deliberately in localStorage, not state,
+   so it never travels inside backups) ===== */
+const INSTALL_DISMISS_KEY="setlist69.installDismissed";
+let deferredInstallPrompt=null;
+function isStandalone(){
+  return (window.matchMedia&&matchMedia("(display-mode: standalone)").matches)||navigator.standalone===true;
+}
+function installDismissed(){try{return !!localStorage.getItem(INSTALL_DISMISS_KEY);}catch(e){return true;}}
+function dismissInstall(){try{localStorage.setItem(INSTALL_DISMISS_KEY,"1");}catch(e){}
+  document.getElementById("installBanner").hidden=true;}
+function maybeShowInstallBanner(){
+  if(isStandalone()||installDismissed())return;
+  const b=document.getElementById("installBanner"),go=document.getElementById("installGo");
+  if(deferredInstallPrompt){go.hidden=false;b.hidden=false;return;}   // Android / desktop Chrome
+  if("standalone" in navigator){                                      // iOS Safari tab, not installed
+    document.getElementById("installMsg").textContent="Add to Home Screen for offline gigs: tap Share ⬆ then “Add to Home Screen”";
+    go.hidden=true;b.hidden=false;
+  }
+}
+window.addEventListener("beforeinstallprompt",e=>{
+  e.preventDefault();deferredInstallPrompt=e;
+  if(screen==="setlists")maybeShowInstallBanner();
+});
+document.getElementById("installGo").addEventListener("click",async()=>{
+  if(!deferredInstallPrompt)return;
+  deferredInstallPrompt.prompt();
+  try{await deferredInstallPrompt.userChoice;}catch(e){}
+  deferredInstallPrompt=null;dismissInstall();
+});
+document.getElementById("installDismiss").addEventListener("click",dismissInstall);
 
 /* ===== service worker + update notification ===== */
 document.getElementById("updatePill").addEventListener("click",()=>location.reload());
