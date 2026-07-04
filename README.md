@@ -4,7 +4,8 @@
 
 [![Live App](https://img.shields.io/badge/Live%20App-GitHub%20Pages-brightgreen?style=flat-square)](https://cdburgess75.github.io/SetList69/)
 [![PWA](https://img.shields.io/badge/PWA-Installable-blueviolet?style=flat-square)](#installing-to-your-phone)
-[![Version](https://img.shields.io/badge/Version-v2026.06.09.007-informational?style=flat-square)](#revision-history)
+[![Version](https://img.shields.io/badge/Version-v2026.07.04.007-informational?style=flat-square)](#revision-history)
+[![CI](https://github.com/cdburgess75/SetList69/actions/workflows/check.yml/badge.svg)](https://github.com/cdburgess75/SetList69/actions/workflows/check.yml)
 [![No Dependencies](https://img.shields.io/badge/Dependencies-None-orange?style=flat-square)](#tech)
 
 **→ [Open SetList69](https://cdburgess75.github.io/SetList69/)**
@@ -33,6 +34,7 @@ SetList69 stores your songs — lyrics with chords — groups them into setlists
 - Live search/filter when browsing songs to add
 - **Global set transpose** — shift every song in a set by ±N semitones without touching individual songs
 - **Stage mode** — tap ▶ Stage to hide editing chrome and enlarge cards for hands-free reading; tap ✎ Edit to return
+- **Share a set** — export one setlist (with its songs) as a file; importing it on a bandmate's device merges into their library without touching their existing songs
 
 ### Songs
 - Store title, artist/note, key, body — plus optional **capo** (0–11)
@@ -47,19 +49,25 @@ SetList69 stores your songs — lyrics with chords — groups them into setlists
 - **Live search** in All Songs by title or artist
 
 ### Song view controls
-The dock at the bottom of the song view provides:
+The dock keeps only what you touch mid-song, with big targets:
+
+| Control | What it does |
+|---------|-------------|
+| ◀ ▶ | Previous/next song in set (position shown between) |
+| ▶/⏸ | Start/stop auto-scroll |
+| − / + | Auto-scroll speed (1–9) |
+| ⚙ | Opens the controls sheet (below) |
+
+A thin **progress bar** along the top of the dock shows how much song is left. The ⚙ sheet holds the between-songs controls:
 
 | Control | What it does |
 |---------|-------------|
 | ♭− / +♯ | Transpose down/up by semitone |
-| #/b | Toggle sharp vs flat spelling |
-| A− / A+ | Decrease/increase font size |
-| fit | Scale font so song fits on screen |
-| Speed 1–9 | Auto-scroll speed |
-| ▶/⏸ | Start/stop auto-scroll |
-| ◀ ▶ | Previous/next song in set |
-| ✎ | Edit current song |
-| ☀/☾ | Toggle dark/light theme |
+| ♯/♭ | Toggle sharp vs flat spelling |
+| A− / A+ / fit | Font size, or scale to fit the screen |
+| ✎ Edit song | Open the editor (hidden in stage mode) |
+
+**Accident-proofing:** while auto-scroll is running or stage mode is on, leaving a song takes two taps on Back ("Tap again to leave") — a stray thumb can't knock you out mid-verse.
 
 ### Song management (long-press)
 Hold any song card for half a second — the phone vibrates and a context sheet slides up:
@@ -87,6 +95,7 @@ Hold any song card for half a second — the phone vibrates and a context sheet 
 | Chordie embedded chord format | ✅ Auto-cleaned on paste (`"Gmget"` → `"[Gm]get"`) |
 | Full backup to JSON | ✅ Share sheet / save dialog / download |
 | Restore from JSON backup | ✅ |
+| Single-setlist share file | ✅ Merges into the library (dedupes by title+artist) |
 
 #### Search & paste lyrics
 The editor includes a **"Find chords"** button that opens a search-and-paste modal. Type a song name, then open any of the linked sites in a new tab:
@@ -115,6 +124,8 @@ SetList69 is a **Progressive Web App** — no App Store needed.
 **Android (Chrome):**
 1. Open the link in Chrome
 2. Tap the **⋮** menu → **Add to Home Screen** (or the install banner if it appears)
+
+The app itself nudges you once with an install banner on the home screen (dismissible). After a new version deploys, installed apps show an **"⟳ Update ready — tap to refresh"** pill on the home screen — no more manual cache clearing.
 
 ---
 
@@ -170,6 +181,13 @@ v2026.06.09.006  Fix chord detection: Gm! accent marker; / and - separators in c
 v2026.06.09.007  Capo support: per-song editor field, "Capo N" badge in song view,
                  chords display as fingering shapes; OnSong Capo: metadata imported;
                  strip tab/performance notes button in editor.
+v2026.07.04.001  Stage-safe back button: two taps to leave a song while performing.
+v2026.07.04.002  Update pill: installed PWAs see "tap to refresh" after a deploy.
+v2026.07.04.003  Share a single setlist as a file; importing merges into the library.
+v2026.07.04.004  Minimal performance dock (big targets) + ⚙ controls sheet.
+v2026.07.04.005  Scroll progress bar along the top of the dock.
+v2026.07.04.006  One-time install nudge banner (Android prompt / iOS hint).
+v2026.07.04.007  CI workflow: syntax check, version-match check, duplicate-id check.
 ```
 
 ---

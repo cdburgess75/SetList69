@@ -1,6 +1,6 @@
 # SetList69 — Handoff Document
 
-> For whoever (or whatever) picks this up next, including Claude Code. This describes the project as of revision **v2026.06.09.007**. Kept in the repo as `CLAUDE.md` so Claude Code reads it automatically as project context.
+> For whoever (or whatever) picks this up next, including Claude Code. This describes the project as of revision **v2026.07.04.007**. Kept in the repo as `CLAUDE.md` so Claude Code reads it automatically as project context.
 
 -----
 
@@ -69,7 +69,21 @@ v2026.06.09.006  Fix chord detection: "Gm!" accent marker recognised; "/" and "-
 v2026.06.09.007  Capo support: per-song capo field in editor (0-11), chords display as fingering
                  shapes, "Capo N" badge in song view, OnSong Capo: metadata imported.
                  Strip tab notes button in editor removes := lines and pure parentheticals.
+v2026.07.04.001  Stage-safe back button: while auto-scroll runs or stage mode is on, leaving a
+                 song takes two taps ("Tap again to leave") within 1.5s.
+v2026.07.04.002  Update pill: controllerchange from an updated SW surfaces "⟳ Update ready —
+                 tap to refresh" on the home screen only; never auto-reloads.
+v2026.07.04.003  Share one setlist (⇪ in setlist settings) as {app,kind:"set",version:1,setlist,
+                 songs}; restoreData detects kind:"set" and MERGES (title+artist dedupe).
+v2026.07.04.004  Minimal performance dock (prev/pos/next, play, speed, ⚙) + #dockSheet holding
+                 transpose, ♯/♭, font, fit, edit. Ids unchanged; edit hidden in stage mode.
+v2026.07.04.005  Scroll progress bar (3px, scaleX) at top edge of dock; hidden when song fits.
+v2026.07.04.006  Install nudge banner: beforeinstallprompt on Android/desktop, A2HS hint on iOS
+                 Safari; dismissal in localStorage "setlist69.installDismissed" (not state).
+v2026.07.04.007  GitHub Actions check workflow (syntax, version match, duplicate ids); docs.
 ```
+
+A GitHub Actions workflow (`.github/workflows/check.yml`) enforces the version discipline on every push: it syntax-checks the extracted inline script and `sw.js`, **fails if the `<small>` brand version ≠ `sw.js` CACHE version**, and fails on duplicate element ids in the markup.
 
 -----
 
@@ -81,6 +95,7 @@ The PWA wrapper is complete. The repo contains:
 setlist69.html      — the entire app (HTML + CSS + JS)
 sw.js               — service worker (cache-first, precaches all assets)
 manifest.json       — PWA manifest (name, icons, display:standalone)
+.github/workflows/check.yml — CI: syntax check, version-match check, duplicate-id check
 fonts/
   fraunces-latin.woff2
   hanken-grotesk-latin.woff2
@@ -110,10 +125,9 @@ Single-page app with a manual screen router. Layout is a flex column (`.app`): a
 
 | id | Purpose |
 |----|---------|
-| `setlistsScreen` | Home / index. Lists all setlists + song library. |
+| `setlistsScreen` | Home / index. Lists all setlists + song library (the `allSongList` container — `renderAllSongs()` renders into it despite the name; there is no separate All Songs screen anymore). |
 | `setSongsScreen` | Songs inside the selected setlist, in order. |
 | `songView` | Performance view for one song. |
-| `allSongsScreen` | *(Legacy — unified into home in v2026.06.08.001, may be vestigial)* |
 
 **Modals** (`<div class="modal">`):
 
@@ -122,6 +136,7 @@ Single-page app with a manual screen router. Layout is a flex column (`.app`): a
 | `editor` | Create/edit/delete a song. |
 | `picker` | Add existing or new songs to the current setlist. |
 | `pasteModal` | Search-and-paste lyrics assistant (opens chord sites, parses pasted text). |
+| `dockSheet` | ⚙ song-controls sheet: transpose, ♯/♭, font/fit, edit (edit hidden in stage mode). |
 
 **Navigation** is driven by `show(name)` where `name` ∈ `setlists | setSongs | song`. It toggles `.show`, swaps the header, manages the wake lock, and stops auto-scroll on leave. `goBack()` implements contextual back.
 
@@ -247,14 +262,16 @@ Call `persist()` after every mutation of `state`.
 
 ## 8. Backup, restore, and import
 
-**Backup** — `exportData()` (async), tiered:
+**Backup** — `exportData()` (async) → `saveJsonFile(name,json,title)`, the shared tiered save helper:
 1. `window.showSaveFilePicker` (desktop Chromium) → save dialog.
 2. `navigator.share({files})` (iOS/iPadOS) → share sheet.
 3. Anchor `download` fallback.
 
 Filename: `setlist69-backup-YYYY-MM-DD.json`. Payload: full `state`.
 
-**Restore** — `restoreData(file)` parses JSON, confirms, replaces state wholesale, persists, re-renders.
+**Share one setlist** — `shareSetlist(id)` (⇪ button in setlist settings) exports `{app:"setlist69",kind:"set",version:1,setlist:{name,notes,setTranspose},songs:[full song objects]}` via `saveJsonFile`.
+
+**Restore** — `restoreData(file)` parses JSON. If the payload has `kind:"set"`, it **merges** via `mergeSetImport(d)` instead of replacing: song identity is **title+sub, case-insensitive, trimmed** (joined with a `"\u0000"` separator — don't "simplify" to a space, it collides); existing songs are reused untouched, unknown ones added with fresh import-style ids, and the set is appended with `uid("set")`. Otherwise it confirms and replaces state wholesale as before. Merge logic has a Node harness (see §13).
 
 **Import** — `parseImport(text, fallbackName)` ingests multiple formats:
 
@@ -292,6 +309,12 @@ Globals: `transpose` (semitones, 0 on song open), `preferFlats` (bool), `fontSiz
 **Prev/next:** `nextSong()` / `prevSong()` — hidden when `curIndex < 0`. Swipe left/right triggers these (40px threshold, ignores vertical-dominant gestures).
 
 **Wake lock:** `requestWake()` on entering song view. `releaseWake()` only on leaving the app entirely — **not** between songs, so the screen stays on through the whole set. Re-acquired on `visibilitychange`.
+
+**Dock layout (v2026.07.04.004):** the dock keeps only the between-songs-frequent controls with ≥2.6rem targets — prev/pos/next, play/pause (`scrollBtn`), speed −/+, and a `⚙` (`dockMore`) button. Transpose, `♯/♭`, font (`A−`/`fit`/`A+`) and `✎ Edit` live in `#dockSheet`, a `.modal.bottom` opened by `⚙`. **The controls kept their original ids**, so all handlers, boot wiring, and `openCurrent`'s set-nav hide still work after the DOM move — don't rename them. `openDockSheet()` hides `#editSong` when `stageMode` is on.
+
+**Scroll progress bar (v2026.07.04.005):** `#scrollProg` (3px, `transform:scaleX`) sits at the top edge of the dock. `updateScrollProg()` is a closure with a passive rAF-throttled `scroll` listener on `#songView`; also called explicitly from `openCurrent`, `reRender`, and the font handlers (height changes that don't fire a scroll event). Hidden when `scrollHeight - clientHeight <= 4`.
+
+**Stage-safe back (v2026.07.04.001):** the `#backBtn` handler, not `goBack` directly. When `screen==="song" && (scrolling || stageMode)`, the first tap arms `backArmed` + toasts "Tap again to leave"; a second tap within 1.5s calls `goBack()`. Reset on any successful leave.
 
 The dock is `position:fixed` to the viewport bottom. `#songView` has `padding-bottom:7.5rem` so the last lyric line clears it.
 
@@ -336,13 +359,16 @@ Parse/render:  esc  parseSong  inlineToSegs  pairToSegs  renderLine  renderSheet
 Router/nav:    show  goBack
 List renders:  renderSetlists  renderSetSongs  renderAllSongs  renderPicker
 Song view:     openSongInSet  openSongStandalone  openCurrent  reRender
-               nextSong  prevSong  startScroll  stopScroll  requestWake  releaseWake
+               nextSong  prevSong  startScroll  stopScroll  updateScrollProg
+               requestWake  releaseWake  openDockSheet  closeDockSheet
 Editor:        openEditor  closeEditor  saveSong
 Picker:        openPicker  closePicker
-Backup/import: exportData  restoreData  parseImport  expandFiles
+Backup/share:  saveJsonFile  exportData  shareSetlist  restoreData  mergeSetImport
+Import:        parseImport  expandFiles
+PWA:           maybeShowUpdatePill  maybeShowInstallBanner  isStandalone  dismissInstall
 ```
 
-All DOM event wiring is in one block near the bottom of the script (search `// events`).
+All DOM event wiring is in one block near the bottom of the script (search `===== events =====`).
 
 -----
 
@@ -351,8 +377,9 @@ All DOM event wiring is in one block near the bottom of the script (search `// e
 No test framework — verification is manual:
 
 1. **Syntax check:** `node --check setlist69.html` (Node tolerates the surrounding HTML surprisingly well, or extract the `<script>` body first).
-2. **Logic check for music/parse changes:** write a small Node harness replicating the affected functions and assert against known cases. Historically useful cases: `G+2=A`, `Am7+3=Cm7`, `C/E+5=F/A`, `"New Or[Am]leans"` word stays glued, `Gm!` recognized as chord, `"Cm / Bb / Dm - D"` recognized as chord line, OnSong `Key:`/`Capo:` metadata extracted, Chordie `"Gmget"` cleaned.
-3. **Visual/touch behaviors** (swipe, stage mode, capo display, share sheet) require a real device — flag for owner testing rather than claiming them verified.
+2. **Logic check for music/parse changes:** write a small Node harness replicating the affected functions and assert against known cases. The harness can `eval` a function out of the HTML by regex-extracting it (see the `mergeSetImport` harness pattern). Historically useful cases: `G+2=A`, `Am7+3=Cm7`, `C/E+5=F/A`, `"New Or[Am]leans"` word stays glued, `Gm!` recognized as chord, `"Cm / Bb / Dm - D"` recognized as chord line, OnSong `Key:`/`Capo:` metadata extracted, Chordie `"Gmget"` cleaned, `mergeSetImport` dedupe (title+sub case-fold, in-payload repeats, `"a b"+"c"` vs `"a"+"b c"` non-collision).
+3. **Duplicate-id / version-match:** CI (`.github/workflows/check.yml`) now enforces both, but you can run the same checks locally — extract markup before `<script>`, scan for repeated `id="..."`, and diff the `<small>` version against `sw.js` CACHE.
+4. **Visual/touch behaviors** (swipe, stage mode, capo display, share sheet, dock ⚙ sheet, scroll progress bar, install banner, update pill) require a real device — flag for owner testing rather than claiming them verified.
 
 -----
 

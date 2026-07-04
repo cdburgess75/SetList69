@@ -1,0 +1,45 @@
+name: check
+on: [push, pull_request]
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Syntax-check inline script and service worker
+        run: |
+          node -e '
+            const fs = require("fs");
+            const html = fs.readFileSync("setlist69.html", "utf8");
+            const m = html.match(/<script>([\s\S]*?)<\/script>/);
+            if (!m) { console.error("No <script> block found"); process.exit(1); }
+            fs.writeFileSync("app-extracted.js", m[1]);
+          '
+          node --check app-extracted.js
+          node --check sw.js
+      - name: Verify HTML brand version matches sw.js CACHE
+        run: |
+          node -e '
+            const fs = require("fs");
+            const html = fs.readFileSync("setlist69.html", "utf8");
+            const sw = fs.readFileSync("sw.js", "utf8");
+            const h = html.match(/<small>(v\d{4}\.\d{2}\.\d{2}\.\d{3})<\/small>/);
+            const s = sw.match(/const CACHE = .setlist69-(v\d{4}\.\d{2}\.\d{2}\.\d{3})./);
+            if (!h) { console.error("Brand <small> version not found"); process.exit(1); }
+            if (!s) { console.error("sw.js CACHE version not found"); process.exit(1); }
+            if (h[1] !== s[1]) { console.error("Version mismatch: HTML " + h[1] + " vs sw.js " + s[1]); process.exit(1); }
+            console.log("Version OK:", h[1]);
+          '
+      - name: Verify markup has no duplicate ids
+        run: |
+          node -e '
+            const fs = require("fs");
+            const html = fs.readFileSync("setlist69.html", "utf8");
+            const head = html.slice(0, html.indexOf("<script>"));
+            const ids = [...head.matchAll(/id="([^"]+)"/g)].map(m => m[1]);
+            const dupes = ids.filter((x, i) => ids.indexOf(x) !== i);
+            if (dupes.length) { console.error("Duplicate ids:", dupes); process.exit(1); }
+            console.log(ids.length + " ids, no duplicates");
+          '
