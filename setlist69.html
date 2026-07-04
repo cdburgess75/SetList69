@@ -33,6 +33,8 @@
   v2026.06.09.007  Capo support: per-song capo field in editor (0-11), chords display as fingering
                    shapes, "Capo N" badge in song view, OnSong Capo: metadata imported.
                    Strip tab notes button in editor removes := lines and pure parentheticals.
+  v2026.07.04.001  Stage-safe back button: while auto-scroll is running or stage mode is on,
+                   leaving a song takes two taps ("Tap again to leave") within 1.5s.
 -->
 <html lang="en">
 <head>
@@ -263,7 +265,7 @@
 <div class="app">
   <header>
     <button class="back" id="backBtn" style="display:none">‹ <span id="backLabel">Back</span></button>
-    <div class="brand" id="brand"><span class="dot"></span>SetList69<small>v2026.06.09.007</small></div>
+    <div class="brand" id="brand"><span class="dot"></span>SetList69<small>v2026.07.04.001</small></div>
     <div class="htitle" id="headerTitle" style="display:none"></div>
     <div class="spacer"></div>
     <button class="iconbtn" id="menuBtn" title="Tools &amp; backup">≡</button>
@@ -984,7 +986,18 @@ function showConfirm(title,msg,actionLabel,cb){
 function closeConfirmModal(){document.getElementById("confirmModal").classList.remove("show");_confirmCb=null;}
 
 /* ===== events ===== */
-document.getElementById("backBtn").addEventListener("click",goBack);
+/* Stage-safe back: while performing (auto-scroll running or stage mode on),
+   require a second tap within 1.5s to actually leave the song. */
+let backArmed=false,backArmT=null;
+document.getElementById("backBtn").addEventListener("click",()=>{
+  if(screen==="song"&&(scrolling||stageMode)&&!backArmed){
+    backArmed=true;toast("Tap again to leave");
+    clearTimeout(backArmT);backArmT=setTimeout(()=>{backArmed=false;},1500);
+    return;
+  }
+  backArmed=false;clearTimeout(backArmT);
+  goBack();
+});
 document.getElementById("themeBtn").addEventListener("click",()=>{state.theme=state.theme==="light"?"dark":"light";applyTheme();persist();});
 document.getElementById("menuBtn").addEventListener("click",()=>{document.getElementById("toolsSheet").classList.add("show");});
 
