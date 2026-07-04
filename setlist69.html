@@ -35,6 +35,8 @@
                    Strip tab notes button in editor removes := lines and pure parentheticals.
   v2026.07.04.001  Stage-safe back button: while auto-scroll is running or stage mode is on,
                    leaving a song takes two taps ("Tap again to leave") within 1.5s.
+  v2026.07.04.002  Update pill: installed PWAs now see "⟳ Update ready — tap to refresh" on the
+                   home screen after a new version deploys (no more manual cache clearing).
 -->
 <html lang="en">
 <head>
@@ -257,6 +259,10 @@
     color:var(--bg);padding:.6rem 1rem;border-radius:30px;font-size:.85rem;font-weight:600;opacity:0;
     pointer-events:none;transition:.25s;z-index:60;max-width:90vw;text-align:center;}
   .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+  .update-pill{position:fixed;left:50%;bottom:5.2rem;transform:translateX(-50%);z-index:59;
+    background:var(--accent);color:#fff;font-weight:700;font-size:.85rem;
+    padding:.6rem 1.1rem;border-radius:30px;box-shadow:0 6px 22px #0007;}
+  .update-pill[hidden]{display:none;}
   ::-webkit-scrollbar{width:7px;height:7px;}
   ::-webkit-scrollbar-thumb{background:#5a513c66;border-radius:8px;}
 </style>
@@ -265,7 +271,7 @@
 <div class="app">
   <header>
     <button class="back" id="backBtn" style="display:none">‹ <span id="backLabel">Back</span></button>
-    <div class="brand" id="brand"><span class="dot"></span>SetList69<small>v2026.07.04.001</small></div>
+    <div class="brand" id="brand"><span class="dot"></span>SetList69<small>v2026.07.04.002</small></div>
     <div class="htitle" id="headerTitle" style="display:none"></div>
     <div class="spacer"></div>
     <button class="iconbtn" id="menuBtn" title="Tools &amp; backup">≡</button>
@@ -451,6 +457,7 @@
 </div>
 
 <div class="toast" id="toast"></div>
+<button class="update-pill" id="updatePill" hidden>⟳ Update ready — tap to refresh</button>
 
 <script>
 "use strict";
@@ -623,7 +630,7 @@ function show(name){
   if(name==="setSongs"){ht.textContent=(state.setlists.find(s=>s.id===curSetlist)||{}).name||"";document.getElementById("backLabel").textContent="Setlists";
     document.getElementById("setSongsScreen").toggleAttribute("data-stage",stageMode);
     document.getElementById("stageBtn").textContent=stageMode?"✎ Edit":"▶ Stage";}
-  if(name==="setlists"){stageMode=false;document.getElementById("setSongsScreen").removeAttribute("data-stage");}
+  if(name==="setlists"){stageMode=false;document.getElementById("setSongsScreen").removeAttribute("data-stage");maybeShowUpdatePill();}
   if(name==="song"){const s=state.songs.find(x=>x.id===curSongId);ht.textContent=s?s.title:"";document.getElementById("backLabel").textContent=curIndex>=0?"Set":"Home";}
   if(name==="song"){if(!wakeLock)requestWake();}
   else{stopScroll();releaseWake();}
@@ -953,6 +960,12 @@ function parseImport(text,fallbackName){
 
 /* ===== misc ===== */
 let toastT;function toast(m){const t=document.getElementById("toast");t.textContent=m;t.classList.add("show");clearTimeout(toastT);toastT=setTimeout(()=>t.classList.remove("show"),1900);}
+/* update pill: set by the service-worker block, surfaced only on the home screen
+   (never mid-song — an unexpected reload during a set would be worse than a stale version) */
+let updateReady=false;
+function maybeShowUpdatePill(){
+  if(updateReady&&screen==="setlists")document.getElementById("updatePill").hidden=false;
+}
 function applyTheme(){const light=state.theme==="light";document.documentElement.setAttribute("data-theme",light?"light":"dark");
   const b=document.getElementById("themeBtn");if(b)b.textContent=light?"☀":"☾";}
 function uid(p){return (p||"id")+Date.now()+Math.floor(Math.random()*1000);}
@@ -1383,8 +1396,17 @@ document.querySelectorAll(".modal").forEach(m=>{m.addEventListener("click",e=>{
   else if(m.id==="confirmModal")closeConfirmModal();
 });});
 
+/* ===== service worker + update notification ===== */
+document.getElementById("updatePill").addEventListener("click",()=>location.reload());
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('./sw.js');
+  // sw.js does skipWaiting()+clients.claim(), so a new version fires controllerchange
+  // once it has activated (old cache already purged) — safe to offer a reload then.
+  let hadController=!!navigator.serviceWorker.controller;
+  navigator.serviceWorker.addEventListener('controllerchange',()=>{
+    if(!hadController){hadController=true;return;} // first-ever install claiming the page — not an update
+    updateReady=true;maybeShowUpdatePill();
+  });
 }
 </script>
 </body>
