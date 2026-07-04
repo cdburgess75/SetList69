@@ -43,6 +43,8 @@
   v2026.07.04.004  Minimal performance dock: prev/next, play/pause and speed stay with bigger
                    touch targets; transpose, sharp/flat, font and edit move into a ⚙ sheet.
                    Edit hidden in the sheet while stage mode is on.
+  v2026.07.04.005  Scroll progress bar along the top edge of the dock — shows how much song is
+                   left during auto-scroll or manual scrolling; hidden when the song fits.
 -->
 <html lang="en">
 <head>
@@ -214,6 +216,9 @@
   .dockrow{display:flex;align-items:center;gap:.7rem;}
   .dockrow-label{font-size:.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;font-weight:600;flex:1;}
   .dockrow .ctl button{padding:.5rem .7rem;min-width:2.6rem;min-height:2.6rem;font-size:.95rem;}
+  .scrollprog{position:absolute;left:0;right:0;top:-1px;height:3px;pointer-events:none;overflow:hidden;}
+  .scrollprog .bar{height:100%;background:var(--accent);transform-origin:0 50%;transform:scaleX(0);will-change:transform;}
+  .scrollprog[hidden]{display:none;}
 
   .modal{position:fixed;inset:0;background:#0009;backdrop-filter:blur(3px);z-index:40;display:none;
     align-items:stretch;justify-content:center;}
@@ -283,7 +288,7 @@
 <div class="app">
   <header>
     <button class="back" id="backBtn" style="display:none">‹ <span id="backLabel">Back</span></button>
-    <div class="brand" id="brand"><span class="dot"></span>SetList69<small>v2026.07.04.004</small></div>
+    <div class="brand" id="brand"><span class="dot"></span>SetList69<small>v2026.07.04.005</small></div>
     <div class="htitle" id="headerTitle" style="display:none"></div>
     <div class="spacer"></div>
     <button class="iconbtn" id="menuBtn" title="Tools &amp; backup">≡</button>
@@ -331,6 +336,7 @@
       <div class="sheet" id="sheet"></div>
       <div class="swipehint" id="swipeHint">‹ swipe to change song ›</div>
       <div class="dock">
+        <div class="scrollprog" id="scrollProg" hidden><div class="bar" id="scrollProgBar"></div></div>
         <div class="ctl"><button id="prevSong">◀</button><span class="pos" id="setPos"></span><button id="nextSong">▶</button></div>
         <div class="ctl"><button class="scrollbtn" id="scrollBtn">▶</button></div>
         <div class="ctl"><button id="scrollDown">−</button><span class="val" id="speedVal">3</span><button id="scrollUp">+</button></div>
@@ -719,8 +725,9 @@ function openCurrent(){
       swipeHintTimer=setTimeout(()=>{hint.style.opacity="0";},2800);}
     else{hint.style.display="none";}}
   else{ctlNav.style.display="none";hint.style.display="none";}
+  updateScrollProg();
 }
-function reRender(){const s=state.songs.find(x=>x.id===curSongId);if(s)renderSheet(s);}
+function reRender(){const s=state.songs.find(x=>x.id===curSongId);if(s)renderSheet(s);updateScrollProg();}
 function nextSong(){if(curIndex<0)return;const sl=state.setlists.find(x=>x.id===curSetlist);if(curIndex<sl.songIds.length-1)openSongInSet(curIndex+1);}
 function prevSong(){if(curIndex<0)return;if(curIndex>0)openSongInSet(curIndex-1);}
 
@@ -735,6 +742,23 @@ function startScroll(){scrolling=true;scrollAccum=0;const b=document.getElementB
     }else scrollRAF=requestAnimationFrame(step);}
   scrollRAF=requestAnimationFrame(step);}
 function stopScroll(){scrolling=false;if(scrollRAF)cancelAnimationFrame(scrollRAF);const b=document.getElementById("scrollBtn");if(b){b.classList.remove("playing");b.textContent="▶";}}
+
+/* scroll progress bar along the top edge of the dock (auto-scroll AND manual) */
+const updateScrollProg=(function(){
+  const v=document.getElementById("songView"),
+        wrap=document.getElementById("scrollProg"),
+        bar=document.getElementById("scrollProgBar");
+  let ticking=false;
+  function apply(){ticking=false;
+    const max=v.scrollHeight-v.clientHeight;
+    if(max<=4){wrap.hidden=true;return;}   // song fits on screen — nothing to track
+    wrap.hidden=false;
+    bar.style.transform="scaleX("+Math.min(1,Math.max(0,v.scrollTop/max))+")";
+  }
+  const kick=()=>{if(!ticking){ticking=true;requestAnimationFrame(apply);}};
+  v.addEventListener("scroll",kick,{passive:true});
+  return kick;
+})();
 
 /* ===== wake lock ===== */
 async function requestWake(){try{if("wakeLock"in navigator)wakeLock=await navigator.wakeLock.request("screen");}catch(e){}}
@@ -1145,8 +1169,8 @@ document.getElementById("restoreInput").addEventListener("change",e=>{if(e.targe
 document.getElementById("trUp").addEventListener("click",()=>{transpose++;document.getElementById("trVal").textContent=(transpose>0?"+":"")+transpose;const _s=state.songs.find(x=>x.id===curSongId);if(_s){_s.defaultTranspose=transpose+capoVal-curSetTranspose;persist();}reRender();});
 document.getElementById("trDown").addEventListener("click",()=>{transpose--;document.getElementById("trVal").textContent=(transpose>0?"+":"")+transpose;const _s=state.songs.find(x=>x.id===curSongId);if(_s){_s.defaultTranspose=transpose+capoVal-curSetTranspose;persist();}reRender();});
 document.getElementById("flatBtn").addEventListener("click",e=>{preferFlats=!preferFlats;state.preferFlats=preferFlats;persist();e.target.classList.toggle("on",preferFlats);reRender();});
-document.getElementById("fontUp").addEventListener("click",()=>{fontSize=Math.min(2.4,Math.round((fontSize+0.1)*10)/10);state.fontSize=fontSize;persist();document.getElementById("sheet").style.setProperty("--sheet-size",fontSize+"rem");});
-document.getElementById("fontDown").addEventListener("click",()=>{fontSize=Math.max(0.7,Math.round((fontSize-0.1)*10)/10);state.fontSize=fontSize;persist();document.getElementById("sheet").style.setProperty("--sheet-size",fontSize+"rem");});
+document.getElementById("fontUp").addEventListener("click",()=>{fontSize=Math.min(2.4,Math.round((fontSize+0.1)*10)/10);state.fontSize=fontSize;persist();document.getElementById("sheet").style.setProperty("--sheet-size",fontSize+"rem");updateScrollProg();});
+document.getElementById("fontDown").addEventListener("click",()=>{fontSize=Math.max(0.7,Math.round((fontSize-0.1)*10)/10);state.fontSize=fontSize;persist();document.getElementById("sheet").style.setProperty("--sheet-size",fontSize+"rem");updateScrollProg();});
 document.getElementById("fontFit").addEventListener("click",()=>{
   requestAnimationFrame(()=>{
     const sv=document.getElementById("songView"),sh=document.getElementById("sheet");
