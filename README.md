@@ -1,211 +1,204 @@
+<div align="center">
+
+<img src="icons/icon-512.png" alt="SetList69" width="120" height="120">
+
 # SetList69
 
-**Offline-first chord & lyric setlist app for performing musicians.**
+### Your songs. Your setlists. On stage, offline, in your hands.
 
-[![Live App](https://img.shields.io/badge/Live%20App-GitHub%20Pages-brightgreen?style=flat-square)](https://cdburgess75.github.io/SetList69/)
-[![PWA](https://img.shields.io/badge/PWA-Installable-blueviolet?style=flat-square)](#installing-to-your-phone)
-[![Version](https://img.shields.io/badge/Version-v2026.07.04.007-informational?style=flat-square)](#revision-history)
+A fast, offline-first chord &amp; lyric app for performing musicians — the spiritual cousin of OnSong, rebuilt as a single file you own and control.
+
+[![Live App](https://img.shields.io/badge/▶_Open_App-e2563a?style=for-the-badge)](https://cdburgess75.github.io/SetList69/)
+
+[![PWA](https://img.shields.io/badge/PWA-installable-8250df?style=flat-square)](#install)
+[![Offline](https://img.shields.io/badge/works-offline-2E8B7A?style=flat-square)](#why-setlist69)
+[![Version](https://img.shields.io/badge/version-v2026.07.04.010-informational?style=flat-square)](#changelog)
 [![CI](https://github.com/cdburgess75/SetList69/actions/workflows/check.yml/badge.svg)](https://github.com/cdburgess75/SetList69/actions/workflows/check.yml)
-[![No Dependencies](https://img.shields.io/badge/Dependencies-None-orange?style=flat-square)](#tech)
+[![Dependencies](https://img.shields.io/badge/dependencies-none-f5a623?style=flat-square)](#tech)
 
-**→ [Open SetList69](https://cdburgess75.github.io/SetList69/)**
+</div>
+
+<div align="center">
+
+<table>
+<tr>
+<td width="33%"><img src="docs/screenshots/home.png" alt="Home screen" width="100%"></td>
+<td width="33%"><img src="docs/screenshots/song.png" alt="Performance view" width="100%"></td>
+<td width="33%"><img src="docs/screenshots/played.png" alt="Played tracking" width="100%"></td>
+</tr>
+<tr>
+<td align="center"><b>Home</b><br><sub>Setlists + song library</sub></td>
+<td align="center"><b>Performance view</b><br><sub>Chords locked to syllables</sub></td>
+<td align="center"><b>Played tracking</b><br><sub>Cross off as you go</sub></td>
+</tr>
+</table>
+
+</div>
 
 ---
 
-## What it does
+## Why SetList69
 
-SetList69 stores your songs — lyrics with chords — groups them into setlists, and displays them in a large, high-contrast reading view built for use while you're playing. It's the spiritual cousin of OnSong, rebuilt as a file you control.
+Built for the moment you're standing on stage with a guitar in your hands and no free attention to spare:
 
-- Works at a gig with **zero signal** — fully offline once installed
-- **Chords render above the correct syllable**, wrapping cleanly to any screen width
-- **Never splits a word** across a line break, no matter how long the chord symbol
-- Screen stays **awake** during a performance (Wake Lock API, persists between songs)
-- **Swipe left/right** to move between songs in a set (40px threshold)
-- Auto-scroll with adjustable speed
+- 🎸 **Chords render above the exact syllable** — and never split a word across a line, no matter how wide the chord symbol
+- 📶 **Works with zero signal** — fully offline once installed; nothing phones home
+- 🔆 **Screen stays awake** through the whole set (Wake Lock), never sleeping mid-verse
+- 👆 **Swipe between songs**, auto-scroll hands-free, and huge tap targets for the controls you actually touch mid-song
+- 🎛 **Transpose, capo, and set-wide key changes** — see the shapes your fingers actually play
+- 🗂 **You own the data** — everything lives on your device; move it between phones with a file, not a cloud account
 
 ---
 
 ## Features
 
-### Setlists
-- Create, rename, reorder, and duplicate setlists
-- Add notes per setlist (venue, date, key reminders) — shown on the card and inside the set
-- Color-coded key dots show the harmonic flavor at a glance
-- Live search/filter when browsing songs to add
-- **Global set transpose** — shift every song in a set by ±N semitones without touching individual songs
-- **Stage mode** — tap ▶ Stage to hide editing chrome and enlarge cards for hands-free reading; tap ✎ Edit to return
-- **Share a set** — export one setlist (with its songs) as a file; importing it on a bandmate's device merges into their library without touching their existing songs
+### 🎵 Songs
+- Title, artist, key, body — plus optional **capo** (0–11), shown as a badge and folded into the transpose math so chords display as **fingering shapes**
+- **Inline ChordPro** (`[G]Amazing [G7]grace`) *and* **chords-above-lyrics** both parse; ChordPro directives (`{key:}`, `{soc}`/`{eoc}`, `{c:note}`) supported
+- Chord pills **color-coded by root pitch** — the same root is the same color everywhere
+- **Transpose** per song (remembered), **sharp/flat** toggle, adjustable **font size**, and one-tap **fit-to-screen**
 
-### Songs
-- Store title, artist/note, key, body — plus optional **capo** (0–11)
-- **Inline ChordPro** (`[G]Amazing [G7]grace`) and **chords-above-lyrics** formats both work
-- Supports ChordPro directives: `{key:}`, `{soc}` / `{eoc}`, `{c:note}`
-- Chord pills are **color-coded by root pitch** — same root = same color everywhere
-- Transpose up/down by semitone; **preferred transpose saved per song**
-- **Capo support** — set capo in the editor; chords display as fingering shapes; "Capo N" badge shown in song view
-- Sharp/flat spelling toggle, persisted across sessions
-- Font size adjustable (0.7 – 2.4 rem), persisted across sessions
-- **Fit-to-screen** — one tap scales the font so the full song fits in the viewport
-- **Live search** in All Songs by title or artist
+### 🗂 Setlists
+- Create, rename, reorder, and duplicate sets; per-set **notes** for venue / date / reminders
+- **Global set transpose** — shift every song in a set by ±N semitones at once
+- **Played tracking** — songs cross off (dimmed row, green strike, `✓ Played` pill) as you open them; long-press to toggle, one tap to reset for the next gig
+- **Stage mode** hides all editing chrome and enlarges cards for hands-free reading
+- **Share a set** as a file — your bandmate imports it and it *merges* into their library (dedupes by title + artist) without disturbing their songs
 
-### Song view controls
-The dock keeps only what you touch mid-song, with big targets:
+### 🎚 Performance dock
+The bottom dock keeps only what you touch between songs, with oversized targets:
 
-| Control | What it does |
-|---------|-------------|
-| ◀ ▶ | Previous/next song in set (position shown between) |
-| ▶/⏸ | Start/stop auto-scroll |
-| − / + | Auto-scroll speed (1–9) |
-| ⚙ | Opens the controls sheet (below) |
+| Control | Does |
+|---|---|
+| ◀ · ▶ | Previous / next song (position shown between) |
+| ▶ / ⏸ | Start / stop auto-scroll |
+| − · + | Auto-scroll speed (1–9) |
+| ⚙ | Opens a sheet with transpose, ♯/♭, font, fit &amp; edit |
 
-A thin **progress bar** along the top of the dock shows how much song is left. The ⚙ sheet holds the between-songs controls:
+A thin **progress bar** on the dock shows how much song is left. And **accident-proofing**: while auto-scrolling or in stage mode, leaving a song takes two taps (*"Tap again to leave"*) — a stray thumb can't knock you out mid-verse.
 
-| Control | What it does |
-|---------|-------------|
-| ♭− / +♯ | Transpose down/up by semitone |
-| ♯/♭ | Toggle sharp vs flat spelling |
-| A− / A+ / fit | Font size, or scale to fit the screen |
-| ✎ Edit song | Open the editor (hidden in stage mode) |
+### ✋ Long-press any song
+A context sheet slides up: **edit**, **add / move to another set**, **remove from set**, or **delete everywhere**. Drag the `≡` handle to reorder within a set.
 
-**Accident-proofing:** while auto-scroll is running or stage mode is on, leaving a song takes two taps on Back ("Tap again to leave") — a stray thumb can't knock you out mid-verse.
+---
 
-### Song management (long-press)
-Hold any song card for half a second — the phone vibrates and a context sheet slides up:
-
-| Action | Available in |
-|--------|-------------|
-| Edit song | Set · All Songs |
-| Add / move to another set | Set · All Songs |
-| Remove from this set | Set only |
-| Delete everywhere | Set · All Songs |
-
-### Reordering
-- **Drag to reorder** songs within a set — touch the `≡` handle and pull up or down
-- An accent-colored indicator shows where it will land
-
-### Import & Export
+## Import &amp; Export
 
 | Format | Support |
-|--------|---------|
-| ChordPro (`.cho`, `.chordpro`, `.pro`) | ✅ Full |
-| OnSong (`.onsong`, `.txt`) | ✅ Full — including `Key:` and `Capo:` metadata |
+|---|---|
+| ChordPro (`.cho` `.chordpro` `.pro`) | ✅ Full |
+| OnSong (`.onsong` `.txt`) | ✅ Full — reads `Key:` &amp; `Capo:` |
 | OpenSong XML (`.xml`) | ✅ Full |
-| Plain text with chords above lyrics | ✅ Full |
-| ZIP bundle (multiple songs) | ✅ Expands `.onsong`/ChordPro/`.txt` entries |
-| Chordie embedded chord format | ✅ Auto-cleaned on paste (`"Gmget"` → `"[Gm]get"`) |
-| Full backup to JSON | ✅ Share sheet / save dialog / download |
-| Restore from JSON backup | ✅ |
-| Single-setlist share file | ✅ Merges into the library (dedupes by title+artist) |
+| Plain chords-above-lyrics | ✅ Full |
+| ZIP bundle of songs | ✅ Expands and imports each entry |
+| Chordie embedded chords | ✅ Auto-cleaned (`"Gmget"` → `"[Gm]get"`) |
+| Full backup ⇄ JSON | ✅ Save dialog / share sheet / download |
+| Single-setlist share file | ✅ Merges into your library |
 
-#### Search & paste lyrics
-The editor includes a **"Find chords"** button that opens a search-and-paste modal. Type a song name, then open any of the linked sites in a new tab:
-
-- **Chordie** · **E-Chords** · **Cifraclub** (no forced sign-up)
-- **AZLyrics** · **Genius** · **Google** (chords + lyrics search)
-
-Copy the result, paste it into the text area, and tap **Import** — the app parses it straight into the editor. Chordie's embedded chord format is cleaned automatically. The editor also has a **"Strip tab/performance notes"** button to remove `:=` lines and pure parenthetical annotations before saving.
-
-### Themes
-- **Dark** (default) — near-black with amber chords, ≈17:1 contrast
-- **Light** — warm white with deep red-orange chords, ≥ WCAG AA throughout
+**Search &amp; paste:** the editor's **Find chords** button opens a helper — type a song, jump to Chordie · E-Chords · Cifraclub · AZLyrics · Genius · Google in a new tab, paste the result back, and it parses straight into the editor.
 
 ---
 
-## Installing to your phone
+## Install
 
-SetList69 is a **Progressive Web App** — no App Store needed.
+SetList69 is a **Progressive Web App** — no App Store, no account.
 
-**iPhone / iPad (Safari):**
-1. Open [cdburgess75.github.io/SetList69](https://cdburgess75.github.io/SetList69/) in Safari
-2. Tap the Share button → **Add to Home Screen**
-3. Tap **Add** — the app icon appears on your home screen
-4. Open it once with signal; after that it works fully offline
+**iPhone / iPad (Safari)**
+1. Open **[cdburgess75.github.io/SetList69](https://cdburgess75.github.io/SetList69/)**
+2. Share → **Add to Home Screen** → **Add**
+3. Open it once with signal — after that it's fully offline
 
-**Android (Chrome):**
-1. Open the link in Chrome
-2. Tap the **⋮** menu → **Add to Home Screen** (or the install banner if it appears)
+**Android (Chrome)**
+1. Open the link and tap **⋮** → **Add to Home Screen** (or the install banner)
 
-The app itself nudges you once with an install banner on the home screen (dismissible). After a new version deploys, installed apps show an **"⟳ Update ready — tap to refresh"** pill on the home screen — no more manual cache clearing.
+> After a new version deploys, installed apps surface an **"⟳ Update ready — tap to refresh"** pill on the home screen — no manual cache clearing.
+
+<div align="center">
+<br>
+<img src="docs/screenshots/song-light.png" alt="Light theme" width="260">
+<br>
+<sub><b>Light theme</b> — warm white with deep red-orange chords, WCAG-AA throughout. Dark is the default.</sub>
+</div>
 
 ---
 
-## Data & Privacy
+## Data &amp; privacy
 
-All data lives **on your device** — IndexedDB primary, localStorage fallback. Nothing is sent to any server. Songs sync between your devices the same way paper setlists do: export a backup, send it to yourself, import on the other device.
-
-> **Internal storage keys** are named `chordstand` (legacy from a project rename). This is intentional — renaming them would wipe existing saved data.
+Everything lives **on your device** — IndexedDB with a localStorage fallback. Nothing is sent to any server. Devices sync the way paper setlists always have: export a backup, send it to yourself, import on the other phone.
 
 ---
 
 ## Tech
 
 | | |
-|-|-|
-| **Stack** | Vanilla HTML/CSS/JS — no framework, no bundler, no runtime deps |
-| **Offline** | Service Worker (cache-first), self-hosted WOFF2 fonts |
-| **Storage** | IndexedDB + localStorage fallback |
-| **Fonts** | Fraunces (display), Hanken Grotesk (UI/lyrics), JetBrains Mono (chords) |
-| **Hosting** | GitHub Pages |
-| **Size** | ~1 HTML file + fonts + icons |
+|---|---|
+| **Stack** | Vanilla HTML / CSS / JS — no framework, no bundler, no runtime dependencies |
+| **Offline** | Service worker (cache-first) + self-hosted WOFF2 fonts |
+| **Storage** | IndexedDB, localStorage fallback |
+| **Type** | Fraunces (display) · Hanken Grotesk (UI/lyrics) · JetBrains Mono (chords) |
+| **Hosting** | GitHub Pages, auto-deployed on push to `main` |
+| **CI** | Syntax check · HTML↔SW version-match · duplicate-id guard |
+
+The entire app is **one file** — `setlist69.html`. Everything else exists only to make it installable and offline-capable.
 
 ---
 
-## Revision history
-
-```
-v2026.06.07.001  Renamed project ChordStand → SetList69; adopted dated revisions.
-v2026.06.07.002  Fixed control dock drifting into mid-page on long songs.
-v2026.06.07.003  PWA wrapper: manifest, service worker, self-hosted fonts, app icons.
-v2026.06.07.004  Add-to-setlist from All Songs; picker import; chord search.
-v2026.06.07.005  Bug fixes: persist settings; custom modals; goBack fix; swipe hint;
-                 backdrop close; card hover fix; font size CSS-only update.
-v2026.06.07.006  Live search; setlist settings (rename, notes, reorder, duplicate);
-                 preferred transpose per song; narrow-screen card fix.
-v2026.06.07.007  Long-press context menu on songs (edit/move/remove/delete);
-                 drag-to-reorder songs in a set via ≡ handle.
-v2026.06.07.008  Fix long-press context menu not firing on All Songs screen.
-v2026.06.08.001  Unified home screen: setlists and songs together; backup/import
-                 moved to tools sheet.
-v2026.06.08.002  ZIP bundle import: .zip files containing song files expand on import.
-v2026.06.08.003  Gig fixes: wake lock persists between songs; swipe threshold 40px;
-                 scroll-end haptic + visual flash; current song highlighted in set;
-                 search debounced.
-v2026.06.08.004  Stage mode; fit-to-screen font button; global set transpose;
-                 OpenSong XML import.
-v2026.06.09.001  Fit-to-screen two-pass correction (no overshoot after re-wrap).
-v2026.06.09.002  Search & paste modal: open chord sites, paste result, auto-fills editor.
-v2026.06.09.003  Replaced Ultimate Guitar with Chordie/E-Chords/Cifraclub/Google.
-v2026.06.09.004  Editor "Find chords" button opens paste modal instead of going to UG.
-v2026.06.09.005  Auto-clean Chordie embedded chords on paste.
-v2026.06.09.006  Fix chord detection: Gm! accent marker; / and - separators in chord lines.
-v2026.06.09.007  Capo support: per-song editor field, "Capo N" badge in song view,
-                 chords display as fingering shapes; OnSong Capo: metadata imported;
-                 strip tab/performance notes button in editor.
-v2026.07.04.001  Stage-safe back button: two taps to leave a song while performing.
-v2026.07.04.002  Update pill: installed PWAs see "tap to refresh" after a deploy.
-v2026.07.04.003  Share a single setlist as a file; importing merges into the library.
-v2026.07.04.004  Minimal performance dock (big targets) + ⚙ controls sheet.
-v2026.07.04.005  Scroll progress bar along the top of the dock.
-v2026.07.04.006  One-time install nudge banner (Android prompt / iOS hint).
-v2026.07.04.007  CI workflow: syntax check, version-match check, duplicate-id check.
-v2026.07.04.008  New app icons: setlist rows with a glowing gold "now playing" row.
-v2026.07.04.009  "S69" wordmark on the icon; separate maskable icon for Android crop.
-```
-
----
-
-## Self-hosting
-
-The app is a static bundle — clone the repo and open `setlist69.html` directly, or deploy to any static host:
+## Develop &amp; self-host
 
 ```bash
 git clone https://github.com/cdburgess75/SetList69.git
-# Open setlist69.html in a browser, or:
-npx serve .
+cd SetList69
+npx serve .          # or just open setlist69.html in a browser
 ```
 
-GitHub Pages deploys automatically on every push to `main`.
+Regenerate the README screenshots (headless Chromium via Playwright):
+
+```bash
+node docs/shots.js
+```
+
+Every change bumps a dated revision (`vYYYY.MM.DD.NNN`) in three synced places — the HTML changelog, the on-screen version tag, and the service-worker cache key — enforced by CI. See [`CLAUDE.md`](CLAUDE.md) for the full architecture and contribution notes.
 
 ---
 
-*Built for performing musicians. No cloud, no subscription, no ads — just your songs.*
+<details>
+<summary><b>Changelog</b></summary>
+
+```
+v2026.07.04.010  "Played" marks on set songs (dim row, green strike, ✓ Played pill).
+v2026.07.04.009  "S69" wordmark on the icon; separate maskable icon for Android crop.
+v2026.07.04.008  New app icons: setlist rows with a glowing gold "now playing" row.
+v2026.07.04.007  CI workflow: syntax, version-match, and duplicate-id checks.
+v2026.07.04.006  One-time install nudge banner (Android prompt / iOS hint).
+v2026.07.04.005  Scroll progress bar along the top of the dock.
+v2026.07.04.004  Minimal performance dock (big targets) + ⚙ controls sheet.
+v2026.07.04.003  Share a single setlist as a file; importing merges into the library.
+v2026.07.04.002  Update pill: installed PWAs see "tap to refresh" after a deploy.
+v2026.07.04.001  Stage-safe back button: two taps to leave a song while performing.
+v2026.06.09.007  Capo support: editor field, badge, fingering-shape display, OnSong Capo:.
+v2026.06.09.006  Chord detection: Gm! accent marker; / and - separators in chord lines.
+v2026.06.09.005  Auto-clean Chordie embedded chords on paste.
+v2026.06.09.004  Editor "Find chords" opens the paste modal.
+v2026.06.09.003  Chordie / E-Chords / Cifraclub / Google lookup (dropped Ultimate Guitar).
+v2026.06.09.002  Search & paste modal: open chord sites, paste back into the editor.
+v2026.06.09.001  Fit-to-screen two-pass correction (no overshoot after re-wrap).
+v2026.06.08.004  Stage mode; fit-to-screen; global set transpose; OpenSong XML import.
+v2026.06.08.003  Gig fixes: persistent wake lock, 40px swipe, scroll-end haptic, now-playing.
+v2026.06.08.002  ZIP bundle import.
+v2026.06.08.001  Unified home screen; backup/import moved to a tools sheet.
+v2026.06.07.007  Long-press context menu; drag-to-reorder songs in a set.
+v2026.06.07.006  Live search; setlist settings; per-song preferred transpose.
+v2026.06.07.005  Persistence + custom modals + assorted bug fixes.
+v2026.06.07.004  Add-to-setlist from All Songs; picker import; chord search.
+v2026.06.07.003  PWA wrapper: manifest, service worker, self-hosted fonts, icons.
+v2026.06.07.002  Fixed control dock drifting on long songs.
+v2026.06.07.001  Renamed ChordStand → SetList69; adopted dated revisions.
+```
+
+</details>
+
+---
+
+<div align="center">
+<sub>Built for performing musicians. No cloud, no subscription, no ads — just your songs.</sub>
+</div>
