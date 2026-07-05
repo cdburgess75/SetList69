@@ -53,6 +53,9 @@
                    the plain gradient dot. All three sizes re-rendered (512/192/180).
   v2026.07.04.009  "S69" Fraunces wordmark added to icon upper-left; separate rows-only
                    maskable icon so Android's circle crop doesn't clip the wordmark.
+  v2026.07.04.010  "Played" marks on set songs (ham-radio "worked" styling): dim row, green
+                   strikethrough on title, "✓ Played" pill. Auto-marks on open, long-press to
+                   toggle, "↺ Reset played" in toolbar. Ephemeral per-set, not persisted.
 -->
 <html lang="en">
 <head>
@@ -73,6 +76,7 @@
     --bg:#121110; --panel:#1d1b18; --panel2:#272420; --line:#46413640;
     --ink:#fbf8f2; --muted:#b3a892; --faint:#7d765f;
     --chord:#ffc24d; --accent:#e2563a; --accent2:#ef6a48; --ok:#86c06c;
+    --green:#AED8CA; --green-dim:#2E8B7A;   /* "played" strike + tag (bright on dark) */
     --ui:'Hanken Grotesk',system-ui,-apple-system,sans-serif;
     --display:'Fraunces',Georgia,serif;
     --mono:'JetBrains Mono',ui-monospace,Menlo,Consolas,monospace;
@@ -83,6 +87,7 @@
     --bg:#fbf9f3; --panel:#ffffff; --panel2:#f1ece1; --line:#1a160d1f;
     --ink:#181410; --muted:#5c5547; --faint:#938b78;
     --chord:#bd3c1c; --accent:#b53e26; --accent2:#c4502f; --ok:#3f8f4f;
+    --green:#2E8B7A; --green-dim:#AED8CA;   /* swapped so the pair still reads on light bg */
   }
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
   html,body{margin:0;height:100%;background:var(--bg);}
@@ -121,6 +126,12 @@
   .card:active{transform:scale(.99);}
   .card:hover{border-color:var(--faint);}
   .card.is-current{border-color:var(--accent);box-shadow:inset 3px 0 0 var(--accent);}
+  /* "played" row: dim it, strike the title, add a small outlined ✓ pill (ham-radio "worked" style) */
+  .card.played{opacity:.62;}
+  .card.played .t{text-decoration:line-through;text-decoration-color:var(--green);text-decoration-thickness:2px;}
+  .wkd{display:inline-block;font-size:.6rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;
+    padding:.12rem .4rem;border:1px solid var(--green-dim);border-radius:4px;color:var(--green);
+    white-space:nowrap;flex-shrink:0;}
   .set-toolbar{display:flex;align-items:center;gap:.5rem;margin-bottom:.75rem;flex-wrap:wrap;}
   .set-tr-label{font-size:.7rem;color:var(--faint);font-family:var(--mono);}
   .stagebtn{padding:.38rem .85rem;border-radius:9px;font-size:.8rem;font-weight:700;background:var(--accent);color:#fff;letter-spacing:.2px;}
@@ -301,7 +312,7 @@
 <div class="app">
   <header>
     <button class="back" id="backBtn" style="display:none">‹ <span id="backLabel">Back</span></button>
-    <div class="brand" id="brand"><span class="dot"></span>SetList69<small>v2026.07.04.009</small></div>
+    <div class="brand" id="brand"><span class="dot"></span>SetList69<small>v2026.07.04.010</small></div>
     <div class="htitle" id="headerTitle" style="display:none"></div>
     <div class="spacer"></div>
     <button class="iconbtn" id="menuBtn" title="Tools &amp; backup">≡</button>
@@ -336,6 +347,7 @@
         <div class="ctl"><button id="setTrDown">♭−</button><span class="val" id="setTrVal">±0</span><button id="setTrUp">+♯</button></div>
         <span class="set-tr-label">set key</span>
         <div class="spacer"></div>
+        <button class="stagebtn" id="resetPlayed" style="display:none;background:var(--panel2);color:var(--green);border:1px solid var(--green-dim)">↺ Reset played</button>
         <button class="stagebtn" id="stageBtn">▶ Stage</button>
       </div>
       <div id="setSongList"></div>
@@ -547,6 +559,7 @@ let transpose=0,preferFlats=false,fontSize=1.35,scrollSpeed=3;
 let scrolling=false,scrollRAF=null,scrollAccum=0,swipeHintTimer=null;
 let editingId=null,editorReturn="setlists",wakeLock=null,addingSongId=null,editingSetlistId=null;
 let allSearchQ="",pickerSearchQ="";
+let playedSongs=new Set();   // ephemeral per-set "played" marks (song ids); resets when you switch sets
 
 /* ===== transposition ===== */
 const SHARP=["C","C#","D","D#","E","F","F#","G","G#","A","A#","B"];
@@ -709,11 +722,15 @@ function renderSetSongs(){
   const st=sl.setTranspose||0;document.getElementById("setTrVal").textContent=st===0?"±0":(st>0?"+":"")+st;
   const wrap=document.getElementById("setSongList");
   if(!sl.songIds.length){wrap.innerHTML='<div class="empty"><div class="big">♪</div>No songs in this set yet.</div>';return;}
+  let anyPlayed=false;
   wrap.innerHTML=sl.songIds.map((id,i)=>{
     const s=state.songs.find(x=>x.id===id);if(!s)return"";
     const cur=(id===curSongId&&curIndex===i)?" is-current":"";
-    return '<div class="card'+cur+'" data-songidx="'+i+'"><span class="drag-handle" title="Drag to reorder">≡</span><span class="num">'+(i+1)+'</span><div class="meta open-song" data-i="'+i+'"><div class="t">'+esc(s.title)+'</div><div class="s">'+esc(s.sub||"")+'</div></div>'+(s.key?'<span class="pill" style="background:'+keyColor(s.key)+'">'+esc(s.key)+'</span>':"")+'<button class="rm" data-rmfromset="'+i+'" title="Remove from set">✕</button></div>';
+    const isPlayed=playedSongs.has(id);if(isPlayed)anyPlayed=true;
+    const wkd=isPlayed?'<span class="wkd">✓ Played</span>':"";
+    return '<div class="card'+cur+(isPlayed?" played":"")+'" data-songidx="'+i+'"><span class="drag-handle" title="Drag to reorder">≡</span><span class="num">'+(i+1)+'</span><div class="meta open-song" data-i="'+i+'"><div class="t">'+esc(s.title)+'</div><div class="s">'+esc(s.sub||"")+'</div></div>'+wkd+(s.key?'<span class="pill" style="background:'+keyColor(s.key)+'">'+esc(s.key)+'</span>':"")+'<button class="rm" data-rmfromset="'+i+'" title="Remove from set">✕</button></div>';
   }).join("");
+  document.getElementById("resetPlayed").style.display=anyPlayed?"":"none";
 }
 function renderAllSongs(){
   const wrap=document.getElementById("allSongList");
@@ -727,7 +744,7 @@ function renderAllSongs(){
 }
 
 /* ===== open song ===== */
-function openSongInSet(index){const sl=state.setlists.find(s=>s.id===curSetlist);if(!sl)return;curIndex=index;curSongId=sl.songIds[index];curSetTranspose=sl.setTranspose||0;openCurrent();}
+function openSongInSet(index){const sl=state.setlists.find(s=>s.id===curSetlist);if(!sl)return;curIndex=index;curSongId=sl.songIds[index];curSetTranspose=sl.setTranspose||0;playedSongs.add(curSongId);openCurrent();}
 function openSongStandalone(id){curIndex=-1;curSongId=id;curSetTranspose=0;openCurrent();}
 function openCurrent(){
   const s=state.songs.find(x=>x.id===curSongId);if(!s)return;
@@ -1133,7 +1150,7 @@ document.getElementById("setlistList").addEventListener("click",e=>{
   const sdown=e.target.closest("[data-setdown]");if(sdown){const i=+sdown.dataset.setdown;if(i<state.setlists.length-1){const a=state.setlists;[a[i+1],a[i]]=[a[i],a[i+1]];persist();renderSetlists();}return;}
   const del=e.target.closest("[data-delset]");if(del){showConfirm("Delete setlist","Songs stay in your library — only the set is removed.","Delete",()=>{state.setlists=state.setlists.filter(s=>s.id!==del.dataset.delset);persist();renderSetlists();});return;}
   const edit=e.target.closest("[data-editset]");if(edit){openSetlistSettings(edit.dataset.editset);return;}
-  const open=e.target.closest(".open-set");if(open){curSetlist=open.dataset.id;renderSetSongs();show("setSongs");}});
+  const open=e.target.closest(".open-set");if(open){if(curSetlist!==open.dataset.id)playedSongs=new Set();curSetlist=open.dataset.id;renderSetSongs();show("setSongs");}});
 
 document.getElementById("setSongList").addEventListener("click",e=>{
   const sl=state.setlists.find(s=>s.id===curSetlist);if(!sl)return;
@@ -1210,6 +1227,10 @@ document.getElementById("stageBtn").addEventListener("click",()=>{
   stageMode=!stageMode;
   document.getElementById("setSongsScreen").toggleAttribute("data-stage",stageMode);
   document.getElementById("stageBtn").textContent=stageMode?"✎ Edit":"▶ Stage";
+});
+document.getElementById("resetPlayed").addEventListener("click",()=>{
+  const sl=state.setlists.find(s=>s.id===curSetlist);if(!sl)return;
+  sl.songIds.forEach(id=>playedSongs.delete(id));renderSetSongs();toast("Played marks cleared");
 });
 document.getElementById("setTrUp").addEventListener("click",()=>{
   const sl=state.setlists.find(s=>s.id===curSetlist);if(!sl)return;
@@ -1347,6 +1368,11 @@ function openSongContext(songId,fromScreen){
   }
   mkBtn("✎","Edit song",false,()=>openEditor(songId,fromScreen));
   if(fromScreen==="setSongs"){
+    const played=playedSongs.has(songId);
+    mkBtn(played?"↺":"✓",played?"Mark unplayed":"Mark as played",false,()=>{
+      if(playedSongs.has(songId))playedSongs.delete(songId);else playedSongs.add(songId);
+      renderSetSongs();
+    });
     mkBtn("↗","Add / move to another set",false,()=>openAdder(songId));
     mkBtn("✕","Remove from this set",false,()=>{
       const sl=state.setlists.find(x=>x.id===curSetlist);if(!sl)return;
