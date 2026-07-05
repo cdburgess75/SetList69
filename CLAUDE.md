@@ -82,6 +82,8 @@ v2026.07.04.006  Install nudge banner: beforeinstallprompt on Android/desktop, A
                  Safari; dismissal in localStorage "setlist69.installDismissed" (not state).
 v2026.07.04.007  GitHub Actions check workflow (syntax, version match, duplicate ids); docs.
 v2026.07.04.008  New app icons: setlist rows with glowing gold "now playing" row (512/192/180).
+v2026.07.04.009  "S69" Fraunces wordmark upper-left on icons; icon-512-maskable.png (rows only,
+                 no wordmark) for Android maskable purpose; manifest + SW precache updated.
 ```
 
 A GitHub Actions workflow (`.github/workflows/check.yml`) enforces the version discipline on every push: it syntax-checks the extracted inline script and `sw.js`, **fails if the `<small>` brand version ≠ `sw.js` CACHE version**, and fails on duplicate element ids in the markup.

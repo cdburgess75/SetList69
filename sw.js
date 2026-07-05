@@ -1,4 +1,4 @@
-const CACHE = 'setlist69-v2026.07.04.008';
+const CACHE = 'setlist69-v2026.07.04.009';
 const PRECACHE = [
   './',
   './setlist69.html',
@@ -8,6 +8,7 @@ const PRECACHE = [
   './fonts/jetbrains-mono-latin.woff2',
   './icons/icon-192.png',
   './icons/icon-512.png',
+  './icons/icon-512-maskable.png',
   './icons/apple-touch-icon.png',
 ];
 
