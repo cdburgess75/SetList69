@@ -12,7 +12,7 @@ A fast, offline-first chord &amp; lyric app for performing musicians — the spi
 
 [![PWA](https://img.shields.io/badge/PWA-installable-8250df?style=flat-square)](#install)
 [![Offline](https://img.shields.io/badge/works-offline-2E8B7A?style=flat-square)](#why-setlist69)
-[![Version](https://img.shields.io/badge/version-v2026.07.04.010-informational?style=flat-square)](#changelog)
+[![Version](https://img.shields.io/badge/version-v2026.07.04.011-informational?style=flat-square)](#changelog)
 [![CI](https://github.com/cdburgess75/SetList69/actions/workflows/check.yml/badge.svg)](https://github.com/cdburgess75/SetList69/actions/workflows/check.yml)
 [![Dependencies](https://img.shields.io/badge/dependencies-none-f5a623?style=flat-square)](#tech)
 
@@ -61,7 +61,7 @@ Built for the moment you're standing on stage with a guitar in your hands and no
 ### 🗂 Setlists
 - Create, rename, reorder, and duplicate sets; per-set **notes** for venue / date / reminders
 - **Global set transpose** — shift every song in a set by ±N semitones at once
-- **Played tracking** — songs cross off (dimmed row, green strike, `✓ Played` pill) as you open them; long-press to toggle, one tap to reset for the next gig
+- **Played tracking** — songs cross off (dimmed row, green strike, `✓ Played` pill) as you open them; marks survive reloads and backgrounding for the whole gig — long-press to toggle, one tap to reset for the next one
 - **Stage mode** hides all editing chrome and enlarges cards for hands-free reading
 - **Share a set** as a file — your bandmate imports it and it *merges* into their library (dedupes by title + artist) without disturbing their songs
 
@@ -165,6 +165,7 @@ Every change bumps a dated revision (`vYYYY.MM.DD.NNN`) in three synced places �
 <summary><b>Changelog</b></summary>
 
 ```
+v2026.07.04.011  "Played" marks persist per set across reloads; clear via ↺ Reset.
 v2026.07.04.010  "Played" marks on set songs (dim row, green strike, ✓ Played pill).
 v2026.07.04.009  "S69" wordmark on the icon; separate maskable icon for Android crop.
 v2026.07.04.008  New app icons: setlist rows with a glowing gold "now playing" row.

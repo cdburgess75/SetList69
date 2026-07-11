@@ -1,6 +1,6 @@
 # SetList69 — Handoff Document
 
-> For whoever (or whatever) picks this up next, including Claude Code. This describes the project as of revision **v2026.07.04.007**. Kept in the repo as `CLAUDE.md` so Claude Code reads it automatically as project context.
+> For whoever (or whatever) picks this up next, including Claude Code. This describes the project as of revision **v2026.07.04.011**. Kept in the repo as `CLAUDE.md` so Claude Code reads it automatically as project context.
 
 -----
 
@@ -84,6 +84,10 @@ v2026.07.04.007  GitHub Actions check workflow (syntax, version match, duplicate
 v2026.07.04.008  New app icons: setlist rows with glowing gold "now playing" row (512/192/180).
 v2026.07.04.009  "S69" Fraunces wordmark upper-left on icons; icon-512-maskable.png (rows only,
                  no wordmark) for Android maskable purpose; manifest + SW precache updated.
+v2026.07.04.010  "Played" marks on set songs (ham-radio "worked" styling): dim row, green
+                 strikethrough, "✓ Played" pill; auto-mark on open, long-press toggle, ↺ Reset.
+v2026.07.04.011  "Played" marks persist per-set in localStorage ("setlist69.played"), surviving
+                 reloads/backgrounding; kept out of state so backups stay clean.
 ```
 
 A GitHub Actions workflow (`.github/workflows/check.yml`) enforces the version discipline on every push: it syntax-checks the extracted inline script and `sw.js`, **fails if the `<small>` brand version ≠ `sw.js` CACHE version**, and fails on duplicate element ids in the markup.
@@ -106,7 +110,11 @@ fonts/
 icons/
   icon-192.png
   icon-512.png
+  icon-512-maskable.png   — rows-only variant for Android's circular mask
   apple-touch-icon.png
+docs/
+  shots.js                — Playwright helper: regenerates the README screenshots
+  screenshots/            — real app captures used by README.md
 ```
 
 All app logic lives in `setlist69.html`. The other files exist solely to make it installable and offline-capable.
@@ -318,6 +326,8 @@ Globals: `transpose` (semitones, 0 on song open), `preferFlats` (bool), `fontSiz
 **Scroll progress bar (v2026.07.04.005):** `#scrollProg` (3px, `transform:scaleX`) sits at the top edge of the dock. `updateScrollProg()` is a closure with a passive rAF-throttled `scroll` listener on `#songView`; also called explicitly from `openCurrent`, `reRender`, and the font handlers (height changes that don't fire a scroll event). Hidden when `scrollHeight - clientHeight <= 4`.
 
 **Stage-safe back (v2026.07.04.001):** the `#backBtn` handler, not `goBack` directly. When `screen==="song" && (scrolling || stageMode)`, the first tap arms `backArmed` + toasts "Tap again to leave"; a second tap within 1.5s calls `goBack()`. Reset on any successful leave.
+
+**Played marks (v2026.07.04.010–011):** `playedSongs` is a `Set` of song ids for the *current* set. Auto-added in `openSongInSet`; long-press context menu toggles; `#resetPlayed` (visible only when any mark exists) clears the set's marks. Persisted per-setlist in localStorage key `"setlist69.played"` (`{setlistId:[songIds]}`) via `loadPlayed(setId)` / `savePlayed(setId)` — deliberately **not** in `state`, so backups never carry gig state. Styling: `.card.played` + `.wkd` pill using `--green`/`--green-dim` (swapped in light theme).
 
 The dock is `position:fixed` to the viewport bottom. `#songView` has `padding-bottom:7.5rem` so the last lyric line clears it.
 
