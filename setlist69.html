@@ -56,6 +56,9 @@
   v2026.07.04.010  "Played" marks on set songs (ham-radio "worked" styling): dim row, green
                    strikethrough on title, "✓ Played" pill. Auto-marks on open, long-press to
                    toggle, "↺ Reset played" in toolbar. Ephemeral per-set, not persisted.
+  v2026.07.04.011  "Played" marks now persist per-set across reloads / backgrounding (localStorage,
+                   key "setlist69.played"), surviving the whole gig; clear only via ↺ Reset.
+                   Kept out of state so backups stay clean.
 -->
 <html lang="en">
 <head>
@@ -312,7 +315,7 @@
 <div class="app">
   <header>
     <button class="back" id="backBtn" style="display:none">‹ <span id="backLabel">Back</span></button>
-    <div class="brand" id="brand"><span class="dot"></span>SetList69<small>v2026.07.04.010</small></div>
+    <div class="brand" id="brand"><span class="dot"></span>SetList69<small>v2026.07.04.011</small></div>
     <div class="htitle" id="headerTitle" style="display:none"></div>
     <div class="spacer"></div>
     <button class="iconbtn" id="menuBtn" title="Tools &amp; backup">≡</button>
@@ -559,7 +562,13 @@ let transpose=0,preferFlats=false,fontSize=1.35,scrollSpeed=3;
 let scrolling=false,scrollRAF=null,scrollAccum=0,swipeHintTimer=null;
 let editingId=null,editorReturn="setlists",wakeLock=null,addingSongId=null,editingSetlistId=null;
 let allSearchQ="",pickerSearchQ="";
-let playedSongs=new Set();   // ephemeral per-set "played" marks (song ids); resets when you switch sets
+let playedSongs=new Set();   // per-set "played" marks (song ids); persisted in localStorage, kept out of state so backups stay clean
+const PLAYED_KEY="setlist69.played";
+function loadPlayedMap(){try{return JSON.parse(localStorage.getItem(PLAYED_KEY))||{};}catch(e){return {};}}
+function loadPlayed(setId){const m=loadPlayedMap();return new Set(Array.isArray(m[setId])?m[setId]:[]);}
+function savePlayed(setId){try{const m=loadPlayedMap();
+  if(playedSongs.size)m[setId]=[...playedSongs];else delete m[setId];
+  localStorage.setItem(PLAYED_KEY,JSON.stringify(m));}catch(e){}}
 
 /* ===== transposition ===== */
 const SHARP=["C","C#","D","D#","E","F","F#","G","G#","A","A#","B"];
@@ -744,7 +753,7 @@ function renderAllSongs(){
 }
 
 /* ===== open song ===== */
-function openSongInSet(index){const sl=state.setlists.find(s=>s.id===curSetlist);if(!sl)return;curIndex=index;curSongId=sl.songIds[index];curSetTranspose=sl.setTranspose||0;playedSongs.add(curSongId);openCurrent();}
+function openSongInSet(index){const sl=state.setlists.find(s=>s.id===curSetlist);if(!sl)return;curIndex=index;curSongId=sl.songIds[index];curSetTranspose=sl.setTranspose||0;playedSongs.add(curSongId);savePlayed(curSetlist);openCurrent();}
 function openSongStandalone(id){curIndex=-1;curSongId=id;curSetTranspose=0;openCurrent();}
 function openCurrent(){
   const s=state.songs.find(x=>x.id===curSongId);if(!s)return;
@@ -1150,7 +1159,7 @@ document.getElementById("setlistList").addEventListener("click",e=>{
   const sdown=e.target.closest("[data-setdown]");if(sdown){const i=+sdown.dataset.setdown;if(i<state.setlists.length-1){const a=state.setlists;[a[i+1],a[i]]=[a[i],a[i+1]];persist();renderSetlists();}return;}
   const del=e.target.closest("[data-delset]");if(del){showConfirm("Delete setlist","Songs stay in your library — only the set is removed.","Delete",()=>{state.setlists=state.setlists.filter(s=>s.id!==del.dataset.delset);persist();renderSetlists();});return;}
   const edit=e.target.closest("[data-editset]");if(edit){openSetlistSettings(edit.dataset.editset);return;}
-  const open=e.target.closest(".open-set");if(open){if(curSetlist!==open.dataset.id)playedSongs=new Set();curSetlist=open.dataset.id;renderSetSongs();show("setSongs");}});
+  const open=e.target.closest(".open-set");if(open){curSetlist=open.dataset.id;playedSongs=loadPlayed(curSetlist);renderSetSongs();show("setSongs");}});
 
 document.getElementById("setSongList").addEventListener("click",e=>{
   const sl=state.setlists.find(s=>s.id===curSetlist);if(!sl)return;
@@ -1230,7 +1239,7 @@ document.getElementById("stageBtn").addEventListener("click",()=>{
 });
 document.getElementById("resetPlayed").addEventListener("click",()=>{
   const sl=state.setlists.find(s=>s.id===curSetlist);if(!sl)return;
-  sl.songIds.forEach(id=>playedSongs.delete(id));renderSetSongs();toast("Played marks cleared");
+  sl.songIds.forEach(id=>playedSongs.delete(id));savePlayed(curSetlist);renderSetSongs();toast("Played marks cleared");
 });
 document.getElementById("setTrUp").addEventListener("click",()=>{
   const sl=state.setlists.find(s=>s.id===curSetlist);if(!sl)return;
@@ -1371,7 +1380,7 @@ function openSongContext(songId,fromScreen){
     const played=playedSongs.has(songId);
     mkBtn(played?"↺":"✓",played?"Mark unplayed":"Mark as played",false,()=>{
       if(playedSongs.has(songId))playedSongs.delete(songId);else playedSongs.add(songId);
-      renderSetSongs();
+      savePlayed(curSetlist);renderSetSongs();
     });
     mkBtn("↗","Add / move to another set",false,()=>openAdder(songId));
     mkBtn("✕","Remove from this set",false,()=>{
