@@ -62,6 +62,12 @@
   v2026.07.12.001  Update banner: professional slide-down banner on the home screen names the
                    incoming version (SW GET_VERSION handshake), auto-hides after 6s; a ⟳ button
                    stays in the header to re-open it and authorize the refresh. Replaces the pill.
+  v2026.07.12.002  Security/robustness hardening (audit tier 1): esc() escapes quotes and all
+                   song/setlist ids are escaped into attributes (closes stored-XSS via restored
+                   backups); isValidState() guards restore + boot so a malformed file can't brick
+                   the app; navigator.storage.persist() requested; debounced save flushes on
+                   hide/pagehide; localStorage fallback read when IDB is empty; merge-import
+                   tolerates non-string fields; restore re-hydrates font/speed/flats.
 -->
 <html lang="en">
 <head>
@@ -326,7 +332,7 @@
 <div class="app">
   <header>
     <button class="back" id="backBtn" style="display:none">‹ <span id="backLabel">Back</span></button>
-    <div class="brand" id="brand"><span class="dot"></span>SetList69<small>v2026.07.12.001</small></div>
+    <div class="brand" id="brand"><span class="dot"></span>SetList69<small>v2026.07.12.002</small></div>
     <div class="htitle" id="headerTitle" style="display:none"></div>
     <div class="spacer"></div>
     <button class="iconbtn" id="updateHdr" title="Update ready" hidden>⟳</button>
@@ -552,6 +558,23 @@ function persist(){if(saveTimer)clearTimeout(saveTimer);saveTimer=setTimeout(asy
   try{await idbSet(KEYNAME,JSON.parse(JSON.stringify(state)));}
   catch(e){canPersist=false;try{localStorage.setItem("chordstand.fallback",JSON.stringify(state));}catch(_){toast("⚠ Storage blocked — back up to a file");}}
 },250);}
+/* Flush the debounced write immediately when the page is about to be hidden/killed
+   (iOS backgrounding, "Update now" reload) so the last edit isn't lost in the 250ms window.
+   localStorage.setItem is synchronous and guaranteed to complete; the IDB write is best-effort. */
+function flushPersist(){
+  if(!saveTimer)return;
+  clearTimeout(saveTimer);saveTimer=null;
+  try{localStorage.setItem("chordstand.fallback",JSON.stringify(state));}catch(_){}
+  try{idbSet(KEYNAME,JSON.parse(JSON.stringify(state)));}catch(_){}
+}
+/* Structural guard for anything loaded from disk (restore file, IndexedDB, localStorage).
+   Rejects malformed payloads BEFORE they replace and persist over good state, which would
+   otherwise throw in every render and brick the app across reloads. */
+function isValidState(d){
+  return !!d&&typeof d==="object"&&Array.isArray(d.songs)&&Array.isArray(d.setlists)
+    &&d.songs.every(s=>s&&typeof s==="object"&&typeof s.id==="string"&&typeof s.title==="string")
+    &&d.setlists.every(sl=>sl&&typeof sl==="object"&&typeof sl.id==="string"&&Array.isArray(sl.songIds));
+}
 
 /* ===== seed (public-domain songs) ===== */
 function seed(){
@@ -599,7 +622,7 @@ function pitchClass(key){const m=(key||"").match(CHORD_RE);return m&&m[1]in IDX?
 function keyColor(key){const pc=pitchClass(key);if(pc<0)return"#7a7160";const hue=(pc*30)%360;return"hsl("+hue+" 52% 42%)";}
 
 /* ===== parse to segment-lines (chords stay raw; transposed at render) ===== */
-function esc(s){return (s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");}
+function esc(s){return (s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#39;");}
 function parseSong(song){
   const meta={title:song.title||"",sub:song.sub||"",key:song.key||""};
   const lines=(song.body||"").replace(/\r/g,"").split("\n");
@@ -737,7 +760,8 @@ function renderSetlists(){
     const keys=[...new Set(sl.songIds.map(id=>(state.songs.find(s=>s.id===id)||{}).key).filter(Boolean))];
     const dots=keys.slice(0,6).map(k=>'<span style="display:inline-block;width:.6rem;height:.6rem;border-radius:50%;background:'+keyColor(k)+';margin-right:2px"></span>').join("");
     const notesEl=sl.notes?'<div class="sl-notes">'+esc(sl.notes)+'</div>':"";
-    return '<div class="card"><div class="ord"><button data-setup="'+i+'">▲</button><button data-setdown="'+i+'">▼</button></div><div class="meta open-set" data-id="'+sl.id+'"><div class="t">'+esc(sl.name)+'</div><div class="s">'+n+' song'+(n!==1?"s":"")+' &nbsp;'+dots+'</div>'+notesEl+'</div><button class="iconbtn" data-editset="'+sl.id+'" title="Settings">✎</button><button class="rm" data-delset="'+sl.id+'" title="Delete setlist">✕</button></div>';
+    const eid=esc(sl.id);
+    return '<div class="card"><div class="ord"><button data-setup="'+i+'">▲</button><button data-setdown="'+i+'">▼</button></div><div class="meta open-set" data-id="'+eid+'"><div class="t">'+esc(sl.name)+'</div><div class="s">'+n+' song'+(n!==1?"s":"")+' &nbsp;'+dots+'</div>'+notesEl+'</div><button class="iconbtn" data-editset="'+eid+'" title="Settings">✎</button><button class="rm" data-delset="'+eid+'" title="Delete setlist">✕</button></div>';
   }).join("");
 }
 function renderSetSongs(){
@@ -765,7 +789,7 @@ function renderAllSongs(){
   const songs=q?all.filter(s=>s.title.toLowerCase().includes(q)||(s.sub||"").toLowerCase().includes(q)):all;
   if(!all.length){wrap.innerHTML='<div class="empty"><div class="big">♪</div>No songs yet.</div>';return;}
   if(!songs.length){wrap.innerHTML='<div class="empty">No matches.</div>';return;}
-  wrap.innerHTML=songs.map(s=>'<div class="card open-allsong" data-id="'+s.id+'"><div class="meta"><div class="t">'+esc(s.title)+'</div><div class="s">'+esc(s.sub||"")+'</div></div>'+(s.key?'<span class="pill" style="background:'+keyColor(s.key)+'">'+esc(s.key)+'</span>':"")+'<button class="iconbtn addsong" data-addid="'+s.id+'" title="Add to a setlist">⊕</button><span class="chev">›</span></div>').join("");
+  wrap.innerHTML=songs.map(s=>{const eid=esc(s.id);return '<div class="card open-allsong" data-id="'+eid+'"><div class="meta"><div class="t">'+esc(s.title)+'</div><div class="s">'+esc(s.sub||"")+'</div></div>'+(s.key?'<span class="pill" style="background:'+keyColor(s.key)+'">'+esc(s.key)+'</span>':"")+'<button class="iconbtn addsong" data-addid="'+eid+'" title="Add to a setlist">⊕</button><span class="chev">›</span></div>';}).join("");
 }
 
 /* ===== open song ===== */
@@ -823,7 +847,11 @@ const updateScrollProg=(function(){
 /* ===== wake lock ===== */
 async function requestWake(){try{if("wakeLock"in navigator)wakeLock=await navigator.wakeLock.request("screen");}catch(e){}}
 function releaseWake(){try{if(wakeLock){wakeLock.release();wakeLock=null;}}catch(e){}}
-document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible"&&screen==="song")requestWake();});
+document.addEventListener("visibilitychange",()=>{
+  if(document.visibilityState==="visible"){if(screen==="song")requestWake();}
+  else flushPersist();   // backgrounded — commit any pending save before the OS can freeze us
+});
+window.addEventListener("pagehide",flushPersist);
 
 /* ===== editor ===== */
 function openEditor(id,ret){editingId=id;editorReturn=ret||screen;
@@ -862,7 +890,7 @@ function renderPicker(){
   if(!all.length){list.innerHTML='<div class="empty">No songs yet — create one.</div>';return;}
   if(!songs.length){list.innerHTML='<div class="empty">No matches.</div>';return;}
   list.innerHTML=songs.map(s=>{const inSet=sl.songIds.includes(s.id);
-    return '<div class="pickrow '+(inSet?"added":"")+'"><div class="meta"><div class="t">'+esc(s.title)+'</div><div class="s">'+esc(s.sub||"")+(s.key?" · "+esc(s.key):"")+'</div></div>'+(s.key?'<span class="pill" style="background:'+keyColor(s.key)+'">'+esc(s.key)+'</span>':"")+'<button class="pickadd" data-add="'+s.id+'">'+(inSet?"✓":"＋")+'</button></div>';
+    return '<div class="pickrow '+(inSet?"added":"")+'"><div class="meta"><div class="t">'+esc(s.title)+'</div><div class="s">'+esc(s.sub||"")+(s.key?" · "+esc(s.key):"")+'</div></div>'+(s.key?'<span class="pill" style="background:'+keyColor(s.key)+'">'+esc(s.key)+'</span>':"")+'<button class="pickadd" data-add="'+esc(s.id)+'">'+(inSet?"✓":"＋")+'</button></div>';
   }).join("");
 }
 
@@ -880,7 +908,7 @@ function renderAdder(){
   if(!state.setlists.length){wrap.innerHTML='<div class="empty">No setlists yet — go back and create one first.</div>';return;}
   wrap.innerHTML=state.setlists.map(sl=>{
     const inSet=sl.songIds.includes(addingSongId);
-    return '<div class="adderrow"><div class="meta"><div class="t">'+esc(sl.name)+'</div><div class="s">'+sl.songIds.length+' song'+(sl.songIds.length!==1?"s":"")+'</div></div><button class="adderbtn '+(inSet?"in":"")+('" data-addersl="'+sl.id+'">')+(inSet?"✓":"＋")+'</button></div>';
+    return '<div class="adderrow"><div class="meta"><div class="t">'+esc(sl.name)+'</div><div class="s">'+sl.songIds.length+' song'+(sl.songIds.length!==1?"s":"")+'</div></div><button class="adderbtn '+(inSet?"in":"")+('" data-addersl="'+esc(sl.id)+'">')+(inSet?"✓":"＋")+'</button></div>';
   }).join("");
 }
 
@@ -925,7 +953,8 @@ async function shareSetlist(id){
    Song identity = title+sub, case-insensitive, trimmed. Existing songs are reused
    (their body/key/capo are NOT overwritten); unknown songs are added with fresh ids. */
 function mergeSetImport(d){
-  const keyOf=s=>((s.title||"").trim().toLowerCase())+"\u0000"+((s.sub||"").trim().toLowerCase());
+  const str=v=>(typeof v==="string"?v:v==null?"":String(v));   // tolerate non-string fields in an untrusted payload
+  const keyOf=s=>(str(s.title).trim().toLowerCase())+"\u0000"+(str(s.sub).trim().toLowerCase());
   const byKey=new Map(state.songs.map(s=>[keyOf(s),s.id]));
   const idMap=new Map();let added=0;
   for(const song of d.songs){
@@ -933,9 +962,10 @@ function mergeSetImport(d){
     const existing=byKey.get(keyOf(song));
     if(existing){idMap.set(song.id,existing);continue;}
     const nid="s"+Date.now()+Math.floor(Math.random()*1e4);
-    state.songs.push({id:nid,title:(song.title||"Untitled"),sub:song.sub||"",key:song.key||"",
-      capo:song.capo||0,body:song.body||"",
-      ...(song.defaultTranspose?{defaultTranspose:song.defaultTranspose}:{})});
+    const cp=parseInt(song.capo,10);
+    state.songs.push({id:nid,title:str(song.title)||"Untitled",sub:str(song.sub),key:str(song.key),
+      capo:Number.isFinite(cp)?cp:0,body:str(song.body),
+      ...(Number.isFinite(parseInt(song.defaultTranspose,10))?{defaultTranspose:parseInt(song.defaultTranspose,10)}:{})});
     byKey.set(keyOf(song),nid);          // dedupes repeats within the same payload
     idMap.set(song.id,nid);added++;
   }
@@ -954,9 +984,14 @@ function restoreData(file){
         toast("Setlist added ("+added+" new song"+(added!==1?"s":"")+")");
       });return;
     }
-    if(!d.songs||!d.setlists)throw 0;
+    if(!isValidState(d))throw 0;
     showConfirm("Restore backup","Replace all current songs and setlists with this backup?","Restore",()=>{
-      state=d;if(!state.theme)state.theme="dark";persist();applyTheme();
+      state=d;if(!state.theme)state.theme="dark";
+      // re-hydrate the live preference globals from the restored state (boot does this; a mid-session restore must too)
+      if(state.fontSize!=null){fontSize=state.fontSize;document.getElementById("sheet").style.setProperty("--sheet-size",fontSize+"rem");}
+      if(state.scrollSpeed!=null){scrollSpeed=state.scrollSpeed;document.getElementById("speedVal").textContent=scrollSpeed;}
+      if(state.preferFlats!=null){preferFlats=state.preferFlats;document.getElementById("flatBtn").classList.toggle("on",preferFlats);}
+      playedSongs=new Set();persist();applyTheme();
       renderSetlists();renderAllSongs();show("setlists");toast("Restored");
     });
   }catch(e){toast("⚠ Not a valid backup file");}};r.readAsText(file);}
@@ -1519,8 +1554,15 @@ document.getElementById("closeSongCtx").addEventListener("click",closeSongContex
 
 /* ===== boot ===== */
 async function boot(){
-  try{const saved=await idbGet(KEYNAME);if(saved&&saved.songs)state=saved;}
-  catch(e){canPersist=false;try{const f=localStorage.getItem("chordstand.fallback");if(f)state=JSON.parse(f);}catch(_){}}
+  // Ask the browser to keep our IndexedDB from being evicted under storage pressure (design priority #1).
+  try{if(navigator.storage&&navigator.storage.persist)navigator.storage.persist();}catch(_){}
+  let loaded=null;
+  try{const saved=await idbGet(KEYNAME);if(isValidState(saved))loaded=saved;}
+  catch(e){canPersist=false;}
+  if(!loaded){ // IDB empty, invalid, or threw — try the localStorage fallback before seeding
+    try{const f=localStorage.getItem("chordstand.fallback");if(f){const p=JSON.parse(f);if(isValidState(p))loaded=p;}}catch(_){}
+  }
+  if(loaded)state=loaded;
   if(!state.songs)state=seed();if(!state.setlists)state.setlists=[];if(!state.theme)state.theme="dark";
   if(state.fontSize!=null)fontSize=state.fontSize;
   if(state.scrollSpeed!=null)scrollSpeed=state.scrollSpeed;
