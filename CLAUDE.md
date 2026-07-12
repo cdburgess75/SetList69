@@ -1,6 +1,6 @@
 # SetList69 — Handoff Document
 
-> For whoever (or whatever) picks this up next, including Claude Code. This describes the project as of revision **v2026.07.04.011**. Kept in the repo as `CLAUDE.md` so Claude Code reads it automatically as project context.
+> For whoever (or whatever) picks this up next, including Claude Code. This describes the project as of revision **v2026.07.12.001**. Kept in the repo as `CLAUDE.md` so Claude Code reads it automatically as project context.
 
 -----
 
@@ -88,6 +88,9 @@ v2026.07.04.010  "Played" marks on set songs (ham-radio "worked" styling): dim r
                  strikethrough, "✓ Played" pill; auto-mark on open, long-press toggle, ↺ Reset.
 v2026.07.04.011  "Played" marks persist per-set in localStorage ("setlist69.played"), surviving
                  reloads/backgrounding; kept out of state so backups stay clean.
+v2026.07.12.001  Update banner replaces the pill: slides down on the home screen naming the new
+                 version (SW GET_VERSION postMessage handshake), auto-hides after 6s; header ⟳
+                 persists to re-open/authorize. Never auto-reloads; never shown mid-song.
 ```
 
 A GitHub Actions workflow (`.github/workflows/check.yml`) enforces the version discipline on every push: it syntax-checks the extracted inline script and `sw.js`, **fails if the `<small>` brand version ≠ `sw.js` CACHE version**, and fails on duplicate element ids in the markup.

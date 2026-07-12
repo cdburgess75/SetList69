@@ -59,6 +59,9 @@
   v2026.07.04.011  "Played" marks now persist per-set across reloads / backgrounding (localStorage,
                    key "setlist69.played"), surviving the whole gig; clear only via ↺ Reset.
                    Kept out of state so backups stay clean.
+  v2026.07.12.001  Update banner: professional slide-down banner on the home screen names the
+                   incoming version (SW GET_VERSION handshake), auto-hides after 6s; a ⟳ button
+                   stays in the header to re-open it and authorize the refresh. Replaces the pill.
 -->
 <html lang="en">
 <head>
@@ -303,10 +306,18 @@
     color:var(--bg);padding:.6rem 1rem;border-radius:30px;font-size:.85rem;font-weight:600;opacity:0;
     pointer-events:none;transition:.25s;z-index:60;max-width:90vw;text-align:center;}
   .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
-  .update-pill{position:fixed;left:50%;bottom:5.2rem;transform:translateX(-50%);z-index:59;
-    background:var(--accent);color:#fff;font-weight:700;font-size:.85rem;
-    padding:.6rem 1.1rem;border-radius:30px;box-shadow:0 6px 22px #0007;}
-  .update-pill[hidden]{display:none;}
+  .update-banner{position:fixed;left:0;right:0;top:0;z-index:58;display:flex;align-items:center;gap:.7rem;
+    padding:.7rem 1rem;padding-top:max(.7rem,env(safe-area-inset-top));
+    background:var(--panel);border-bottom:2px solid var(--chord);box-shadow:0 6px 24px #0007;
+    transform:translateY(-110%);transition:transform .35s cubic-bezier(.2,.8,.25,1);}
+  .update-banner.show{transform:translateY(0);}
+  .ub-dot{width:.55rem;height:.55rem;border-radius:50%;background:var(--chord);box-shadow:0 0 10px var(--chord);flex-shrink:0;}
+  .ub-text{flex:1;font-size:.82rem;color:var(--muted);line-height:1.35;min-width:0;}
+  .ub-text b{color:var(--ink);display:block;font-size:.9rem;}
+  .ub-text span{font-family:var(--mono);font-size:.72rem;}
+  .ub-go{background:var(--accent);color:#fff;font-weight:700;font-size:.82rem;padding:.5rem .9rem;border-radius:9px;flex-shrink:0;}
+  .ub-go:hover{background:var(--accent2);}
+  #updateHdr{color:var(--chord);}
   ::-webkit-scrollbar{width:7px;height:7px;}
   ::-webkit-scrollbar-thumb{background:#5a513c66;border-radius:8px;}
 </style>
@@ -315,9 +326,10 @@
 <div class="app">
   <header>
     <button class="back" id="backBtn" style="display:none">‹ <span id="backLabel">Back</span></button>
-    <div class="brand" id="brand"><span class="dot"></span>SetList69<small>v2026.07.04.011</small></div>
+    <div class="brand" id="brand"><span class="dot"></span>SetList69<small>v2026.07.12.001</small></div>
     <div class="htitle" id="headerTitle" style="display:none"></div>
     <div class="spacer"></div>
+    <button class="iconbtn" id="updateHdr" title="Update ready" hidden>⟳</button>
     <button class="iconbtn" id="menuBtn" title="Tools &amp; backup">≡</button>
     <button class="iconbtn" id="themeBtn" title="Light / dark mode">☾</button>
   </header>
@@ -521,7 +533,11 @@
 </div>
 
 <div class="toast" id="toast"></div>
-<button class="update-pill" id="updatePill" hidden>⟳ Update ready — tap to refresh</button>
+<div class="update-banner" id="updateBanner" role="status" aria-live="polite">
+  <span class="ub-dot"></span>
+  <div class="ub-text"><b>Update ready</b><span id="updateVer">A new version is available</span></div>
+  <button class="ub-go" id="updateGo">Update now</button>
+</div>
 
 <script>
 "use strict";
@@ -1095,11 +1111,21 @@ function parseImport(text,fallbackName){
 
 /* ===== misc ===== */
 let toastT;function toast(m){const t=document.getElementById("toast");t.textContent=m;t.classList.add("show");clearTimeout(toastT);toastT=setTimeout(()=>t.classList.remove("show"),1900);}
-/* update pill: set by the service-worker block, surfaced only on the home screen
-   (never mid-song — an unexpected reload during a set would be worse than a stale version) */
-let updateReady=false;
+/* Update banner: set by the service-worker block. Flashes once on the home screen
+   (never mid-song — an unexpected reload during a set would be worse than a stale version),
+   auto-hides after 6s; the header ⟳ stays visible so the update can still be applied later. */
+let updateReady=false,updateVersion="",updateFlashed=false,updateBannerT=null;
+function showUpdateBanner(){
+  const b=document.getElementById("updateBanner");
+  if(updateVersion)document.getElementById("updateVer").textContent=updateVersion+" is available";
+  b.classList.add("show");
+  clearTimeout(updateBannerT);
+  updateBannerT=setTimeout(()=>b.classList.remove("show"),6000);
+}
 function maybeShowUpdatePill(){
-  if(updateReady&&screen==="setlists")document.getElementById("updatePill").hidden=false;
+  if(!updateReady)return;
+  document.getElementById("updateHdr").hidden=false;
+  if(screen==="setlists"&&!updateFlashed){updateFlashed=true;showUpdateBanner();}
 }
 function applyTheme(){const light=state.theme==="light";document.documentElement.setAttribute("data-theme",light?"light":"dark");
   const b=document.getElementById("themeBtn");if(b)b.textContent=light?"☀":"☾";}
@@ -1584,15 +1610,25 @@ document.getElementById("installGo").addEventListener("click",async()=>{
 document.getElementById("installDismiss").addEventListener("click",dismissInstall);
 
 /* ===== service worker + update notification ===== */
-document.getElementById("updatePill").addEventListener("click",()=>location.reload());
+document.getElementById("updateGo").addEventListener("click",()=>location.reload());
+document.getElementById("updateHdr").addEventListener("click",showUpdateBanner);
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('./sw.js');
+  // The new worker answers GET_VERSION with its cache version so the banner can name it.
+  navigator.serviceWorker.addEventListener('message',e=>{
+    if(e.data&&e.data.type==='VERSION'){
+      updateVersion=e.data.version;
+      document.getElementById("updateVer").textContent=updateVersion+" is available";
+    }
+  });
   // sw.js does skipWaiting()+clients.claim(), so a new version fires controllerchange
   // once it has activated (old cache already purged) — safe to offer a reload then.
   let hadController=!!navigator.serviceWorker.controller;
   navigator.serviceWorker.addEventListener('controllerchange',()=>{
     if(!hadController){hadController=true;return;} // first-ever install claiming the page — not an update
-    updateReady=true;maybeShowUpdatePill();
+    updateReady=true;
+    try{navigator.serviceWorker.controller.postMessage('GET_VERSION');}catch(e){}
+    maybeShowUpdatePill();
   });
 }
 </script>

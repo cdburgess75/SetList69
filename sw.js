@@ -1,4 +1,4 @@
-const CACHE = 'setlist69-v2026.07.04.011';
+const CACHE = 'setlist69-v2026.07.12.001';
 const PRECACHE = [
   './',
   './setlist69.html',
@@ -28,6 +28,13 @@ self.addEventListener('activate', e => {
       ))
       .then(() => self.clients.claim())
   );
+});
+
+// Lets the page ask which version just took over, so the update banner can name it.
+self.addEventListener('message', e => {
+  if (e.data === 'GET_VERSION' && e.source) {
+    e.source.postMessage({ type: 'VERSION', version: CACHE.replace('setlist69-', '') });
+  }
 });
 
 self.addEventListener('fetch', e => {

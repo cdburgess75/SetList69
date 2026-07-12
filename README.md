@@ -7,7 +7,7 @@
 **An offline-first chord & lyric performance app for gigging musicians — the entire application is one hand-written HTML file you own, host, and control.**
 
 [![CI](https://github.com/cdburgess75/SetList69/actions/workflows/check.yml/badge.svg)](https://github.com/cdburgess75/SetList69/actions/workflows/check.yml)
-[![Version](https://img.shields.io/badge/version-v2026.07.04.011-informational?style=flat-square)](#versioning)
+[![Version](https://img.shields.io/badge/version-v2026.07.12.001-informational?style=flat-square)](#versioning)
 [![PWA](https://img.shields.io/badge/PWA-installable-8250df?style=flat-square)](#installation)
 [![Dependencies](https://img.shields.io/badge/runtime_dependencies-0-f5a623?style=flat-square)](#architecture)
 [![License](https://img.shields.io/badge/license-TBD-lightgrey?style=flat-square)](#license)
