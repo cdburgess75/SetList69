@@ -75,7 +75,7 @@ SetList69 stores songs (lyrics with chords), organizes them into setlists, and r
 SetList69/
 ├── setlist69.html          # The entire application — HTML, CSS, and JS in one file
 ├── sw.js                   # Service worker: cache-first, precaches all assets
-├── manifest.json           # PWA manifest (icons, standalone display)
+├── manifest.json           # PWA manifest (id, icons, screenshots, standalone)
 ├── index.html              # Redirect stub → setlist69.html
 ├── fonts/                  # Self-hosted WOFF2 (Fraunces, Hanken Grotesk, JetBrains Mono)
 ├── icons/                  # App icons incl. Android-maskable variant
@@ -84,7 +84,7 @@ SetList69/
 │   ├── shots.js            # Playwright helper — regenerates README screenshots
 │   └── screenshots/
 └── .github/workflows/
-    └── check.yml           # CI: syntax check, version-match check, duplicate-id check
+    └── check.yml           # CI: syntax, version-match, duplicate-id, manifest+precache checks
 ```
 
 Inside `setlist69.html`, the code reads top to bottom: persistence (IndexedDB + localStorage fallback) → seed data → music core (transposition, chord detection) → parsing/rendering engine → screen router → renderers → import/export → event wiring. A single in-memory `state` object holds everything and is persisted whole:
@@ -112,7 +112,7 @@ Songs are a shared master store; setlists reference them by id, so editing a son
 
 1. Open **[cdburgess75.github.io/SetList69](https://cdburgess75.github.io/SetList69/)** — Safari on iPhone/iPad, Chrome on Android
 2. **iPhone:** Share → *Add to Home Screen* · **Android:** ⋮ → *Add to Home Screen*
-3. Launch it once with signal; it works fully offline afterward. When a new version ships, the app shows an *"⟳ Update ready — tap to refresh"* pill — no cache clearing needed.
+3. Launch it once with signal; it works fully offline afterward. When a new version ships, the app slides down an *"Update ready"* banner naming the new version (and keeps a ⟳ button in the header to apply it) — no cache clearing needed.
 
 ### Self-hosted
 
