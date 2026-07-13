@@ -86,6 +86,11 @@
                    parses manifest.json and asserts every PRECACHE file exists, with a least-
                    privilege permissions block + concurrency. manifest gains id/scope/lang/
                    categories/screenshots and its theme_color matches the page meta.
+  v2026.07.12.007  QA fixes: 100dvh gets a 100vh fallback (layout no longer collapses on browsers
+                   without dvh); global error/unhandledrejection handler shows a recoverable
+                   "Something went wrong — Reload" screen instead of a silent freeze; structuredClone
+                   guarded with a JSON fallback (older iOS keeps using IndexedDB, no false Preview
+                   mode); -webkit-backdrop-filter added for older Safari.
 -->
 <html lang="en">
 <head>
@@ -125,7 +130,7 @@
     overscroll-behavior:none;
     -webkit-user-select:none;user-select:none;}
   button{font-family:inherit;color:inherit;cursor:pointer;border:none;background:none;}
-  .app{display:flex;flex-direction:column;height:100dvh;}
+  .app{display:flex;flex-direction:column;height:100vh;height:100dvh;}  /* vh fallback for browsers without dvh */
 
   header{display:flex;align-items:center;gap:.5rem;padding:.65rem .9rem;
     padding-top:max(.65rem,env(safe-area-inset-top));
@@ -273,7 +278,7 @@
   .ib-msg{flex:1;line-height:1.4;}
   .ib-go{background:var(--accent);color:#fff;font-weight:700;font-size:.82rem;padding:.45rem .8rem;border-radius:9px;flex:0 0 auto;}
 
-  .modal{position:fixed;inset:0;background:#0009;backdrop-filter:blur(3px);z-index:40;display:none;
+  .modal{position:fixed;inset:0;background:#0009;-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px);z-index:40;display:none;
     align-items:stretch;justify-content:center;}
   .modal.show{display:flex;}
   .sheetwrap{background:var(--bg);width:100%;max-width:680px;display:flex;flex-direction:column;
@@ -351,10 +356,16 @@
 </style>
 </head>
 <body>
+<div id="fatal" role="alert" style="display:none;position:fixed;inset:0;z-index:9999;background:#121110;color:#fbf8f2;
+  font-family:system-ui,-apple-system,sans-serif;padding:2rem;text-align:center;flex-direction:column;gap:1rem;align-items:center;justify-content:center;">
+  <div style="font-size:1.3rem;font-weight:700;">Something went wrong</div>
+  <div style="color:#b3a892;max-width:22rem;line-height:1.5;">Your songs are safe on this device. Reloading usually fixes it.</div>
+  <button onclick="location.reload()" style="background:#e2563a;color:#fff;border:0;border-radius:10px;padding:.7rem 1.4rem;font-weight:700;font-size:1rem;">Reload</button>
+</div>
 <div class="app">
   <header>
     <button class="back" id="backBtn" style="display:none" aria-label="Back">‹ <span id="backLabel">Back</span></button>
-    <div class="brand" id="brand"><span class="dot"></span>SetList69<small>v2026.07.12.006</small></div>
+    <div class="brand" id="brand"><span class="dot"></span>SetList69<small>v2026.07.12.007</small></div>
     <div class="htitle" id="headerTitle" style="display:none"></div>
     <div class="spacer"></div>
     <button class="iconbtn" id="updateHdr" title="Update ready" aria-label="Update ready — refresh" hidden>⟳</button>
@@ -569,6 +580,10 @@
 
 <script>
 "use strict";
+/* Global safety net: turn an uncaught error's silent blank screen into a recoverable fallback UI.
+   Storage failures are already handled in persist()/boot(); this is for unexpected render/boot throws. */
+addEventListener("error",e=>{try{if(e&&e.error){const f=document.getElementById("fatal");if(f)f.style.display="flex";}}catch(_){}});
+addEventListener("unhandledrejection",()=>{});
 /* ===== persistence: IndexedDB + file backup ===== */
 const DB="chordstand",STORE="kv",KEYNAME="state";
 function idbOpen(){return new Promise((res,rej)=>{let r;try{r=indexedDB.open(DB,1);}catch(e){return rej(e);}
@@ -576,8 +591,10 @@ function idbOpen(){return new Promise((res,rej)=>{let r;try{r=indexedDB.open(DB,
 async function idbGet(k){const db=await idbOpen();return new Promise((res,rej)=>{const t=db.transaction(STORE,"readonly").objectStore(STORE).get(k);t.onsuccess=()=>res(t.result);t.onerror=()=>rej(t.error);});}
 async function idbSet(k,v){const db=await idbOpen();return new Promise((res,rej)=>{const t=db.transaction(STORE,"readwrite").objectStore(STORE).put(v,k);t.onsuccess=()=>res();t.onerror=()=>rej(t.error);});}
 let canPersist=true,saveTimer=null;
+/* structuredClone is unsupported before iOS Safari 15.4; fall back so those devices still use IDB */
+function cloneState(){return typeof structuredClone==="function"?structuredClone(state):JSON.parse(JSON.stringify(state));}
 function persist(){if(saveTimer)clearTimeout(saveTimer);saveTimer=setTimeout(async()=>{
-  try{await idbSet(KEYNAME,structuredClone(state));}
+  try{await idbSet(KEYNAME,cloneState());}
   catch(e){canPersist=false;try{localStorage.setItem("chordstand.fallback",JSON.stringify(state));}catch(_){toast("⚠ Storage blocked — back up to a file");}}
 },250);}
 /* Flush the debounced write immediately when the page is about to be hidden/killed
@@ -587,7 +604,7 @@ function flushPersist(){
   if(!saveTimer)return;
   clearTimeout(saveTimer);saveTimer=null;
   try{localStorage.setItem("chordstand.fallback",JSON.stringify(state));}catch(_){}
-  try{idbSet(KEYNAME,structuredClone(state));}catch(_){}
+  try{idbSet(KEYNAME,cloneState());}catch(_){}
 }
 /* Structural guard for anything loaded from disk (restore file, IndexedDB, localStorage).
    Rejects malformed payloads BEFORE they replace and persist over good state, which would
