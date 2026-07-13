@@ -73,11 +73,15 @@
                    entries, and skipped-entry counts surface in the toast; collision-proof song
                    ids (session counter) for large imports; window.open uses noopener; stage-safe
                    back guard disarms on song change; drag-reorder ignores a second finger.
+  v2026.07.12.004  Accessibility (audit tier-3): pinch-zoom re-enabled; aria-labels on all
+                   icon-only buttons (static + rendered); modals get role=dialog/aria-modal,
+                   Escape-to-close, a Tab focus-trap, and focus save/restore; toast is aria-live;
+                   --faint lifted to WCAG AA; prefers-reduced-motion honored; focus-visible ring.
 -->
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#16140f">
@@ -91,7 +95,7 @@
   :root{
     /* dark mode: near-black bg, bright white lyrics, bright gold chords */
     --bg:#121110; --panel:#1d1b18; --panel2:#272420; --line:#46413640;
-    --ink:#fbf8f2; --muted:#b3a892; --faint:#7d765f;
+    --ink:#fbf8f2; --muted:#b3a892; --faint:#8c846b;   /* faint lifted to ≥AA on dark bg/panel */
     --chord:#ffc24d; --accent:#e2563a; --accent2:#ef6a48; --ok:#86c06c;
     --green:#AED8CA; --green-dim:#2E8B7A;   /* "played" strike + tag (bright on dark) */
     --ui:'Hanken Grotesk',system-ui,-apple-system,sans-serif;
@@ -102,7 +106,7 @@
   [data-theme="light"]{
     /* light mode: warm white bg, near-black lyrics, deep red-orange chords */
     --bg:#fbf9f3; --panel:#ffffff; --panel2:#f1ece1; --line:#1a160d1f;
-    --ink:#181410; --muted:#5c5547; --faint:#938b78;
+    --ink:#181410; --muted:#5c5547; --faint:#6f6857;   /* ≥AA on light bg/panel */
     --chord:#bd3c1c; --accent:#b53e26; --accent2:#c4502f; --ok:#3f8f4f;
     --green:#2E8B7A; --green-dim:#AED8CA;   /* swapped so the pair still reads on light bg */
   }
@@ -331,18 +335,23 @@
   #updateHdr{color:var(--chord);}
   ::-webkit-scrollbar{width:7px;height:7px;}
   ::-webkit-scrollbar-thumb{background:#5a513c66;border-radius:8px;}
+  /* keyboard focus ring (mouse/touch clicks stay ring-free via :focus-visible) */
+  :focus-visible{outline:2px solid var(--chord);outline-offset:2px;border-radius:4px;}
+  @media (prefers-reduced-motion: reduce){
+    *,*::before,*::after{animation-duration:.001ms!important;animation-iteration-count:1!important;transition-duration:.001ms!important;scroll-behavior:auto!important;}
+  }
 </style>
 </head>
 <body>
 <div class="app">
   <header>
-    <button class="back" id="backBtn" style="display:none">‹ <span id="backLabel">Back</span></button>
-    <div class="brand" id="brand"><span class="dot"></span>SetList69<small>v2026.07.12.003</small></div>
+    <button class="back" id="backBtn" style="display:none" aria-label="Back">‹ <span id="backLabel">Back</span></button>
+    <div class="brand" id="brand"><span class="dot"></span>SetList69<small>v2026.07.12.004</small></div>
     <div class="htitle" id="headerTitle" style="display:none"></div>
     <div class="spacer"></div>
-    <button class="iconbtn" id="updateHdr" title="Update ready" hidden>⟳</button>
-    <button class="iconbtn" id="menuBtn" title="Tools &amp; backup">≡</button>
-    <button class="iconbtn" id="themeBtn" title="Light / dark mode">☾</button>
+    <button class="iconbtn" id="updateHdr" title="Update ready" aria-label="Update ready — refresh" hidden>⟳</button>
+    <button class="iconbtn" id="menuBtn" title="Tools &amp; backup" aria-label="Tools and backup">≡</button>
+    <button class="iconbtn" id="themeBtn" title="Light / dark mode" aria-label="Toggle light or dark theme">☾</button>
   </header>
 
   <main>
@@ -350,18 +359,18 @@
       <div class="install-banner" id="installBanner" hidden>
         <span class="ib-msg" id="installMsg">Install SetList69 for reliable offline gigs</span>
         <button class="ib-go" id="installGo">Install</button>
-        <button class="iconbtn" id="installDismiss" title="Dismiss">✕</button>
+        <button class="iconbtn" id="installDismiss" title="Dismiss" aria-label="Dismiss install banner">✕</button>
       </div>
       <div class="listhead">
         <h2>Setlists</h2><span class="count" id="setlistCount"></span>
         <div class="spacer"></div>
-        <button class="iconbtn" id="newSetlist" title="New setlist" style="font-size:1.4rem;color:var(--accent)">+</button>
+        <button class="iconbtn" id="newSetlist" title="New setlist" aria-label="New setlist" style="font-size:1.4rem;color:var(--accent)">+</button>
       </div>
       <div id="setlistList"></div>
       <div class="listhead" style="margin-top:1.6rem">
         <h2>Songs</h2><span class="count" id="allCount"></span>
         <div class="spacer"></div>
-        <button class="iconbtn" id="newSongHome" title="New song" style="font-size:1.4rem;color:var(--accent)">+</button>
+        <button class="iconbtn" id="newSongHome" title="New song" aria-label="New song" style="font-size:1.4rem;color:var(--accent)">+</button>
       </div>
       <div class="searchbar"><input type="search" id="allSearch" placeholder="Search songs…" autocomplete="off"></div>
       <div id="allSongList"></div>
@@ -370,7 +379,7 @@
     <section class="screen" id="setSongsScreen">
       <div class="set-notes" id="setNotes"></div>
       <div class="set-toolbar" id="setToolbar">
-        <div class="ctl"><button id="setTrDown">♭−</button><span class="val" id="setTrVal">±0</span><button id="setTrUp">+♯</button></div>
+        <div class="ctl"><button id="setTrDown" aria-label="Set key down a semitone">♭−</button><span class="val" id="setTrVal">±0</span><button id="setTrUp" aria-label="Set key up a semitone">+♯</button></div>
         <span class="set-tr-label">set key</span>
         <div class="spacer"></div>
         <button class="stagebtn" id="resetPlayed" style="display:none;background:var(--panel2);color:var(--green);border:1px solid var(--green-dim)">↺ Reset played</button>
@@ -378,7 +387,7 @@
       </div>
       <div id="setSongList"></div>
       <button class="ghostbtn" id="addSongToSet">+ Add song to this set</button>
-      <button class="fab" id="playSet" title="Start at first song">▶</button>
+      <button class="fab" id="playSet" title="Start at first song" aria-label="Play set from the first song">▶</button>
     </section>
 
     <section class="screen" id="songView">
@@ -393,10 +402,10 @@
       <div class="swipehint" id="swipeHint">‹ swipe to change song ›</div>
       <div class="dock">
         <div class="scrollprog" id="scrollProg" hidden><div class="bar" id="scrollProgBar"></div></div>
-        <div class="ctl"><button id="prevSong">◀</button><span class="pos" id="setPos"></span><button id="nextSong">▶</button></div>
-        <div class="ctl"><button class="scrollbtn" id="scrollBtn">▶</button></div>
-        <div class="ctl"><button id="scrollDown">−</button><span class="val" id="speedVal">3</span><button id="scrollUp">+</button></div>
-        <button class="iconbtn dockgear" id="dockMore" title="Transpose, font &amp; more">⚙</button>
+        <div class="ctl"><button id="prevSong" aria-label="Previous song">◀</button><span class="pos" id="setPos"></span><button id="nextSong" aria-label="Next song">▶</button></div>
+        <div class="ctl"><button class="scrollbtn" id="scrollBtn" aria-label="Play or pause auto-scroll">▶</button></div>
+        <div class="ctl"><button id="scrollDown" aria-label="Slower auto-scroll">−</button><span class="val" id="speedVal">3</span><button id="scrollUp" aria-label="Faster auto-scroll">+</button></div>
+        <button class="iconbtn dockgear" id="dockMore" title="Transpose, font &amp; more" aria-label="Song controls">⚙</button>
       </div>
     </section>
 
@@ -405,12 +414,12 @@
 
 <div class="modal" id="editor">
   <div class="sheetwrap">
-    <div class="mhead"><h3 id="editorTitle">New Song</h3><button class="iconbtn" id="closeEditor">✕</button></div>
+    <div class="mhead"><h3 id="editorTitle">New Song</h3><button class="iconbtn" id="closeEditor" aria-label="Close">✕</button></div>
     <div class="mbody">
       <div class="row2">
         <div class="field"><label>Title</label><input id="fTitle" placeholder="Song title"></div>
         <div class="field" style="flex:0 0 5rem"><label>Key</label><input id="fKey" placeholder="G"></div>
-        <div class="field" style="flex:0 0 6.8rem"><label>Capo</label><div class="ctl"><button id="capoEdDown">−</button><span class="val" id="fCapo">0</span><button id="capoEdUp">+</button></div></div>
+        <div class="field" style="flex:0 0 6.8rem"><label>Capo</label><div class="ctl"><button id="capoEdDown" aria-label="Capo down">−</button><span class="val" id="fCapo">0</span><button id="capoEdUp" aria-label="Capo up">+</button></div></div>
       </div>
       <div class="field"><label>Artist / note</label><input id="fSub" placeholder="Artist"></div>
       <div class="field"><label>Chords &amp; lyrics</label>
@@ -432,7 +441,7 @@
 
 <div class="modal" id="picker">
   <div class="sheetwrap">
-    <div class="mhead"><h3>Add to setlist</h3><button class="iconbtn" id="closePicker">✕</button></div>
+    <div class="mhead"><h3>Add to setlist</h3><button class="iconbtn" id="closePicker" aria-label="Close">✕</button></div>
     <div class="mbody">
       <div class="row2" style="margin-bottom:.7rem">
         <button class="secbtn" id="pickerNew" style="margin-bottom:0">✏ Write new song</button>
@@ -448,7 +457,7 @@
 
 <div class="modal" id="setlistAdder">
   <div class="sheetwrap">
-    <div class="mhead"><h3 id="adderTitle">Add to setlist</h3><button class="iconbtn" id="closeAdder">✕</button></div>
+    <div class="mhead"><h3 id="adderTitle">Add to setlist</h3><button class="iconbtn" id="closeAdder" aria-label="Close">✕</button></div>
     <div class="mbody"><div id="adderList"></div></div>
     <div class="mfoot"><button class="btn primary" id="adderDone">Done</button></div>
   </div>
@@ -456,21 +465,21 @@
 
 <div class="modal bottom" id="songContextMenu">
   <div class="sheetwrap" style="max-height:55dvh">
-    <div class="mhead"><h3 id="ctxSongTitle" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:80%"></h3><button class="iconbtn" id="closeSongCtx">✕</button></div>
+    <div class="mhead"><h3 id="ctxSongTitle" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:80%"></h3><button class="iconbtn" id="closeSongCtx" aria-label="Close">✕</button></div>
     <div class="mbody" id="ctxBtns" style="gap:0;padding:.75rem 1rem;"></div>
   </div>
 </div>
 
 <div class="modal bottom" id="setlistSettings">
   <div class="sheetwrap" style="max-height:70dvh">
-    <div class="mhead"><h3>Setlist settings</h3><button class="iconbtn" id="closeSetlistSettings">✕</button></div>
+    <div class="mhead"><h3>Setlist settings</h3><button class="iconbtn" id="closeSetlistSettings" aria-label="Close">✕</button></div>
     <div class="mbody">
       <div class="field"><label>Name</label><input id="slName" placeholder="Set name" autocomplete="off"></div>
       <div class="field"><label>Notes (optional)</label><textarea id="slNotes" placeholder="Venue, date, key reminders…" style="min-height:5rem;resize:none;"></textarea></div>
     </div>
     <div class="mfoot">
       <button class="btn ghost" id="shareSetBtn" title="Share this setlist as a file">⇪ Share</button>
-      <button class="btn ghost" id="dupSetlist" title="Duplicate this setlist">⧉</button>
+      <button class="btn ghost" id="dupSetlist" title="Duplicate this setlist" aria-label="Duplicate this setlist">⧉</button>
       <button class="btn primary" id="saveSetlistSettings">Save</button>
     </div>
   </div>
@@ -478,13 +487,13 @@
 
 <div class="modal bottom" id="dockSheet">
   <div class="sheetwrap" style="max-height:55dvh">
-    <div class="mhead"><h3>Song controls</h3><button class="iconbtn" id="closeDockSheet">✕</button></div>
+    <div class="mhead"><h3>Song controls</h3><button class="iconbtn" id="closeDockSheet" aria-label="Close">✕</button></div>
     <div class="mbody">
       <div class="dockrow"><span class="dockrow-label">Transpose</span>
-        <div class="ctl"><button id="trDown">♭−</button><span class="val" id="trVal">0</span><button id="trUp">+♯</button></div>
-        <div class="ctl"><button id="flatBtn" title="Sharp/flat">♯/♭</button></div></div>
+        <div class="ctl"><button id="trDown" aria-label="Transpose down a semitone">♭−</button><span class="val" id="trVal">0</span><button id="trUp" aria-label="Transpose up a semitone">+♯</button></div>
+        <div class="ctl"><button id="flatBtn" title="Sharp/flat" aria-label="Toggle sharp or flat spelling">♯/♭</button></div></div>
       <div class="dockrow"><span class="dockrow-label">Font size</span>
-        <div class="ctl"><button id="fontDown">A−</button><button id="fontFit" title="Fit to screen" style="font-size:.7rem;letter-spacing:.3px">fit</button><button id="fontUp">A＋</button></div></div>
+        <div class="ctl"><button id="fontDown" aria-label="Smaller font">A−</button><button id="fontFit" title="Fit to screen" aria-label="Fit song to screen" style="font-size:.7rem;letter-spacing:.3px">fit</button><button id="fontUp" aria-label="Larger font">A＋</button></div></div>
       <button class="ghostbtn" id="editSong" style="margin:0">✎ Edit song</button>
     </div>
   </div>
@@ -492,7 +501,7 @@
 
 <div class="modal bottom" id="promptModal">
   <div class="sheetwrap">
-    <div class="mhead"><h3 id="promptModalTitle">Enter name</h3><button class="iconbtn" id="closePromptModal">✕</button></div>
+    <div class="mhead"><h3 id="promptModalTitle">Enter name</h3><button class="iconbtn" id="closePromptModal" aria-label="Close">✕</button></div>
     <div class="mbody"><div class="field"><input id="promptInput" placeholder="" autocomplete="off"></div></div>
     <div class="mfoot"><button class="btn ghost" id="promptCancel">Cancel</button><button class="btn primary" id="promptOK">OK</button></div>
   </div>
@@ -500,7 +509,7 @@
 
 <div class="modal bottom" id="confirmModal">
   <div class="sheetwrap">
-    <div class="mhead"><h3 id="confirmTitle">Confirm</h3><button class="iconbtn" id="closeConfirmModal">✕</button></div>
+    <div class="mhead"><h3 id="confirmTitle">Confirm</h3><button class="iconbtn" id="closeConfirmModal" aria-label="Close">✕</button></div>
     <div class="mbody"><p class="confirm-msg" id="confirmMsg"></p></div>
     <div class="mfoot"><button class="btn ghost" id="confirmCancel">Cancel</button><button class="btn primary" id="confirmOK">OK</button></div>
   </div>
@@ -508,7 +517,7 @@
 
 <div class="modal bottom" id="toolsSheet">
   <div class="sheetwrap" style="max-height:50dvh">
-    <div class="mhead"><h3>Library tools</h3><button class="iconbtn" id="closeTools">✕</button></div>
+    <div class="mhead"><h3>Library tools</h3><button class="iconbtn" id="closeTools" aria-label="Close">✕</button></div>
     <div class="mbody">
       <button class="ghostbtn" id="pasteBtn">↗ Search &amp; paste lyrics</button>
       <button class="ghostbtn" id="onsongBtn">♫ Import songs — OnSong · ChordPro · OpenSong · .zip</button>
@@ -522,7 +531,7 @@
 
 <div class="modal bottom" id="pasteModal">
   <div class="sheetwrap" style="max-height:88dvh">
-    <div class="mhead"><h3>Search &amp; paste lyrics</h3><button class="iconbtn" id="closePasteModal">✕</button></div>
+    <div class="mhead"><h3>Search &amp; paste lyrics</h3><button class="iconbtn" id="closePasteModal" aria-label="Close">✕</button></div>
     <div class="mbody">
       <div class="field"><input id="pasteSearch" placeholder="Song title or title + artist" autocomplete="off" autocorrect="off" spellcheck="false"></div>
       <p class="lookup-label">Chords + lyrics</p>
@@ -543,7 +552,7 @@
   </div>
 </div>
 
-<div class="toast" id="toast"></div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
 <div class="update-banner" id="updateBanner" role="status" aria-live="polite">
   <span class="ub-dot"></span>
   <div class="ub-text"><b>Update ready</b><span id="updateVer">A new version is available</span></div>
@@ -766,7 +775,7 @@ function renderSetlists(){
     const dots=keys.slice(0,6).map(k=>'<span style="display:inline-block;width:.6rem;height:.6rem;border-radius:50%;background:'+keyColor(k)+';margin-right:2px"></span>').join("");
     const notesEl=sl.notes?'<div class="sl-notes">'+esc(sl.notes)+'</div>':"";
     const eid=esc(sl.id);
-    return '<div class="card"><div class="ord"><button data-setup="'+i+'">▲</button><button data-setdown="'+i+'">▼</button></div><div class="meta open-set" data-id="'+eid+'"><div class="t">'+esc(sl.name)+'</div><div class="s">'+n+' song'+(n!==1?"s":"")+' &nbsp;'+dots+'</div>'+notesEl+'</div><button class="iconbtn" data-editset="'+eid+'" title="Settings">✎</button><button class="rm" data-delset="'+eid+'" title="Delete setlist">✕</button></div>';
+    return '<div class="card"><div class="ord"><button aria-label="Move setlist up" data-setup="'+i+'">▲</button><button aria-label="Move setlist down" data-setdown="'+i+'">▼</button></div><div class="meta open-set" data-id="'+eid+'"><div class="t">'+esc(sl.name)+'</div><div class="s">'+n+' song'+(n!==1?"s":"")+' &nbsp;'+dots+'</div>'+notesEl+'</div><button class="iconbtn" data-editset="'+eid+'" title="Settings" aria-label="Setlist settings">✎</button><button class="rm" data-delset="'+eid+'" title="Delete setlist" aria-label="Delete setlist">✕</button></div>';
   }).join("");
 }
 function renderSetSongs(){
@@ -782,7 +791,7 @@ function renderSetSongs(){
     const cur=(id===curSongId&&curIndex===i)?" is-current":"";
     const isPlayed=playedSongs.has(id);if(isPlayed)anyPlayed=true;
     const wkd=isPlayed?'<span class="wkd">✓ Played</span>':"";
-    return '<div class="card'+cur+(isPlayed?" played":"")+'" data-songidx="'+i+'"><span class="drag-handle" title="Drag to reorder">≡</span><span class="num">'+(i+1)+'</span><div class="meta open-song" data-i="'+i+'"><div class="t">'+esc(s.title)+'</div><div class="s">'+esc(s.sub||"")+'</div></div>'+wkd+(s.key?'<span class="pill" style="background:'+keyColor(s.key)+'">'+esc(s.key)+'</span>':"")+'<button class="rm" data-rmfromset="'+i+'" title="Remove from set">✕</button></div>';
+    return '<div class="card'+cur+(isPlayed?" played":"")+'" data-songidx="'+i+'"><span class="drag-handle" title="Drag to reorder" role="button" aria-label="Drag to reorder">≡</span><span class="num">'+(i+1)+'</span><div class="meta open-song" data-i="'+i+'"><div class="t">'+esc(s.title)+'</div><div class="s">'+esc(s.sub||"")+'</div></div>'+wkd+(s.key?'<span class="pill" style="background:'+keyColor(s.key)+'">'+esc(s.key)+'</span>':"")+'<button class="rm" data-rmfromset="'+i+'" title="Remove from set" aria-label="Remove from set">✕</button></div>';
   }).join("");
   document.getElementById("resetPlayed").style.display=anyPlayed?"":"none";
 }
@@ -794,7 +803,7 @@ function renderAllSongs(){
   const songs=q?all.filter(s=>s.title.toLowerCase().includes(q)||(s.sub||"").toLowerCase().includes(q)):all;
   if(!all.length){wrap.innerHTML='<div class="empty"><div class="big">♪</div>No songs yet.</div>';return;}
   if(!songs.length){wrap.innerHTML='<div class="empty">No matches.</div>';return;}
-  wrap.innerHTML=songs.map(s=>{const eid=esc(s.id);return '<div class="card open-allsong" data-id="'+eid+'"><div class="meta"><div class="t">'+esc(s.title)+'</div><div class="s">'+esc(s.sub||"")+'</div></div>'+(s.key?'<span class="pill" style="background:'+keyColor(s.key)+'">'+esc(s.key)+'</span>':"")+'<button class="iconbtn addsong" data-addid="'+eid+'" title="Add to a setlist">⊕</button><span class="chev">›</span></div>';}).join("");
+  wrap.innerHTML=songs.map(s=>{const eid=esc(s.id);return '<div class="card open-allsong" data-id="'+eid+'"><div class="meta"><div class="t">'+esc(s.title)+'</div><div class="s">'+esc(s.sub||"")+'</div></div>'+(s.key?'<span class="pill" style="background:'+keyColor(s.key)+'">'+esc(s.key)+'</span>':"")+'<button class="iconbtn addsong" data-addid="'+eid+'" title="Add to a setlist" aria-label="Add to a setlist">⊕</button><span class="chev">›</span></div>';}).join("");
 }
 
 /* ===== open song ===== */
@@ -1649,19 +1658,45 @@ document.getElementById("closeConfirmModal").addEventListener("click",closeConfi
 document.getElementById("confirmCancel").addEventListener("click",closeConfirmModal);
 document.getElementById("confirmOK").addEventListener("click",()=>{const cb=_confirmCb;closeConfirmModal();if(cb)cb();});
 
-/* ===== backdrop tap closes any modal ===== */
-document.querySelectorAll(".modal").forEach(m=>{m.addEventListener("click",e=>{
-  if(e.target!==m)return;
-  if(m.id==="editor")closeEditor();
-  else if(m.id==="picker")closePicker();
-  else if(m.id==="setlistAdder")closeAdder();
-  else if(m.id==="setlistSettings")closeSetlistSettings();
-  else if(m.id==="songContextMenu")closeSongContext();
-  else if(m.id==="toolsSheet")document.getElementById("toolsSheet").classList.remove("show");
-  else if(m.id==="dockSheet")closeDockSheet();
-  else if(m.id==="promptModal")closePromptModal();
-  else if(m.id==="confirmModal")closeConfirmModal();
-});});
+/* ===== modal a11y: backdrop tap + Escape close, Tab trap, focus save/restore ===== */
+function closeModal(m){
+  switch(m.id){
+    case "editor":closeEditor();break;
+    case "picker":closePicker();break;
+    case "setlistAdder":closeAdder();break;
+    case "setlistSettings":closeSetlistSettings();break;
+    case "songContextMenu":closeSongContext();break;
+    case "dockSheet":closeDockSheet();break;
+    case "promptModal":closePromptModal();break;
+    case "confirmModal":closeConfirmModal();break;
+    default:m.classList.remove("show");   // toolsSheet, pasteModal, and any future sheet
+  }
+}
+const focusablesIn=m=>[...m.querySelectorAll('a[href],button:not([disabled]),input:not([disabled]),textarea,select,[tabindex]:not([tabindex="-1"])')].filter(el=>el.offsetParent!==null);
+let _modalReturnFocus=null;
+document.querySelectorAll(".modal").forEach(m=>{
+  m.setAttribute("role","dialog");m.setAttribute("aria-modal","true");
+  const h=m.querySelector(".mhead h3");if(h&&!m.getAttribute("aria-label"))m.setAttribute("aria-labelledby",(h.id||(h.id="mh_"+m.id)));
+  m.addEventListener("click",e=>{if(e.target===m)closeModal(m);});   // backdrop tap
+  // watch open/close to manage focus (modals are toggled via .show from many call sites)
+  new MutationObserver(()=>{
+    const open=m.classList.contains("show");
+    if(open&&!m._open){m._open=true;_modalReturnFocus=document.activeElement;
+      const f=focusablesIn(m);if(f.length&&!m.contains(document.activeElement))f[0].focus();}
+    else if(!open&&m._open){m._open=false;
+      if(_modalReturnFocus&&document.contains(_modalReturnFocus)){try{_modalReturnFocus.focus();}catch(_){}}}
+  }).observe(m,{attributes:true,attributeFilter:["class"]});
+});
+document.addEventListener("keydown",e=>{
+  const m=[...document.querySelectorAll(".modal.show")].pop();if(!m)return;
+  if(e.key==="Escape"){e.preventDefault();closeModal(m);return;}
+  if(e.key==="Tab"){
+    const f=focusablesIn(m);if(!f.length)return;
+    const first=f[0],last=f[f.length-1];
+    if(e.shiftKey&&document.activeElement===first){e.preventDefault();last.focus();}
+    else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first.focus();}
+  }
+});
 
 /* ===== install nudge (one-time, dismissible; flag deliberately in localStorage, not state,
    so it never travels inside backups) ===== */
