@@ -20,7 +20,7 @@
 
 ## Overview
 
-SetList69 stores songs (lyrics with chords), organizes them into setlists, and renders them in a large, high-contrast reading view designed to be operated while holding an instrument. It is a self-hosted alternative to commercial apps like OnSong — without the subscription, the iPad lock-in, or the cloud dependency.
+SetList69 stores songs (lyrics with chords), organizes them into setlists, and renders them in a large, high-contrast reading view designed to be operated while holding an instrument. It **imports your existing library from OnSong and other chord apps** and keeps everything on your device — no subscription, no account, no cloud.
 
 **The problems it solves:**
 
@@ -29,7 +29,7 @@ SetList69 stores songs (lyrics with chords), organizes them into setlists, and r
 | Chord apps stop working when the venue has no signal | Full offline operation via service worker; every asset is precached |
 | Screens sleep mid-verse | Wake Lock held for the entire set, not just one song |
 | Chord charts wrap badly on phones | Custom rendering engine: chords lock to their syllable, words never split across lines, no horizontal scrolling — ever |
-| Your song library is trapped in a vendor's format | Imports ChordPro, OnSong, OpenSong XML, plain text, and ZIP bundles; exports plain JSON |
+| Moving your songs between apps is a hassle | Imports from OnSong and other apps — ChordPro, OnSong, OpenSong XML, plain text, and ZIP bundles; exports plain JSON |
 | Cloud accounts, subscriptions, telemetry | None. All data stays in the browser's local storage; sync between devices is a file you control |
 
 **Why it stands out:** the whole app is a single `setlist69.html` — no framework, no build step, no `node_modules`. You can read every line, fork it, and host it on any static server. Reliability, readability while playing, offline operation, and ownership are the four design priorities, in that order.

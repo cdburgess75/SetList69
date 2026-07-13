@@ -6,7 +6,9 @@
 
 ## 0. North Star (read this before proposing anything)
 
-**SetList69 exists to replace commercial gig apps (OnSong) for working bands — a tool a band trusts to run a live set.** Every decision, feature, and refactor is checked against this. Success = the band abandons OnSong and gigs off this.
+**SetList69 exists to be the app a working band runs its live set from — with their existing catalog brought over from OnSong and other chord apps.** Every decision, feature, and refactor is checked against this. Success = the band runs a full gig from it, having imported their whole library.
+
+> **Framing (public):** lead with *compatibility* — "imports from OnSong and other apps" — never competition. Do not describe the project as "replacing" or "an alternative to" any named product in the README, marketing, or commit messages. Internally the bar is simply that it's good enough a band doesn't need the app they came from; that's a quality target, not a slogan.
 
 Goals, ranked — when they conflict, the higher one wins:
 
