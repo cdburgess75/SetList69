@@ -1,15 +1,24 @@
 {
+  "id": "./setlist69.html",
   "name": "SetList69",
   "short_name": "SetList69",
   "description": "Offline-first chord & lyric setlist app for performing musicians",
   "start_url": "./setlist69.html",
+  "scope": "./",
   "display": "standalone",
   "background_color": "#121110",
-  "theme_color": "#121110",
+  "theme_color": "#16140f",
   "orientation": "portrait-primary",
+  "lang": "en",
+  "categories": ["music", "productivity"],
   "icons": [
     { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
     { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png" },
     { "src": "icons/icon-512-maskable.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "screenshots": [
+    { "src": "docs/screenshots/home.png", "sizes": "800x1680", "type": "image/png", "form_factor": "narrow", "label": "Setlists and song library" },
+    { "src": "docs/screenshots/song.png", "sizes": "800x1680", "type": "image/png", "form_factor": "narrow", "label": "Performance view with chords above the lyrics" },
+    { "src": "docs/screenshots/played.png", "sizes": "800x1680", "type": "image/png", "form_factor": "narrow", "label": "Played tracking within a set" }
   ]
 }

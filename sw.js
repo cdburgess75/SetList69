@@ -1,6 +1,7 @@
-const CACHE = 'setlist69-v2026.07.12.005';
+const CACHE = 'setlist69-v2026.07.12.006';
 const PRECACHE = [
   './',
+  './index.html',
   './setlist69.html',
   './manifest.json',
   './fonts/fraunces-latin.woff2',
@@ -39,8 +40,20 @@ self.addEventListener('message', e => {
 
 self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET') return;
-  e.respondWith(
-    caches.match(e.request)
-      .then(cached => cached || fetch(e.request))
-  );
+  e.respondWith((async () => {
+    // ignoreSearch so e.g. ./setlist69.html?x still matches the cached shell
+    const cached = await caches.match(e.request, { ignoreSearch: true });
+    if (cached) return cached;
+    try {
+      return await fetch(e.request);
+    } catch (err) {
+      // offline cache-miss: for a navigation, fall back to the app shell instead of the
+      // browser's network-error page; otherwise surface the failure.
+      if (e.request.mode === 'navigate') {
+        const shell = await caches.match('./setlist69.html');
+        if (shell) return shell;
+      }
+      throw err;
+    }
+  })());
 });

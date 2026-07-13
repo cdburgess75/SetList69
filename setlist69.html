@@ -81,6 +81,11 @@
                    place (O(chords)) from a stored raw chord instead of re-parsing + rebuilding
                    the whole sheet; drag-reorder's touchmove listener is bound only during a drag
                    (keeps scrolling threaded); structuredClone for persistence; deduped .card CSS.
+  v2026.07.12.006  Infra hardening (audit): SW fetch handler falls back to the app shell for
+                   offline navigations and matches ignoreSearch; index.html precached. CI now
+                   parses manifest.json and asserts every PRECACHE file exists, with a least-
+                   privilege permissions block + concurrency. manifest gains id/scope/lang/
+                   categories/screenshots and its theme_color matches the page meta.
 -->
 <html lang="en">
 <head>
@@ -349,7 +354,7 @@
 <div class="app">
   <header>
     <button class="back" id="backBtn" style="display:none" aria-label="Back">‹ <span id="backLabel">Back</span></button>
-    <div class="brand" id="brand"><span class="dot"></span>SetList69<small>v2026.07.12.005</small></div>
+    <div class="brand" id="brand"><span class="dot"></span>SetList69<small>v2026.07.12.006</small></div>
     <div class="htitle" id="headerTitle" style="display:none"></div>
     <div class="spacer"></div>
     <button class="iconbtn" id="updateHdr" title="Update ready" aria-label="Update ready — refresh" hidden>⟳</button>

@@ -1,5 +1,10 @@
 name: check
 on: [push, pull_request]
+permissions:
+  contents: read
+concurrency:
+  group: check-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
   check:
     runs-on: ubuntu-latest
@@ -42,4 +47,18 @@ jobs:
             const dupes = ids.filter((x, i) => ids.indexOf(x) !== i);
             if (dupes.length) { console.error("Duplicate ids:", dupes); process.exit(1); }
             console.log(ids.length + " ids, no duplicates");
+          '
+      - name: Verify manifest parses and every precached file exists
+        run: |
+          node -e '
+            const fs = require("fs");
+            JSON.parse(fs.readFileSync("manifest.json", "utf8"));   // throws on malformed manifest
+            const sw = fs.readFileSync("sw.js", "utf8");
+            const list = sw.match(/PRECACHE\s*=\s*\[([\s\S]*?)\]/)[1];
+            const files = [...list.matchAll(/[\x27\x22]([^\x27\x22]+)[\x27\x22]/g)].map(m => m[1]);
+            const missing = files
+              .map(f => f.replace(/^\.\//, ""))
+              .filter(f => f && f !== "" && !fs.existsSync(f || "."));
+            if (missing.length) { console.error("PRECACHE files missing on disk:", missing); process.exit(1); }
+            console.log("manifest OK; " + files.length + " precache entries all present");
           '
