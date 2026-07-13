@@ -91,6 +91,11 @@
                    "Something went wrong — Reload" screen instead of a silent freeze; structuredClone
                    guarded with a JSON fallback (older iOS keeps using IndexedDB, no false Preview
                    mode); -webkit-backdrop-filter added for older Safari.
+  v2026.07.12.008  Update status is now version-based, not event-based: the page compares its own
+                   version (APP_VERSION, from the brand tag) to the SW's cached version. Match =
+                   up to date (green brand dot, no header ⟳); differ = update available (red dot,
+                   ⟳ + one banner flash). Fixes the header ⟳ falsely reporting an update when
+                   current. Brand dot is now a green/red status light.
 -->
 <html lang="en">
 <head>
@@ -137,11 +142,14 @@
     background:var(--panel);
     border-bottom:1px solid var(--line);position:relative;z-index:20;}
   .brand{font-family:var(--display);font-weight:600;font-size:1.2rem;display:flex;align-items:center;gap:.45rem;}
-  .brand .dot{width:.5rem;height:.5rem;border-radius:50%;background:var(--accent);box-shadow:0 0 12px var(--accent);}
+  /* status light: green when running the latest version, red when an update is available */
+  .brand .dot{width:.5rem;height:.5rem;border-radius:50%;background:var(--ok);box-shadow:0 0 12px var(--ok);transition:background .3s,box-shadow .3s;}
+  .brand .dot.behind{background:var(--accent);box-shadow:0 0 12px var(--accent);}
   .brand small{font-family:var(--mono);font-size:.55rem;color:var(--faint);font-weight:500;letter-spacing:1px;align-self:flex-start;}
   .spacer{flex:1;}
   .iconbtn{width:2.2rem;height:2.2rem;border-radius:10px;display:grid;place-items:center;font-size:1rem;
     color:var(--muted);transition:.15s;border:1px solid transparent;}
+  .iconbtn[hidden]{display:none;}   /* the `hidden` attr must beat .iconbtn's display:grid */
   .iconbtn:hover{background:var(--panel2);color:var(--ink);}
   .back{display:flex;align-items:center;gap:.3rem;font-weight:600;font-size:.9rem;color:var(--muted);padding:.3rem .2rem;}
   .back:hover{color:var(--ink);}
@@ -365,7 +373,7 @@
 <div class="app">
   <header>
     <button class="back" id="backBtn" style="display:none" aria-label="Back">‹ <span id="backLabel">Back</span></button>
-    <div class="brand" id="brand"><span class="dot"></span>SetList69<small>v2026.07.12.007</small></div>
+    <div class="brand" id="brand"><span class="dot"></span>SetList69<small>v2026.07.12.008</small></div>
     <div class="htitle" id="headerTitle" style="display:none"></div>
     <div class="spacer"></div>
     <button class="iconbtn" id="updateHdr" title="Update ready" aria-label="Update ready — refresh" hidden>⟳</button>
@@ -1227,19 +1235,29 @@ let toastT;function toast(m){const t=document.getElementById("toast");t.textCont
 /* Update banner: set by the service-worker block. Flashes once on the home screen
    (never mid-song — an unexpected reload during a set would be worse than a stale version),
    auto-hides after 6s; the header ⟳ stays visible so the update can still be applied later. */
+// The version this running page actually is (read from the brand tag — single source of truth).
+const APP_VERSION=(document.querySelector("#brand small")||{}).textContent||"";
 let updateReady=false,updateVersion="",updateFlashed=false,updateBannerT=null;
 function showUpdateBanner(){
+  if(!updateReady)return;   // never claim an update when we're current
   const b=document.getElementById("updateBanner");
   if(updateVersion)document.getElementById("updateVer").textContent=updateVersion+" is available";
   b.classList.add("show");
   clearTimeout(updateBannerT);
   updateBannerT=setTimeout(()=>b.classList.remove("show"),6000);
 }
-function maybeShowUpdatePill(){
-  if(!updateReady)return;
-  document.getElementById("updateHdr").hidden=false;
-  if(screen==="setlists"&&!updateFlashed){updateFlashed=true;showUpdateBanner();}
+/* Decide update state by comparing the running version to the service worker's cached version.
+   Equal → up to date (green dot, no ⟳). Different → update staged (red dot, ⟳, one banner flash). */
+function setUpdateState(swVersion){
+  updateVersion=swVersion||"";
+  updateReady=!!(swVersion&&APP_VERSION&&swVersion!==APP_VERSION);
+  const dot=document.querySelector("#brand .dot");if(dot)dot.classList.toggle("behind",updateReady);
+  document.getElementById("updateHdr").hidden=!updateReady;
+  if(updateReady&&screen==="setlists"&&!updateFlashed){updateFlashed=true;showUpdateBanner();}
 }
+// kept for its existing call sites (e.g. show("setlists")): re-flash the banner if genuinely behind
+function maybeShowUpdatePill(){if(updateReady&&screen==="setlists"&&!updateFlashed){updateFlashed=true;showUpdateBanner();}}
+function askSwVersion(){try{if(navigator.serviceWorker&&navigator.serviceWorker.controller)navigator.serviceWorker.controller.postMessage('GET_VERSION');}catch(_){}}
 function applyTheme(){const light=state.theme==="light";document.documentElement.setAttribute("data-theme",light?"light":"dark");
   const b=document.getElementById("themeBtn");if(b)b.textContent=light?"☀":"☾";}
 function uid(p){return (p||"id")+Date.now()+Math.floor(Math.random()*1000);}
@@ -1770,22 +1788,16 @@ document.getElementById("updateGo").addEventListener("click",()=>location.reload
 document.getElementById("updateHdr").addEventListener("click",showUpdateBanner);
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('./sw.js');
-  // The new worker answers GET_VERSION with its cache version so the banner can name it.
+  // The worker answers GET_VERSION with its cached version; we compare it to APP_VERSION.
   navigator.serviceWorker.addEventListener('message',e=>{
-    if(e.data&&e.data.type==='VERSION'){
-      updateVersion=e.data.version;
-      document.getElementById("updateVer").textContent=updateVersion+" is available";
-    }
+    if(e.data&&e.data.type==='VERSION')setUpdateState(e.data.version);
   });
-  // sw.js does skipWaiting()+clients.claim(), so a new version fires controllerchange
-  // once it has activated (old cache already purged) — safe to offer a reload then.
-  let hadController=!!navigator.serviceWorker.controller;
-  navigator.serviceWorker.addEventListener('controllerchange',()=>{
-    if(!hadController){hadController=true;return;} // first-ever install claiming the page — not an update
-    updateReady=true;
-    try{navigator.serviceWorker.controller.postMessage('GET_VERSION');}catch(e){}
-    maybeShowUpdatePill();
-  });
+  // Ask once the SW is controlling this page, and again whenever a newer SW takes over
+  // (skipWaiting()+claim() fires controllerchange). The version compare — not the event
+  // itself — decides whether there's actually an update, so no false "update available".
+  navigator.serviceWorker.ready.then(askSwVersion);
+  if(navigator.serviceWorker.controller)askSwVersion();
+  navigator.serviceWorker.addEventListener('controllerchange',askSwVersion);
 }
 </script>
 </body>
