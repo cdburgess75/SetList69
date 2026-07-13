@@ -10,7 +10,7 @@
 [![Version](https://img.shields.io/badge/version-v2026.07.12.006-informational?style=flat-square)](#versioning)
 [![PWA](https://img.shields.io/badge/PWA-installable-8250df?style=flat-square)](#installation)
 [![Dependencies](https://img.shields.io/badge/runtime_dependencies-0-f5a623?style=flat-square)](#architecture)
-[![License](https://img.shields.io/badge/license-TBD-lightgrey?style=flat-square)](#license)
+[![License](https://img.shields.io/badge/license-MIT-blue?style=flat-square)](LICENSE)
 
 **[▶ Live app](https://cdburgess75.github.io/SetList69/)** · [Features](#key-features) · [Installation](#installation) · [Usage](#quickstart) · [Architecture](#architecture) · [Contributing](#contributing)
 
@@ -179,7 +179,7 @@ This is a personal tool developed in the open, and issues/PRs are welcome:
 
 ## License
 
-No license has been selected yet, which means all rights are reserved by default. If you intend to fork or redistribute, open an issue. *(Maintainer note: add a `LICENSE` file — MIT is the conventional choice — before accepting external contributions.)*
+[MIT](LICENSE) — use it, fork it, self-host it, gig with it. Attribution is the only condition.
 
 ---
 

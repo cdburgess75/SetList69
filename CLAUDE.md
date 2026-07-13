@@ -4,18 +4,37 @@
 
 -----
 
+## 0. North Star (read this before proposing anything)
+
+**SetList69 exists to replace commercial gig apps (OnSong) for working bands — a tool a band trusts to run a live set.** Every decision, feature, and refactor is checked against this. Success = the band abandons OnSong and gigs off this.
+
+Goals, ranked — when they conflict, the higher one wins:
+
+1. **Reliability at the gig** — never lose a song, never sleep mid-verse, work with **zero signal**.
+2. **Get the band's real catalog in** — high-fidelity **import (OnSong exports first)** is the gate to real use. Until the whole library loads cleanly, nothing else matters; a rehearsal test is the only proof the North Star is reachable.
+3. **Readable while playing** — big text, high contrast, chords on the syllable, no horizontal scroll, hands-free.
+4. **Ownership** — local-first, **no backend/account/telemetry**, **zero runtime dependencies**; data lives on the device and moves by file.
+
+**Hard constraints (product-defining, do not break):** no server; fully offline-capable; no runtime dependencies; data local to the device.
+**Pragmatic constraint (breakable when it hurts correctness — but flag it loudly):** the single-file build. It's a convenience for deploy/fork, not a commandment.
+**Sync:** a *someday*. When it comes it is "shared storage the band controls" (a shared folder / iCloud / Dropbox / local network), **never a server we stand up**. Design toward that seam; don't build it yet.
+**Audience:** working bands, not a solo toy and not an open-source project first (though it is MIT-licensed — see §17). **Maintainer:** undecided — so keep the code human-readable *and* keep this doc AI-usable.
+
+-----
+
 ## 1. What this is
 
 SetList69 is an offline-first web app for performing musicians: it stores songs (lyrics with chords), groups them into setlists, and displays them in a large, high-contrast, hands-free reading view for use while playing. It is the spiritual cousin of OnSong, rebuilt as a small static bundle the owner controls.
 
 Deployment target: GitHub Pages + "Add to Home Screen" on iPhone/iPad.
 
-Design priorities, in order:
+Design priorities, in order — see §0 for the full North Star:
 
 1. **Reliability** — never lose a song; never let the screen sleep mid-verse.
-2. **Readability while playing** — big text, high contrast, chords tied to syllables, no horizontal scrolling.
-3. **Offline** — works at a gig with zero signal.
-4. **Ownership** — plain code the owner can read, fork, and host himself.
+2. **Catalog in** — high-fidelity import (OnSong first) is the gate to real gig use.
+3. **Readability while playing** — big text, high contrast, chords tied to syllables, no horizontal scrolling.
+4. **Offline** — works at a gig with zero signal.
+5. **Ownership** — local-first, no server, no dependencies; plain code the owner can read, fork, and host.
 
 The project was previously called **ChordStand**. Internal storage identifiers remain `chordstand` (see §7) so the rename didn't wipe existing saved data. Do not rename them without a migration.
 
@@ -453,3 +472,12 @@ No test framework — verification is manual:
 5. `node --check` the script; logic-test music/parse core if touched.
 6. If you changed storage shape, add a migration in `boot()`.
 7. Flag anything needing real-device verification (touch, share, install) to the owner.
+
+-----
+
+## 17. License
+
+**MIT** (see `LICENSE`). Chosen per the North Star's "ownership + shareable on your terms" —
+it lets bandmates and anyone else use, fork, and self-host, requiring only attribution. The
+copyright holder line is `cdburgess75`; swap it for a legal name if desired. This is the first
+license the project has carried; before MIT it was all-rights-reserved by default.
