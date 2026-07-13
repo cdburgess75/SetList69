@@ -1,6 +1,6 @@
 # SetList69 — Handoff Document
 
-> For whoever (or whatever) picks this up next, including Claude Code. This describes the project as of revision **v2026.07.12.002**. Kept in the repo as `CLAUDE.md` so Claude Code reads it automatically as project context.
+> For whoever (or whatever) picks this up next, including Claude Code. This describes the project as of revision **v2026.07.12.006**. Kept in the repo as `CLAUDE.md` so Claude Code reads it automatically as project context.
 
 -----
 
@@ -95,6 +95,20 @@ v2026.07.12.002  Audit tier-1 hardening: esc() escapes quotes + ids escaped into
                  (stored-XSS via restored backups closed); isValidState() guards restore/boot;
                  navigator.storage.persist(); debounced save flushed on hide/pagehide; localStorage
                  fallback read when IDB empty; merge tolerates non-string fields.
+v2026.07.12.003  Audit tier-2 (correctness): file import keeps OnSong Capo:; unzip reads the ZIP
+                 central directory (data-descriptor zips no longer drop entries) + skipped counts;
+                 collision-proof newSongId(); window.open noopener; back-guard disarms on song
+                 change; drag ignores a 2nd finger.
+v2026.07.12.004  Audit tier-3 (a11y): pinch-zoom re-enabled; aria-labels on all icon buttons;
+                 modals role=dialog/aria-modal + Escape + Tab-trap + focus restore; aria-live toast;
+                 --faint lifted to AA; prefers-reduced-motion; focus-visible ring.
+v2026.07.12.005  Audit tier-4 (perf): transpose/♯♭ retunes chord pills in place (retuneSheet,
+                 data-ch) instead of re-parsing; drag touchmove bound only during a drag;
+                 structuredClone; deduped .card CSS.
+v2026.07.12.006  Infra: SW offline navigation falls back to the app shell (ignoreSearch match);
+                 index.html precached; CI parses manifest + asserts PRECACHE files exist, adds
+                 permissions/concurrency; manifest gains id/scope/lang/categories/screenshots and
+                 a theme_color that matches the page meta.
 ```
 
 A GitHub Actions workflow (`.github/workflows/check.yml`) enforces the version discipline on every push: it syntax-checks the extracted inline script and `sw.js`, **fails if the `<small>` brand version ≠ `sw.js` CACHE version**, and fails on duplicate element ids in the markup.
@@ -107,9 +121,10 @@ The PWA wrapper is complete. The repo contains:
 
 ```
 setlist69.html      — the entire app (HTML + CSS + JS)
+index.html          — meta-refresh stub → setlist69.html (GitHub Pages root URL)
 sw.js               — service worker (cache-first, precaches all assets)
-manifest.json       — PWA manifest (name, icons, display:standalone)
-.github/workflows/check.yml — CI: syntax check, version-match check, duplicate-id check
+manifest.json       — PWA manifest (id, icons, screenshots, display:standalone)
+.github/workflows/check.yml — CI: syntax, version-match, duplicate-id, manifest+precache checks
 fonts/
   fraunces-latin.woff2
   hanken-grotesk-latin.woff2
@@ -122,6 +137,7 @@ icons/
 docs/
   shots.js                — Playwright helper: regenerates the README screenshots
   screenshots/            — real app captures used by README.md
+  DEVICE-TESTING.md       — manual on-device test checklist
 ```
 
 All app logic lives in `setlist69.html`. The other files exist solely to make it installable and offline-capable.
@@ -137,7 +153,7 @@ All app logic lives in `setlist69.html`. The other files exist solely to make it
 
 ## 4. Architecture overview
 
-Single-page app with a manual screen router. Layout is a flex column (`.app`): a fixed **header**, a flexible **`main`** holding four absolutely-positioned full-screen `.screen` sections (only one `.show` at a time), and modal overlays.
+Single-page app with a manual screen router. Layout is a flex column (`.app`): a fixed **header**, a flexible **`main`** holding three absolutely-positioned full-screen `.screen` sections (only one `.show` at a time), and modal overlays.
 
 **Screens** (`<section class="screen">`):
 
@@ -164,7 +180,7 @@ Single-page app with a manual screen router. Layout is a flex column (`.app`): a
 - `curSetlist` — id of the setlist being viewed.
 - `curSongId` — id of the song in the song view.
 - `curIndex` — index of the current song within `curSetlist` (`-1` = opened standalone; disables prev/next + swipe).
-- `cameFromAll` — whether the song view was entered from All Songs (controls back target).
+- Back target is derived, not stored: `goBack()` returns to the set when `curIndex>=0 && curSetlist`, else home.
 - `curSetTranspose` — global semitone offset applied to every song in the current set.
 - `stageMode` — boolean; hides editing chrome and enlarges cards for hands-free reading.
 - `capoVal` — capo fret number for the current song (0 = no capo); used in transpose math.
@@ -189,7 +205,7 @@ state = {
     }
   ],
   setlists: [
-    { id: "set1", name: "Front Porch", songIds: ["hr", "wf", "sf"] }
+    { id: "set1", name: "Front Porch", notes: "", setTranspose: 0, songIds: ["hr", "wf", "sf"] }
   ],
   theme: "dark"   // "dark" | "light"
 }
@@ -270,8 +286,9 @@ Goal: render chords stacked directly above the correct syllable, wrapping to scr
 ## 7. Persistence
 
 - **Primary:** IndexedDB. `idbOpen()` opens db `"chordstand"`, object store `"kv"`; the entire `state` is stored under key `"state"`.
-- `persist()` is **debounced 250ms**. On failure falls back to `localStorage["chordstand.fallback"]`; if that also fails, toasts a warning.
-- `boot()` loads state from IndexedDB (falling back to localStorage, then `seed()`), normalizes missing fields, applies theme, renders.
+- `persist()` is **debounced 250ms** (`structuredClone(state)` → IDB). On failure falls back to `localStorage["chordstand.fallback"]`; if that also fails, toasts a warning.
+- `flushPersist()` writes immediately (sync localStorage mirror + best-effort IDB) on `visibilitychange→hidden` and `pagehide`, closing the 250ms loss window (e.g. the "Update now" reload). `boot()` requests `navigator.storage.persist()` so the library isn't evicted under storage pressure.
+- **`isValidState(d)`** structurally validates ANY payload loaded from disk — restore file, IndexedDB, or the localStorage fallback — before it can replace `state`. A malformed payload is rejected (toast) instead of being persisted and bricking every render. `boot()` reads the localStorage fallback whenever IDB yields no valid state (not only when it throws).
 - **Internal names remain `chordstand`** — don't rename without a migration.
 
 Call `persist()` after every mutation of `state`.
@@ -371,22 +388,24 @@ Fonts: `--display` Fraunces (titles), `--ui` Hanken Grotesk (UI + lyrics), `--mo
 ## 12. Function reference (quick map)
 
 ```
-Storage:       idbOpen  idbGet  idbSet  persist
-Seed/init:     seed  boot  uid  applyTheme  toast
+Storage:       idbOpen  idbGet  idbSet  persist  flushPersist  isValidState
+Seed/init:     seed  boot  uid  newSongId  applyTheme  toast
 Music core:    transposeNote  transposeChord  looksChord  isChordLine
                pitchClass  keyColor  cleanEmbeddedChords
-Parse/render:  esc  parseSong  inlineToSegs  pairToSegs  renderLine  renderSheet
+Parse/render:  esc  parseSong  inlineToSegs  pairToSegs  renderLine  renderSheet  retuneSheet
 Router/nav:    show  goBack
-List renders:  renderSetlists  renderSetSongs  renderAllSongs  renderPicker
+List renders:  renderSetlists  renderSetSongs  renderAllSongs  renderPicker  renderAdder
 Song view:     openSongInSet  openSongStandalone  openCurrent  reRender
                nextSong  prevSong  startScroll  stopScroll  updateScrollProg
                requestWake  releaseWake  openDockSheet  closeDockSheet
 Editor:        openEditor  closeEditor  saveSong
-Picker:        openPicker  closePicker
+Context/dialogs: openSongContext  closeSongContext  openAdder  closeAdder  showPrompt  showConfirm
+                 closeModal  loadPlayed  savePlayed
 Backup/share:  saveJsonFile  exportData  shareSetlist  restoreData  mergeSetImport
-Import:        parseImport  expandFiles
-PWA:           maybeShowUpdatePill  maybeShowInstallBanner  isStandalone  dismissInstall
+Import:        parseImport  expandFiles  unzip  parseOpenSong
+PWA:           showUpdateBanner  maybeShowUpdatePill  maybeShowInstallBanner  isStandalone  dismissInstall
 ```
+Note: `maybeShowUpdatePill` kept its name but now surfaces the slide-down **update banner** + header ⟳ (not the old pill); `renderAllSongs` renders the song library *section of the home screen* (there is no separate All Songs screen).
 
 All DOM event wiring is in one block near the bottom of the script (search `===== events =====`).
 
