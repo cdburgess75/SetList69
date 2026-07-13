@@ -77,6 +77,10 @@
                    icon-only buttons (static + rendered); modals get role=dialog/aria-modal,
                    Escape-to-close, a Tab focus-trap, and focus save/restore; toast is aria-live;
                    --faint lifted to WCAG AA; prefers-reduced-motion honored; focus-visible ring.
+  v2026.07.12.005  Performance (audit tier-4): transpose / sharp-flat now retunes chord pills in
+                   place (O(chords)) from a stored raw chord instead of re-parsing + rebuilding
+                   the whole sheet; drag-reorder's touchmove listener is bound only during a drag
+                   (keeps scrolling threaded); structuredClone for persistence; deduped .card CSS.
 -->
 <html lang="en">
 <head>
@@ -143,7 +147,7 @@
   .count{font-family:var(--mono);font-size:.7rem;color:var(--faint);}
 
   .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);
-    padding:.9rem 1rem;margin-bottom:.6rem;display:flex;align-items:center;gap:.85rem;transition:.15s;}
+    padding:.9rem 1rem;margin-bottom:.6rem;display:flex;align-items:center;gap:.85rem;transition:.15s;overflow:hidden;}
   .card:active{transform:scale(.99);}
   .card:hover{border-color:var(--faint);}
   .card.is-current{border-color:var(--accent);box-shadow:inset 3px 0 0 var(--accent);}
@@ -221,7 +225,6 @@
   .modal.bottom{align-items:flex-end;}
   .modal.bottom .sheetwrap{border-radius:var(--radius) var(--radius) 0 0;border-left:1px solid var(--line);border-right:1px solid var(--line);max-height:55dvh;}
   .confirm-msg{color:var(--muted);font-size:.92rem;margin:0;line-height:1.5;}
-  .card{overflow:hidden;}
   .sl-notes{font-size:.72rem;color:var(--faint);margin-top:.12rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
   .set-notes{font-size:.8rem;color:var(--muted);font-style:italic;margin-bottom:.7rem;line-height:1.4;}
   .set-notes:empty{display:none;}
@@ -346,7 +349,7 @@
 <div class="app">
   <header>
     <button class="back" id="backBtn" style="display:none" aria-label="Back">‹ <span id="backLabel">Back</span></button>
-    <div class="brand" id="brand"><span class="dot"></span>SetList69<small>v2026.07.12.004</small></div>
+    <div class="brand" id="brand"><span class="dot"></span>SetList69<small>v2026.07.12.005</small></div>
     <div class="htitle" id="headerTitle" style="display:none"></div>
     <div class="spacer"></div>
     <button class="iconbtn" id="updateHdr" title="Update ready" aria-label="Update ready — refresh" hidden>⟳</button>
@@ -569,7 +572,7 @@ async function idbGet(k){const db=await idbOpen();return new Promise((res,rej)=>
 async function idbSet(k,v){const db=await idbOpen();return new Promise((res,rej)=>{const t=db.transaction(STORE,"readwrite").objectStore(STORE).put(v,k);t.onsuccess=()=>res();t.onerror=()=>rej(t.error);});}
 let canPersist=true,saveTimer=null;
 function persist(){if(saveTimer)clearTimeout(saveTimer);saveTimer=setTimeout(async()=>{
-  try{await idbSet(KEYNAME,JSON.parse(JSON.stringify(state)));}
+  try{await idbSet(KEYNAME,structuredClone(state));}
   catch(e){canPersist=false;try{localStorage.setItem("chordstand.fallback",JSON.stringify(state));}catch(_){toast("⚠ Storage blocked — back up to a file");}}
 },250);}
 /* Flush the debounced write immediately when the page is about to be hidden/killed
@@ -579,7 +582,7 @@ function flushPersist(){
   if(!saveTimer)return;
   clearTimeout(saveTimer);saveTimer=null;
   try{localStorage.setItem("chordstand.fallback",JSON.stringify(state));}catch(_){}
-  try{idbSet(KEYNAME,JSON.parse(JSON.stringify(state)));}catch(_){}
+  try{idbSet(KEYNAME,structuredClone(state));}catch(_){}
 }
 /* Structural guard for anything loaded from disk (restore file, IndexedDB, localStorage).
    Rejects malformed payloads BEFORE they replace and persist over good state, which would
@@ -698,14 +701,15 @@ function renderLine(segs){
   const groups=[];let cur=[];
   const flush=()=>{if(cur.length){groups.push(cur);cur=[];}};
   for(const seg of segs){
-    const chord=transposeChord(seg.chord||"");
+    const raw=seg.chord||"";              // keep the un-transposed chord so retuneSheet() can re-derive
+    const chord=transposeChord(raw);
     const text=seg.text||"";
-    if(text===""){cur.push({chord,text:""});continue;}
+    if(text===""){cur.push({chord,raw,text:""});continue;}
     const parts=text.split(" ");
     for(let pi=0;pi<parts.length;pi++){
       if(pi>0)flush();
-      const frag=parts[pi],c=(pi===0)?chord:"";
-      if(frag!==""||c!=="")cur.push({chord:c,text:frag});
+      const frag=parts[pi],c=(pi===0)?chord:"",r=(pi===0)?raw:"";
+      if(frag!==""||c!=="")cur.push({chord:c,raw:r,text:frag});
     }
     if(text.endsWith(" "))flush();
   }
@@ -715,12 +719,19 @@ function renderLine(segs){
   return groups.map(g=>{
     const inner=g.map(cell=>{
       const crow=lineHasChord
-        ? '<span class="c">'+(cell.chord?'<span class="chordpill" style="background:'+keyColor(cell.chord)+'">'+esc(cell.chord)+'</span>':'')+'</span>'
+        ? '<span class="c">'+(cell.chord?'<span class="chordpill" data-ch="'+esc(cell.raw)+'" style="background:'+keyColor(cell.chord)+'">'+esc(cell.chord)+'</span>':'')+'</span>'
         : '';
       return '<span class="seg">'+crow+'<span class="l">'+(esc(cell.text)||"&nbsp;")+'</span></span>';
     }).join("");
     return '<span class="wg">'+inner+'</span>';
   }).join('<span class="wgspace"></span>');
+}
+/* Re-tune the chords in place on a transpose / sharp-flat change: O(chords) DOM text+color
+   updates from each pill's stored raw chord, instead of re-parsing and rebuilding the whole sheet. */
+function retuneSheet(){
+  const pills=document.querySelectorAll("#sheet .chordpill");
+  for(const p of pills){const t=transposeChord(p.dataset.ch||"");p.textContent=t;p.style.background=keyColor(t);}
+  updateScrollProg();
 }
 function renderSheet(song){
   const r=parseSong(song),meta=r.meta;
@@ -1322,9 +1333,9 @@ document.getElementById("exportBtn").addEventListener("click",exportData);
 document.getElementById("importBtn").addEventListener("click",()=>document.getElementById("restoreInput").click());
 document.getElementById("restoreInput").addEventListener("change",e=>{if(e.target.files[0])restoreData(e.target.files[0]);e.target.value="";});
 
-document.getElementById("trUp").addEventListener("click",()=>{transpose++;document.getElementById("trVal").textContent=(transpose>0?"+":"")+transpose;const _s=state.songs.find(x=>x.id===curSongId);if(_s){_s.defaultTranspose=transpose+capoVal-curSetTranspose;persist();}reRender();});
-document.getElementById("trDown").addEventListener("click",()=>{transpose--;document.getElementById("trVal").textContent=(transpose>0?"+":"")+transpose;const _s=state.songs.find(x=>x.id===curSongId);if(_s){_s.defaultTranspose=transpose+capoVal-curSetTranspose;persist();}reRender();});
-document.getElementById("flatBtn").addEventListener("click",e=>{preferFlats=!preferFlats;state.preferFlats=preferFlats;persist();e.target.classList.toggle("on",preferFlats);reRender();});
+document.getElementById("trUp").addEventListener("click",()=>{transpose++;document.getElementById("trVal").textContent=(transpose>0?"+":"")+transpose;const _s=state.songs.find(x=>x.id===curSongId);if(_s){_s.defaultTranspose=transpose+capoVal-curSetTranspose;persist();}retuneSheet();});
+document.getElementById("trDown").addEventListener("click",()=>{transpose--;document.getElementById("trVal").textContent=(transpose>0?"+":"")+transpose;const _s=state.songs.find(x=>x.id===curSongId);if(_s){_s.defaultTranspose=transpose+capoVal-curSetTranspose;persist();}retuneSheet();});
+document.getElementById("flatBtn").addEventListener("click",e=>{preferFlats=!preferFlats;state.preferFlats=preferFlats;persist();e.target.classList.toggle("on",preferFlats);retuneSheet();});
 document.getElementById("fontUp").addEventListener("click",()=>{fontSize=Math.min(2.4,Math.round((fontSize+0.1)*10)/10);state.fontSize=fontSize;persist();document.getElementById("sheet").style.setProperty("--sheet-size",fontSize+"rem");updateScrollProg();});
 document.getElementById("fontDown").addEventListener("click",()=>{fontSize=Math.max(0.7,Math.round((fontSize-0.1)*10)/10);state.fontSize=fontSize;persist();document.getElementById("sheet").style.setProperty("--sheet-size",fontSize+"rem");updateScrollProg();});
 document.getElementById("fontFit").addEventListener("click",()=>{
@@ -1560,10 +1571,11 @@ document.getElementById("closeSongCtx").addEventListener("click",closeSongContex
     ghost.style.cssText="position:fixed;left:"+rect.left+"px;top:"+ghostTop+"px;width:"+rect.width+"px;z-index:100;opacity:.92;pointer-events:none;transform:scale(1.02) rotate(.25deg);box-shadow:0 14px 44px #000b;border-radius:14px;transition:none;";
     document.body.appendChild(ghost);
     card.classList.add("is-dragging");
+    document.addEventListener("touchmove",onDragMove,{passive:false});   // only bound while dragging — keeps scrolling threaded otherwise
     e.preventDefault();
   },{passive:false});
 
-  document.addEventListener("touchmove",e=>{
+  function onDragMove(e){
     if(!dragEl||!ghost)return;
     e.preventDefault();
     ghost.style.top=(ghostTop+(e.touches[0].clientY-startY))+"px";
@@ -1575,7 +1587,7 @@ document.getElementById("closeSongCtx").addEventListener("click",closeSongContex
     const line=document.createElement("div");line.className="drag-insert";
     if(insertBefore)getList().insertBefore(line,insertBefore);
     else{const d=getList().querySelector(".card.is-dragging");getList().insertBefore(line,d);}
-  },{passive:false});
+  }
 
   function endDrag(touchY){
     if(!dragEl)return;
@@ -1587,6 +1599,7 @@ document.getElementById("closeSongCtx").addEventListener("click",closeSongContex
     if(sl){const[moved]=sl.songIds.splice(dragIdx,1);sl.songIds.splice(insertBeforeIdx,0,moved);persist();}
     dragEl.classList.remove("is-dragging");ghost.remove();
     ghost=null;dragEl=null;dragIdx=-1;
+    document.removeEventListener("touchmove",onDragMove);
     renderSetSongs();
   }
   document.addEventListener("touchend",e=>{if(dragEl)endDrag(e.changedTouches[0].clientY);},{passive:true});
@@ -1594,6 +1607,7 @@ document.getElementById("closeSongCtx").addEventListener("click",closeSongContex
     if(!dragEl)return;
     getList().querySelectorAll(".drag-insert").forEach(x=>x.remove());
     dragEl.classList.remove("is-dragging");if(ghost){ghost.remove();ghost=null;}dragEl=null;dragIdx=-1;
+    document.removeEventListener("touchmove",onDragMove);
   },{passive:true});
 })();
 
