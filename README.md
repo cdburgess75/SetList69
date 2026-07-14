@@ -12,7 +12,7 @@
 [![Dependencies](https://img.shields.io/badge/runtime_dependencies-0-f5a623?style=flat-square)](#architecture)
 [![License](https://img.shields.io/badge/license-MIT-blue?style=flat-square)](LICENSE)
 
-**[▶ Live app](https://cdburgess75.github.io/SetList69/)** · [Features](#key-features) · [Installation](#installation) · [Usage](#quickstart) · [Architecture](#architecture) · [Contributing](#contributing)
+**[▶ Live app](https://cdburgess75.github.io/SetList69/)** · [User Guide](docs/USER-GUIDE.md) · [Features](#key-features) · [Installation](#installation) · [Usage](#quickstart) · [Architecture](#architecture) · [Contributing](#contributing)
 
 </div>
 
