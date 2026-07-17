@@ -96,6 +96,10 @@
                    up to date (green brand dot, no header ⟳); differ = update available (red dot,
                    ⟳ + one banner flash). Fixes the header ⟳ falsely reporting an update when
                    current. Brand dot is now a green/red status light.
+  v2026.07.17.001  Visual unification with sibling app PileUp: adopted its dark/light color tokens
+                   (black bg, amber accent + glow, cool inks), monospace app chrome, and a glowing
+                   wide-tracked SETLIST69 wordmark. Primary buttons are amber; danger now uses a
+                   dedicated --red token. Song titles and lyrics stay in the readable UI font.
 -->
 <html lang="en">
 <head>
@@ -112,21 +116,21 @@
   @font-face{font-family:'Hanken Grotesk';font-style:normal;font-weight:400 700;font-display:swap;src:url('fonts/hanken-grotesk-latin.woff2') format('woff2');}
   @font-face{font-family:'JetBrains Mono';font-style:normal;font-weight:500 700;font-display:swap;src:url('fonts/jetbrains-mono-latin.woff2') format('woff2');}
   :root{
-    /* dark mode: near-black bg, bright white lyrics, bright gold chords */
-    --bg:#121110; --panel:#1d1b18; --panel2:#272420; --line:#46413640;
-    --ink:#fbf8f2; --muted:#b3a892; --faint:#8c846b;   /* faint lifted to ≥AA on dark bg/panel */
-    --chord:#ffc24d; --accent:#e2563a; --accent2:#ef6a48; --ok:#86c06c;
+    /* dark mode: PileUp palette — pure black bg, amber accent glow, cool inks */
+    --bg:#000000; --panel:#0e0e0e; --panel2:#181818; --line:#282828;
+    --ink:#f4f4f6; --muted:#9aa8c2; --faint:#7e889c;   /* faint kept ≥AA on black bg/panel */
+    --chord:#f0923c; --accent:#f0923c; --accent2:#ffab54; --ok:#4be08a; --red:#e8635a;
     --green:#AED8CA; --green-dim:#2E8B7A;   /* "played" strike + tag (bright on dark) */
     --ui:'Hanken Grotesk',system-ui,-apple-system,sans-serif;
-    --display:'Fraunces',Georgia,serif;
+    --display:'JetBrains Mono',ui-monospace,Menlo,Consolas,monospace;
     --mono:'JetBrains Mono',ui-monospace,Menlo,Consolas,monospace;
-    --radius:14px;
+    --radius:10px;
   }
   [data-theme="light"]{
-    /* light mode: warm white bg, near-black lyrics, deep red-orange chords */
-    --bg:#fbf9f3; --panel:#ffffff; --panel2:#f1ece1; --line:#1a160d1f;
-    --ink:#181410; --muted:#5c5547; --faint:#6f6857;   /* ≥AA on light bg/panel */
-    --chord:#bd3c1c; --accent:#b53e26; --accent2:#c4502f; --ok:#3f8f4f;
+    /* light mode: PileUp palette — cool white bg, deep amber accent, near-black ink */
+    --bg:#f9fbff; --panel:#ffffff; --panel2:#f7f7f7; --line:#e4e4e4;
+    --ink:#12202f; --muted:#3a4655; --faint:#5b6676;   /* ≥AA on light bg/panel */
+    --chord:#c8600f; --accent:#c8600f; --accent2:#e0872f; --ok:#1c8a55; --red:#c83430;
     --green:#2E8B7A; --green-dim:#AED8CA;   /* swapped so the pair still reads on light bg */
   }
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
@@ -141,11 +145,12 @@
     padding-top:max(.65rem,env(safe-area-inset-top));
     background:var(--panel);
     border-bottom:1px solid var(--line);position:relative;z-index:20;}
-  .brand{font-family:var(--display);font-weight:600;font-size:1.2rem;display:flex;align-items:center;gap:.45rem;}
+  .brand{font-family:var(--display);font-weight:700;font-size:1.02rem;display:flex;align-items:center;gap:.45rem;
+    text-transform:uppercase;letter-spacing:.16em;color:var(--accent);text-shadow:0 0 14px rgba(240,146,60,.55);}
   /* status light: green when running the latest version, red when an update is available */
   .brand .dot{width:.5rem;height:.5rem;border-radius:50%;background:var(--ok);box-shadow:0 0 12px var(--ok);transition:background .3s,box-shadow .3s;}
-  .brand .dot.behind{background:var(--accent);box-shadow:0 0 12px var(--accent);}
-  .brand small{font-family:var(--mono);font-size:.55rem;color:var(--faint);font-weight:500;letter-spacing:1px;align-self:flex-start;}
+  .brand .dot.behind{background:var(--red);box-shadow:0 0 12px var(--red);}
+  .brand small{font-family:var(--mono);font-size:.55rem;color:var(--faint);font-weight:500;letter-spacing:1px;align-self:flex-start;text-transform:none;text-shadow:none;}
   .spacer{flex:1;}
   .iconbtn{width:2.2rem;height:2.2rem;border-radius:10px;display:grid;place-items:center;font-size:1rem;
     color:var(--muted);transition:.15s;border:1px solid transparent;}
@@ -177,7 +182,7 @@
     white-space:nowrap;flex-shrink:0;}
   .set-toolbar{display:flex;align-items:center;gap:.5rem;margin-bottom:.75rem;flex-wrap:wrap;}
   .set-tr-label{font-size:.7rem;color:var(--faint);font-family:var(--mono);}
-  .stagebtn{padding:.38rem .85rem;border-radius:9px;font-size:.8rem;font-weight:700;background:var(--accent);color:#fff;letter-spacing:.2px;}
+  .stagebtn{padding:.38rem .85rem;border-radius:9px;font-size:.78rem;font-weight:700;background:var(--accent);color:#160f06;font-family:var(--mono);text-transform:uppercase;letter-spacing:.06em;}
   .stagebtn:hover{background:var(--accent2);}
   /* stage mode: hide all editing chrome */
   #setSongsScreen[data-stage] .drag-handle,
@@ -201,18 +206,18 @@
   .ord button{font-size:.68rem;color:var(--faint);padding:.05rem .35rem;}
   .ord button:hover{color:var(--ink);}
   .rm{color:var(--faint);font-size:1.05rem;padding:.25rem .45rem;}
-  .rm:hover{color:var(--accent);}
+  .rm:hover{color:var(--red);}
 
   .empty{text-align:center;color:var(--faint);padding:2.6rem 1rem;font-size:.9rem;line-height:1.6;}
   .empty .big{font-size:2.2rem;margin-bottom:.4rem;opacity:.55;}
 
   .fab{position:absolute;right:1.1rem;bottom:max(1.3rem,calc(env(safe-area-inset-bottom) + .8rem));
-    width:3.4rem;height:3.4rem;border-radius:50%;background:var(--accent);color:#fff;font-size:1.6rem;
+    width:3.4rem;height:3.4rem;border-radius:50%;background:var(--accent);color:#160f06;font-size:1.6rem;
     display:grid;place-items:center;z-index:15;box-shadow:0 6px 22px #0006,0 0 0 1px #ffffff14;transition:.15s;}
   .fab:hover{background:var(--accent2);transform:scale(1.05);}
 
-  .secbtn{width:100%;padding:.8rem;border-radius:12px;background:var(--accent);color:#fff;font-weight:700;
-    font-size:.92rem;margin-bottom:1rem;letter-spacing:.3px;}
+  .secbtn{width:100%;padding:.8rem;border-radius:12px;background:var(--accent);color:#160f06;font-weight:700;
+    font-family:var(--mono);text-transform:uppercase;font-size:.82rem;margin-bottom:1rem;letter-spacing:.06em;}
   .secbtn:hover{background:var(--accent2);}
   .ghostbtn{width:100%;padding:.7rem;border-radius:12px;background:var(--panel);border:1px solid var(--line);
     color:var(--muted);font-weight:600;font-size:.85rem;margin-bottom:.6rem;}
@@ -257,7 +262,7 @@
   .drag-insert{height:3px;background:var(--accent);border-radius:2px;margin:-1px 0 1px;pointer-events:none;flex-shrink:0;}
   .ctx-btn{width:100%;text-align:left;padding:.75rem 1rem;border-radius:10px;background:var(--panel);border:1px solid var(--line);color:var(--ink);font-size:.95rem;font-weight:600;margin-bottom:.35rem;display:flex;align-items:center;gap:.65rem;transition:.12s;}
   .ctx-btn:hover,.ctx-btn:active{background:var(--panel2);}
-  .ctx-btn.ctx-danger{color:var(--accent);}
+  .ctx-btn.ctx-danger{color:var(--red);}
 
   .dock{position:fixed;left:0;right:0;bottom:0;
     background:var(--panel);
@@ -373,7 +378,7 @@
 <div class="app">
   <header>
     <button class="back" id="backBtn" style="display:none" aria-label="Back">‹ <span id="backLabel">Back</span></button>
-    <div class="brand" id="brand"><span class="dot"></span>SetList69<small>v2026.07.12.008</small></div>
+    <div class="brand" id="brand"><span class="dot"></span>SetList69<small>v2026.07.17.001</small></div>
     <div class="htitle" id="headerTitle" style="display:none"></div>
     <div class="spacer"></div>
     <button class="iconbtn" id="updateHdr" title="Update ready" aria-label="Update ready — refresh" hidden>⟳</button>

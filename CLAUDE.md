@@ -392,15 +392,19 @@ The dock is `position:fixed` to the viewport bottom. `#songView` has `padding-bo
 
 ## 11. Theming & design tokens
 
-CSS custom properties define both themes:
+CSS custom properties define both themes. As of v2026.07.17.001 the palette is **unified with the sibling app PileUp** (the owner's POTA/SOTA log at `cdburgess75/PileUp`) so the two look like one family:
 
-- `:root` = **dark** (near-black `--bg:#121110`, near-white `--ink`, gold `--chord:#ffc24d`).
-- `[data-theme="light"]` = **light** (warm white bg, near-black ink, deep red-orange `--chord:#bd3c1c`).
+- `:root` = **dark** (pure-black `--bg:#000000`, cool-white `--ink:#f4f4f6`, amber `--accent`/`--chord:#f0923c`).
+- `[data-theme="light"]` = **light** (cool white `--bg:#f9fbff`, near-black `--ink:#12202f`, deep amber `--accent:#c8600f`).
+- Amber is the single accent (buttons, active states, highlights, brand glow). `--red` (`#e8635a` dark / `#c83430` light) is reserved for **danger only** (delete-hover, danger context items, the "update available" brand dot). `--ok` (`#4be08a` / `#1c8a55`) is the "up to date" brand dot. `--green`/`--green-dim` remain the "played" strike/tag pair (borrowed from PileUp originally).
+- Primary buttons (`.secbtn`/`.stagebtn`/`.fab`) are amber with **dark** text (`#160f06`) for AA contrast on the light-ish amber.
 - Toggle: `themeBtn` (☀/☾) → flips `state.theme`, `applyTheme()` sets `data-theme`. Persisted.
 
-Contrast: lyrics ≈17:1 both modes; chords 11.7:1 dark / 5.2:1 light (≥ WCAG AA). Keep new colors above AA.
+Contrast: lyrics/ink high in both modes; keep new colors above WCAG AA (`--faint` is the deliberately dim tier, still kept ≥AA on the darkest bg it lands on).
 
-Fonts: `--display` Fraunces (titles), `--ui` Hanken Grotesk (UI + lyrics), `--mono` JetBrains Mono (chords/version).
+Fonts (the "mono chrome, readable lyrics" split): `--display` **and** `--mono` are both JetBrains Mono — so the brand wordmark, header title, section headings, modal headings, song titles, chords and version tag are all monospace (the PileUp look). `--ui` Hanken Grotesk stays on **lyric bodies + subtitles/banter**, the text you actually read while playing. Fraunces is no longer referenced (its `@font-face` + precache entry are dormant; safe to remove in a future cleanup).
+
+**Brand wordmark** (`.brand`): uppercase, wide-tracked (`.16em`), amber, with a soft glow (`text-shadow`), echoing PileUp's `PILEUP` mark. The `<small>` version tag inside it opts back out (`text-transform:none`).
 
 **Capo badge** (`.capo-badge`): monospaced, amber border, shown beneath the key pill in the song view header when `capoVal > 0`.
 
