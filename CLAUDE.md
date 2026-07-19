@@ -156,6 +156,10 @@ v2026.07.19.011  New app icon "Worked & Waiting" (setlist as a checklist: played
                  current song lit amber with a ▶). Replaces the grand-staff mark. Regenerated all four
                  PNGs — icon-192/512 (rounded, transparent corners), icon-512-maskable (full-bleed,
                  content inside the safe zone), apple-touch-icon (full-bleed). Filenames unchanged.
+v2026.07.19.012  New app icon "Note stand": a music stand (cream page + coral note on a gold stand)
+                 on a navy tile — a four-colour mark. Replaces "Worked & Waiting". Regenerated all four
+                 PNGs same as .011 (rounded 192/512, full-bleed safe-zone maskable + apple-touch);
+                 filenames unchanged. Icon only — in-app amber/black theme + manifest theme_color kept.
 ```
 
 A GitHub Actions workflow (`.github/workflows/check.yml`) enforces the version discipline on every push: it syntax-checks the extracted inline script and `sw.js`, **fails if the `<small>` brand version ≠ `sw.js` CACHE version**, and fails on duplicate element ids in the markup.
