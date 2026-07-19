@@ -115,6 +115,8 @@
                    title in the performance view; one-time migration of Doubloon Bayou Band sub->banter.
   v2026.07.19.004  Guitar chord diagrams: tap a chord pill for a fingering popover (SVG). Curated
                    open voicings + movable E/A barre shapes (maj/min/7/m7/maj7); respects transpose+capo.
+  v2026.07.19.005  Showcase song: one-time addShowcaseSong() seeds "Danny Boy" (public domain —
+                   Weatherly 1913 lyrics + traditional Londonderry Air) + a ★ Showcase set.
 -->
 <html lang="en">
 <head>
@@ -405,7 +407,7 @@
 <div class="app">
   <header>
     <button class="back" id="backBtn" style="display:none" aria-label="Back">‹ <span id="backLabel">Back</span></button>
-    <div class="brand" id="brand"><span class="dot"></span>SetList69<small>v2026.07.19.004</small></div>
+    <div class="brand" id="brand"><span class="dot"></span>SetList69<small>v2026.07.19.005</small></div>
     <div class="htitle" id="headerTitle" style="display:none"></div>
     <div class="spacer"></div>
     <button class="iconbtn" id="updateHdr" title="Update ready" aria-label="Update ready — refresh" hidden>⟳</button>
@@ -1746,6 +1748,23 @@ function migrateBanter(){
   if(dbb)for(const id of dbb.songIds){const so=state.songs.find(x=>x.id===id);if(so&&so.sub&&!so.banter){so.banter=so.sub;so.sub="";n++;}}
   state.bantersMigrated=true;return n;
 }
+/* One-time, idempotent: seed a perfectly-formatted public-domain showcase song ("Danny Boy" —
+   Frederic Weatherly's 1913 lyrics + the traditional Londonderry Air, both public domain) into the
+   library, plus a tiny "★ Showcase" set to find it. Guarded by state.showcaseAdded; reaches existing
+   libraries as well as fresh installs. Deleting the song/set sticks (the flag stops it re-adding). */
+function addShowcaseSong(){
+  if(state.showcaseAdded)return false;
+  const add=!state.songs.some(s=>s.id==="danny");
+  if(add){
+    state.songs.push({id:"danny",title:"Danny Boy",sub:"Traditional · Londonderry Air",
+      banter:"Slow and out of tempo — let the last 'I love you so' ring before the final chord.",
+      key:"C",capo:0,
+      body:"Oh [C]Danny [F]Boy, the [C]pipes, the [G]pipes are [C]calling\nFrom [C]glen to [Am]glen, and [F]down the [G]mountain [C]side\nThe [C]summer's [F]gone, and [Am]all the [Em]roses [Am]falling\n'Tis [C]you, 'tis [G]you must [C]go and [G7]I must [C]bide.\n\nBut [C]come ye [G]back when [C]summer's [F]in the [C]meadow\nOr [Am]when the [Em]valley's [Dm]hushed and [G]white with [G7]snow\n'Tis [C]I'll be [F]here in [C]sunshine [Am]or in [F]shadow\nOh [C]Danny [G]Boy, oh [Dm]Danny [G]Boy, I [C]love you [F]so.[C]"});
+    if(!state.setlists.some(sl=>sl.id==="showcase"))
+      state.setlists.push({id:"showcase",name:"★ Showcase",notes:"A perfectly formatted public-domain classic — tap a chord for its shape, or hit 123 for Nashville numbers.",setTranspose:0,songIds:["danny"]});
+  }
+  state.showcaseAdded=true;return add;
+}
 async function boot(){
   // Ask the browser to keep our IndexedDB from being evicted under storage pressure (design priority #1).
   try{if(navigator.storage&&navigator.storage.persist)navigator.storage.persist();}catch(_){}
@@ -1762,6 +1781,7 @@ async function boot(){
   if(state.preferFlats!=null)preferFlats=state.preferFlats;
   if(state.nashville!=null)nashville=state.nashville;
   if(!state.bantersMigrated){migrateBanter();persist();}
+  if(!state.showcaseAdded){addShowcaseSong();persist();}
   applyTheme();document.getElementById("speedVal").textContent=scrollSpeed;
   document.getElementById("flatBtn").classList.toggle("on",preferFlats);
   document.getElementById("nashBtn").classList.toggle("on",nashville);
