@@ -139,6 +139,10 @@
   v2026.07.19.014  App icon recoloured: bright-coral #ff6f5c tile (was navy) with a white stand
                    (was gold, low-contrast on coral); cream page + coral note kept. All four PNGs
                    regenerated (rounded 192/512, full-bleed safe-zone maskable + apple-touch).
+  v2026.07.19.015  Icon cache-busting: apple-touch-icon <link> + manifest icon srcs carry a ?v= query
+                   so Safari/CDN fetch the new icon on Add-to-Home-Screen instead of a stale cached one.
+                   Bump the ?v token whenever the icon PNGs change. SW precache stays unversioned
+                   (ignoreSearch match). Already-installed A2HS icons still need a remove+re-add (iOS).
 -->
 <html lang="en">
 <head>
@@ -149,7 +153,7 @@
 <meta name="theme-color" content="#16140f">
 <title>SetList69</title>
 <link rel="manifest" href="manifest.json">
-<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png?v=2026.07.19.015">
 <style>
   @font-face{font-family:'Fraunces';font-style:normal;font-weight:500 600;font-display:swap;src:url('fonts/fraunces-latin.woff2') format('woff2');}
   @font-face{font-family:'Hanken Grotesk';font-style:normal;font-weight:400 700;font-display:swap;src:url('fonts/hanken-grotesk-latin.woff2') format('woff2');}
@@ -443,7 +447,7 @@
 <div class="app">
   <header>
     <button class="back" id="backBtn" style="display:none" aria-label="Back">‹ <span id="backLabel">Back</span></button>
-    <div class="brand" id="brand"><span class="dot"></span>SetList69<small>v2026.07.19.014</small></div>
+    <div class="brand" id="brand"><span class="dot"></span>SetList69<small>v2026.07.19.015</small></div>
     <div class="htitle" id="headerTitle" style="display:none"></div>
     <div class="spacer"></div>
     <button class="iconbtn" id="updateHdr" title="Update ready" aria-label="Update ready — refresh" hidden>⟳</button>
