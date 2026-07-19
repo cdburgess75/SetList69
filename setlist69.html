@@ -107,6 +107,8 @@
                    two-staff system, red "now playing" note) inside a glowing amber card. Bravura
                    (SIL OFL) is used only to rasterize the PNGs at build time; no font ships.
                    Cache bump so the precached icons re-fetch.
+  v2026.07.19.001  Robust chord recognizer: detect Cmaj7/C7sus4/Cm7b5/D7#9/F°/slash chords in
+                   chords-above detection + import (was one suffix token + digits; accent ! kept).
 -->
 <html lang="en">
 <head>
@@ -385,7 +387,7 @@
 <div class="app">
   <header>
     <button class="back" id="backBtn" style="display:none" aria-label="Back">‹ <span id="backLabel">Back</span></button>
-    <div class="brand" id="brand"><span class="dot"></span>SetList69<small>v2026.07.17.003</small></div>
+    <div class="brand" id="brand"><span class="dot"></span>SetList69<small>v2026.07.19.001</small></div>
     <div class="htitle" id="headerTitle" style="display:none"></div>
     <div class="spacer"></div>
     <button class="iconbtn" id="updateHdr" title="Update ready" aria-label="Update ready — refresh" hidden>⟳</button>
@@ -675,7 +677,10 @@ const IDX={C:0,"C#":1,Db:1,D:2,"D#":3,Eb:3,E:4,"E#":5,Fb:4,F:5,"F#":6,Gb:6,G:7,"
 const CHORD_RE=/^([A-G][#b]?)(.*)$/;
 function transposeNote(n){if(!(n in IDX))return n;const v=((IDX[n]+transpose)%12+12)%12;return preferFlats?FLAT[v]:SHARP[v];}
 function transposeChord(ch){if(!ch)return ch;return ch.split("/").map(p=>{const m=p.match(CHORD_RE);return m?transposeNote(m[1])+m[2]:p;}).join("/");}
-function looksChord(t){return /^[A-G][#b]?(m|maj|min|dim|aug|sus|add)?[0-9]*(\([^)]*\))?(\/[A-G][#b]?)?[!*]?$/.test(t);}
+// Root + any order of quality/extension/alteration tokens + optional bass + optional accent
+// marker. Recognises Cmaj7, C7sus4, Cm7b5, Bbm7b5, D7#9, Cadd9, F°, Bø, slash chords, Gm! — while
+// still rejecting ordinary lyric words (used by isChordLine for chords-above detection + import).
+function looksChord(t){return /^[A-G][#b]?(?:maj|min|m|M|dim|aug|sus|add|°|ø|\+|-|[#b]?(?:2|4|5|6|7|9|11|13)|\([^)]*\))*(?:\/[A-G][#b]?)?[!*]?$/.test(t);}
 function isChordLine(line){const toks=line.trim().split(/\s+/).filter(Boolean);if(!toks.length)return false;let chords=0;for(const t of toks){if(looksChord(t))chords++;else if(/^[\/\-|]+$/.test(t))continue;else return false;}return chords>0;}
 function pitchClass(key){const m=(key||"").match(CHORD_RE);return m&&m[1]in IDX?IDX[m[1]]:-1;}
 function keyColor(key){const pc=pitchClass(key);if(pc<0)return"#7a7160";const hue=(pc*30)%360;return"hsl("+hue+" 52% 42%)";}
