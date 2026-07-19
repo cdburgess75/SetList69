@@ -461,7 +461,6 @@ No test framework — verification is manual:
 
 **Parked (owner deprioritized; pick up on request):**
 
-- Nashville number display.
 - Chord diagrams / fingering charts.
 - Setlist-level notes shown during performance.
 - **Dedicated `banter` field per song** — stage patter/talk-up notes, distinct from `sub` (artist/note), shown directly under the title in the performance view alongside or instead of `sub`. Needs: a new `song.banter` field, an editor input, and a render line in `renderSheet()`/`svSub` area. Interim workaround in place: the "Doubloon Bayou Band" setlist (imported 2026.07.14) stores its banter text in each song's `sub` field, since `sub` already renders under the title (`svSub`) — expect to migrate those 36 songs to the real field once it exists.
