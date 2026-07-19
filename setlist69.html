@@ -111,6 +111,8 @@
                    chords-above detection + import (was one suffix token + digits; accent ! kept).
   v2026.07.19.002  Nashville number display: "123" toggle in #dockSheet renders chords as
                    scale-degree numbers relative to the key (key-invariant; quality superscripted).
+  v2026.07.19.003  Dedicated per-song `banter` field (stage patter), editor input + line under the
+                   title in the performance view; one-time migration of Doubloon Bayou Band sub->banter.
 -->
 <html lang="en">
 <head>
@@ -238,6 +240,7 @@
   .svhead{display:flex;align-items:flex-start;gap:.7rem;margin-bottom:.4rem;}
   .svtitle{font-family:var(--display);font-weight:600;font-size:1.7rem;line-height:1.05;flex:1;}
   .svsub{color:var(--muted);font-size:.88rem;margin-top:.1rem;}
+  .svbanter{color:var(--accent);font-size:.84rem;font-style:italic;margin-top:.15rem;line-height:1.35;}
   .sheet{margin-top:1.1rem;font-size:var(--sheet-size,1.35rem);-webkit-user-select:text;user-select:text;
     line-height:1;}
   .ln{margin:0 0 .5em;white-space:normal;}            /* a song line; wraps to screen width */
@@ -390,7 +393,7 @@
 <div class="app">
   <header>
     <button class="back" id="backBtn" style="display:none" aria-label="Back">‹ <span id="backLabel">Back</span></button>
-    <div class="brand" id="brand"><span class="dot"></span>SetList69<small>v2026.07.19.002</small></div>
+    <div class="brand" id="brand"><span class="dot"></span>SetList69<small>v2026.07.19.003</small></div>
     <div class="htitle" id="headerTitle" style="display:none"></div>
     <div class="spacer"></div>
     <button class="iconbtn" id="updateHdr" title="Update ready" aria-label="Update ready — refresh" hidden>⟳</button>
@@ -436,7 +439,7 @@
 
     <section class="screen" id="songView">
       <div class="svhead">
-        <div><div class="svtitle" id="svTitle"></div><div class="svsub" id="svSub"></div></div>
+        <div><div class="svtitle" id="svTitle"></div><div class="svsub" id="svSub"></div><div class="svbanter" id="svBanter" style="display:none"></div></div>
         <div style="display:flex;flex-direction:column;align-items:flex-end;gap:.3rem">
           <span class="songkey" id="svKey" style="display:none"></span>
           <span class="capo-badge" id="svCapo" style="display:none"></span>
@@ -466,6 +469,7 @@
         <div class="field" style="flex:0 0 6.8rem"><label>Capo</label><div class="ctl"><button id="capoEdDown" aria-label="Capo down">−</button><span class="val" id="fCapo">0</span><button id="capoEdUp" aria-label="Capo up">+</button></div></div>
       </div>
       <div class="field"><label>Artist / note</label><input id="fSub" placeholder="Artist"></div>
+      <div class="field"><label>Banter / stage notes</label><input id="fBanter" placeholder="Between-song patter, cues, tuning…" autocomplete="off"></div>
       <div class="field"><label>Chords &amp; lyrics</label>
         <textarea id="fBody" placeholder="[G]Amazing [G7]grace how [C]sweet the [G]sound&#10;&#10;…or paste chord lines above lyric lines."></textarea></div>
       <div class="hint">Inline <code>[C]</code> or chords-above-lyrics both work — it always renders chords above the words.
@@ -798,6 +802,8 @@ function renderSheet(song){
   const r=parseSong(song),meta=r.meta;
   document.getElementById("svTitle").textContent=meta.title||"Untitled";
   document.getElementById("svSub").textContent=meta.sub||"";
+  const banterEl=document.getElementById("svBanter");
+  if(song.banter){banterEl.style.display="";banterEl.textContent=song.banter;}else banterEl.style.display="none";
   nashKeyPc=pitchClass(meta.key);
   const keyEl=document.getElementById("svKey");
   if(meta.key){const tk=transposeChord(meta.key);keyEl.style.display="";
@@ -947,6 +953,7 @@ function openEditor(id,ret){editingId=id;editorReturn=ret||screen;
   document.getElementById("editorTitle").textContent=s?"Edit Song":"New Song";
   document.getElementById("fTitle").value=s?s.title:"";
   document.getElementById("fSub").value=s?(s.sub||""):"";
+  document.getElementById("fBanter").value=s?(s.banter||""):"";
   document.getElementById("fKey").value=s?(s.key||""):"";
   document.getElementById("fCapo").textContent=s?(s.capo||0):0;
   document.getElementById("fBody").value=s?s.body:"";
@@ -956,12 +963,13 @@ function closeEditor(){document.getElementById("editor").classList.remove("show"
 function saveSong(){
   const title=document.getElementById("fTitle").value.trim()||"Untitled";
   const sub=document.getElementById("fSub").value.trim();
+  const banter=document.getElementById("fBanter").value.trim();
   const key=document.getElementById("fKey").value.trim();
   const capo=parseInt(document.getElementById("fCapo").textContent)||0;
   const body=document.getElementById("fBody").value;
   let newId=editingId;
-  if(editingId){Object.assign(state.songs.find(x=>x.id===editingId),{title,sub,key,capo,body});}
-  else{newId=newSongId();state.songs.push({id:newId,title,sub,key,capo,body});}
+  if(editingId){Object.assign(state.songs.find(x=>x.id===editingId),{title,sub,banter,key,capo,body});}
+  else{newId=newSongId();state.songs.push({id:newId,title,sub,banter,key,capo,body});}
   persist();closeEditor();
   if(curSongId===editingId&&screen==="song")reRender();
   renderAllSongs();renderSetSongs();renderSetlists();toast("Saved");return newId;}
@@ -1693,6 +1701,16 @@ document.getElementById("closeSongCtx").addEventListener("click",closeSongContex
     if(Math.abs(dx)>40&&Math.abs(dx)>Math.abs(dy)*1.8&&dt<700){if(dx<0)nextSong();else prevSong();}},{passive:true});})();
 
 /* ===== boot ===== */
+/* One-time, idempotent data migration: the "Doubloon Bayou Band" set stored stage banter in each
+   song's `sub` field (interim workaround, see CLAUDE.md §14). Relocate it to the real `banter`
+   field — MOVED, not deleted, and only when `banter` is still empty. The guard flag stops re-runs;
+   on any device without that set it simply no-ops (and still sets the flag). Returns count moved. */
+function migrateBanter(){
+  if(state.bantersMigrated)return 0;
+  let n=0;const dbb=(state.setlists||[]).find(s=>/doubloon bayou band/i.test(s.name||""));
+  if(dbb)for(const id of dbb.songIds){const so=state.songs.find(x=>x.id===id);if(so&&so.sub&&!so.banter){so.banter=so.sub;so.sub="";n++;}}
+  state.bantersMigrated=true;return n;
+}
 async function boot(){
   // Ask the browser to keep our IndexedDB from being evicted under storage pressure (design priority #1).
   try{if(navigator.storage&&navigator.storage.persist)navigator.storage.persist();}catch(_){}
@@ -1708,6 +1726,7 @@ async function boot(){
   if(state.scrollSpeed!=null)scrollSpeed=state.scrollSpeed;
   if(state.preferFlats!=null)preferFlats=state.preferFlats;
   if(state.nashville!=null)nashville=state.nashville;
+  if(!state.bantersMigrated){migrateBanter();persist();}
   applyTheme();document.getElementById("speedVal").textContent=scrollSpeed;
   document.getElementById("flatBtn").classList.toggle("on",preferFlats);
   document.getElementById("nashBtn").classList.toggle("on",nashville);

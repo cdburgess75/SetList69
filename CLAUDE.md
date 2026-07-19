@@ -136,6 +136,8 @@ v2026.07.19.001  Robust chord recognizer: detect Cmaj7/C7sus4/Cm7b5/D7#9/F°/sla
                  chords-above detection + import (was one suffix token + digits; accent ! kept).
 v2026.07.19.002  Nashville number display: "123" toggle in #dockSheet renders chords as
                  scale-degree numbers relative to the key (key-invariant; quality superscripted).
+v2026.07.19.003  Dedicated per-song `banter` field (stage patter): editor input + a line under
+                 the title in the performance view; one-time Doubloon Bayou Band sub->banter migration.
 ```
 
 A GitHub Actions workflow (`.github/workflows/check.yml`) enforces the version discipline on every push: it syntax-checks the extracted inline script and `sw.js`, **fails if the `<small>` brand version ≠ `sw.js` CACHE version**, and fails on duplicate element ids in the markup.
@@ -244,6 +246,7 @@ Key relationships:
 - **Setlists reference songs by id.** `setlist.songIds` is an ordered array. Same song can appear in multiple setlists.
 - Deleting from a setlist removes the id from that `songIds` only. Deleting from All Songs scrubs it from every setlist.
 - `song.body` is freeform text — inline ChordPro (`[C]word`) or chords-above-lyrics.
+- **Optional per-song fields** (added lazily; absent on older songs — treat as falsy): `song.capo` (fret 0–11), `song.defaultTranspose` (semitones), and `song.banter` (stage-patter line shown under the title, distinct from `sub`; see §6). No migration needed for these — renders coalesce missing values.
 - Ids: seed songs use short literals; runtime songs use `"s" + Date.now()` (+ random for imports); setlists use `uid("set")`.
 
 The seed (`seed()`) ships 6 public-domain songs and 2 demo setlists. Runs only when no saved state is found.
@@ -424,7 +427,7 @@ Fonts (the "mono chrome, readable lyrics" split): `--display` **and** `--mono` a
 
 ```
 Storage:       idbOpen  idbGet  idbSet  persist  flushPersist  isValidState
-Seed/init:     seed  boot  uid  newSongId  applyTheme  toast
+Seed/init:     seed  boot  uid  newSongId  applyTheme  toast  migrateBanter
 Music core:    transposeNote  transposeChord  looksChord  isChordLine
                pitchClass  keyColor  cleanEmbeddedChords  toNashville  nashPill
 Parse/render:  esc  parseSong  inlineToSegs  pairToSegs  renderLine  renderSheet  retuneSheet
@@ -463,7 +466,8 @@ No test framework — verification is manual:
 
 - Chord diagrams / fingering charts.
 - Setlist-level notes shown during performance.
-- **Dedicated `banter` field per song** — stage patter/talk-up notes, distinct from `sub` (artist/note), shown directly under the title in the performance view alongside or instead of `sub`. Needs: a new `song.banter` field, an editor input, and a render line in `renderSheet()`/`svSub` area. Interim workaround in place: the "Doubloon Bayou Band" setlist (imported 2026.07.14) stores its banter text in each song's `sub` field, since `sub` already renders under the title (`svSub`) — expect to migrate those 36 songs to the real field once it exists.
+
+**Shipped:** the **per-song `banter` field** (v2026.07.19.003) — `song.banter`, an editor input (`#fBanter`), and a `.svbanter` line (accent, italic) under the title in the performance view (`renderSheet` reads `song.banter`, not `meta`). The Doubloon Bayou Band interim workaround (banter stuffed into `sub`) is migrated by the one-time, idempotent `migrateBanter()` in `boot()` — guarded by `state.bantersMigrated`, it **moves** (not deletes) `sub`→`banter` for that set's songs when `banter` is empty, and no-ops on any device without that set. Safe to delete once every device has booted past it.
 
 **Explicitly out of scope (by design):** cloud sync and any built-in online song catalog. Moving songs between devices is handled by backup-to-file.
 
