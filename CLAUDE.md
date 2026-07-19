@@ -163,6 +163,10 @@ v2026.07.19.012  New app icon "Note stand": a music stand (cream page + coral no
 v2026.07.19.013  Header wordmark (`.brand` "SETLIST69") recoloured amber -> coral via a new `--brand`
                  token (dark #ff6f5c / light #c8342a) + a coral glow; `--accent` (the rest of the UI)
                  stays amber. Title only; status dot, version tag, and `.htitle` untouched.
+v2026.07.19.014  App-icon recolour: bright-coral #ff6f5c tile (was navy #0c1424) with a white stand
+                 (was gold #ffb43c — low-contrast on coral); cream page + coral note kept. All four
+                 PNGs regenerated (rounded 192/512 + full-bleed safe-zone maskable/apple-touch);
+                 filenames unchanged. Icon only — in-app theme + manifest theme_color untouched.
 ```
 
 A GitHub Actions workflow (`.github/workflows/check.yml`) enforces the version discipline on every push: it syntax-checks the extracted inline script and `sw.js`, **fails if the `<small>` brand version ≠ `sw.js` CACHE version**, and fails on duplicate element ids in the markup.
