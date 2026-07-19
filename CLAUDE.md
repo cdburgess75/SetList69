@@ -167,6 +167,12 @@ v2026.07.19.014  App-icon recolour: bright-coral #ff6f5c tile (was navy #0c1424)
                  (was gold #ffb43c — low-contrast on coral); cream page + coral note kept. All four
                  PNGs regenerated (rounded 192/512 + full-bleed safe-zone maskable/apple-touch);
                  filenames unchanged. Icon only — in-app theme + manifest theme_color untouched.
+v2026.07.19.015  Icon cache-busting: the apple-touch-icon `<link>` and the manifest icon `src`s carry
+                 a `?v=` query so Safari/CDN fetch fresh icons on Add-to-Home-Screen (filenames are
+                 reused, so same-URL caches were serving the old icon). **Bump the `?v` token whenever
+                 the icon PNGs change.** `sw.js` PRECACHE stays unversioned — the SW fetch handler
+                 matches with `ignoreSearch:true`. Note: an already-installed A2HS icon can only change
+                 by removing + re-adding the app (iOS never refreshes an installed home-screen icon).
 ```
 
 A GitHub Actions workflow (`.github/workflows/check.yml`) enforces the version discipline on every push: it syntax-checks the extracted inline script and `sw.js`, **fails if the `<small>` brand version ≠ `sw.js` CACHE version**, and fails on duplicate element ids in the markup.
