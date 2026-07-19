@@ -134,6 +134,8 @@
   v2026.07.19.012  New app icon "Note stand": a music stand — cream page with a coral note on a gold
                    stand, on a navy tile (four-colour). Regenerated all four PNGs (rounded 192/512,
                    full-bleed safe-zone maskable + apple-touch); icon only, in-app amber theme unchanged.
+  v2026.07.19.013  Header wordmark recoloured amber -> coral via a new --brand token (dark #ff6f5c /
+                   light #c8342a) + matching glow; --accent (rest of the UI) stays amber.
 -->
 <html lang="en">
 <head>
@@ -154,6 +156,7 @@
     --bg:#000000; --panel:#0e0e0e; --panel2:#181818; --line:#282828;
     --ink:#f4f4f6; --muted:#9aa8c2; --faint:#7e889c;   /* faint kept ≥AA on black bg/panel */
     --chord:#f0923c; --accent:#f0923c; --accent2:#ffab54; --ok:#4be08a; --red:#e8635a;
+    --brand:#ff6f5c;   /* header wordmark — coral, its own token so --accent stays amber */
     --green:#AED8CA; --green-dim:#2E8B7A;   /* "played" strike + tag (bright on dark) */
     --ui:'Hanken Grotesk',system-ui,-apple-system,sans-serif;
     --display:'JetBrains Mono',ui-monospace,Menlo,Consolas,monospace;
@@ -165,6 +168,7 @@
     --bg:#f9fbff; --panel:#ffffff; --panel2:#f7f7f7; --line:#e4e4e4;
     --ink:#12202f; --muted:#3a4655; --faint:#5b6676;   /* ≥AA on light bg/panel */
     --chord:#c8600f; --accent:#c8600f; --accent2:#e0872f; --ok:#1c8a55; --red:#c83430;
+    --brand:#c8342a;   /* header wordmark — deeper coral for AA on the white header */
     --green:#2E8B7A; --green-dim:#AED8CA;   /* swapped so the pair still reads on light bg */
   }
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
@@ -180,7 +184,7 @@
     background:var(--panel);
     border-bottom:1px solid var(--line);position:relative;z-index:20;}
   .brand{font-family:var(--display);font-weight:700;font-size:1.02rem;display:flex;align-items:center;gap:.45rem;
-    text-transform:uppercase;letter-spacing:.16em;color:var(--accent);text-shadow:0 0 14px rgba(240,146,60,.55);}
+    text-transform:uppercase;letter-spacing:.16em;color:var(--brand);text-shadow:0 0 14px rgba(255,111,92,.5);}
   /* status light: green when running the latest version, red when an update is available */
   .brand .dot{width:.5rem;height:.5rem;border-radius:50%;background:var(--ok);box-shadow:0 0 12px var(--ok);transition:background .3s,box-shadow .3s;}
   .brand .dot.behind{background:var(--red);box-shadow:0 0 12px var(--red);}
@@ -436,7 +440,7 @@
 <div class="app">
   <header>
     <button class="back" id="backBtn" style="display:none" aria-label="Back">‹ <span id="backLabel">Back</span></button>
-    <div class="brand" id="brand"><span class="dot"></span>SetList69<small>v2026.07.19.012</small></div>
+    <div class="brand" id="brand"><span class="dot"></span>SetList69<small>v2026.07.19.013</small></div>
     <div class="htitle" id="headerTitle" style="display:none"></div>
     <div class="spacer"></div>
     <button class="iconbtn" id="updateHdr" title="Update ready" aria-label="Update ready — refresh" hidden>⟳</button>
