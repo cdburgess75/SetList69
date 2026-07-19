@@ -152,6 +152,10 @@ v2026.07.19.009  Easier editing: a ✎ pencil in the header while viewing a song
                  gig mode) + tapping the song title opens the editor. Both call openEditor(curSongId).
 v2026.07.19.010  Update banner anchored to the bottom edge (was top): slides up from below so the
                  "Update ready" notice no longer overlaps the header/brand while it flashes.
+v2026.07.19.011  New app icon "Worked & Waiting" (setlist as a checklist: played songs struck green,
+                 current song lit amber with a ▶). Replaces the grand-staff mark. Regenerated all four
+                 PNGs — icon-192/512 (rounded, transparent corners), icon-512-maskable (full-bleed,
+                 content inside the safe zone), apple-touch-icon (full-bleed). Filenames unchanged.
 ```
 
 A GitHub Actions workflow (`.github/workflows/check.yml`) enforces the version discipline on every push: it syntax-checks the extracted inline script and `sw.js`, **fails if the `<small>` brand version ≠ `sw.js` CACHE version**, and fails on duplicate element ids in the markup.
