@@ -130,6 +130,10 @@ v2026.07.12.006  Infra: SW offline navigation falls back to the app shell (ignor
                  index.html precached; CI parses manifest + asserts PRECACHE files exist, adds
                  permissions/concurrency; manifest gains id/scope/lang/categories/screenshots and
                  a theme_color that matches the page meta.
+                 (HTML changelog continues .07.12.007–.07.17.003: QA/resilience, update status,
+                 README/positioning, PileUp palette unification, band user guide, app-icon redesigns.)
+v2026.07.19.001  Robust chord recognizer: detect Cmaj7/C7sus4/Cm7b5/D7#9/F°/slash chords in
+                 chords-above detection + import (was one suffix token + digits; accent ! kept).
 ```
 
 A GitHub Actions workflow (`.github/workflows/check.yml`) enforces the version discipline on every push: it syntax-checks the extracted inline script and `sw.js`, **fails if the `<small>` brand version ≠ `sw.js` CACHE version**, and fails on duplicate element ids in the markup.
@@ -284,9 +288,9 @@ Goal: render chords stacked directly above the correct syllable, wrapping to scr
 
 ### Chord detection
 
-`looksChord(tok)` — regex heuristic; accepts trailing `!` and `*` (E-Chords accent markers):
+`looksChord(tok)` — regex heuristic. Root + **any order** of quality/extension/alteration tokens + optional bass + optional trailing `!`/`*` (E-Chords accent markers). Handles `Cmaj7`, `C7sus4`, `Cm7b5`, `Bbm7b5`, `D7#9`, `Cadd9`, `F°`, `Bø`, slash chords — the older `(quality)?[0-9]*` form missed suffix orders like `C7sus4`. Still rejects lyric words (each token must match; `isChordLine` requires *all* tokens to pass):
 ```js
-/^[A-G][#b]?(m|maj|min|dim|aug|sus|add)?[0-9]*(\([^)]*\))?(\/[A-G][#b]?)?[!*]?$/
+/^[A-G][#b]?(?:maj|min|m|M|dim|aug|sus|add|°|ø|\+|-|[#b]?(?:2|4|5|6|7|9|11|13)|\([^)]*\))*(?:\/[A-G][#b]?)?[!*]?$/
 ```
 
 `isChordLine(line)` — all tokens must be chords OR pure separators (`/`, `-`, `|`); at least one chord required. This handles "Cm / Bb / Dm - D" correctly.
