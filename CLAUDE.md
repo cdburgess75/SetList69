@@ -145,6 +145,7 @@ v2026.07.19.005  Showcase song: one-time addShowcaseSong() adds "Danny Boy" (pub
 v2026.07.19.006  Fullscreen "gig mode": ⛶ dock button (setGig/toggleGig) requests browser
                  fullscreen where supported + hides the header for lyric space + holds the wake
                  lock; existing swipe ‹ › still moves through the set. Exits on ⛶/Esc/leave.
+v2026.07.19.007  Label the gig button "⛶ Gig mode" (`.dock-gig`), wording in bright-orange accent.
 ```
 
 A GitHub Actions workflow (`.github/workflows/check.yml`) enforces the version discipline on every push: it syntax-checks the extracted inline script and `sw.js`, **fails if the `<small>` brand version ≠ `sw.js` CACHE version**, and fails on duplicate element ids in the markup.
