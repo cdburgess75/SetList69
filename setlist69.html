@@ -122,6 +122,8 @@
                    still moves through the set. Exit via ⛶, Esc, or leaving the song.
   v2026.07.19.007  Label the gig-mode dock button "⛶ Gig mode" with the wording in bright orange
                    (accent), so it reads as an obvious control.
+  v2026.07.19.008  Light-mode pass: banter + gig label use a darker orange (#b8560c) in light so the
+                   text clears WCAG AA (accent was ~4:1 on near-white); softer chord-popover shadow.
 -->
 <html lang="en">
 <head>
@@ -319,6 +321,11 @@
   .dock-gig .gig-ico{font-size:1.15rem;line-height:1;}
   .dock-gig .gig-lbl{font-family:var(--mono);font-weight:700;font-size:.72rem;letter-spacing:.05em;text-transform:uppercase;color:var(--accent);}  /* bright orange */
   .dock-gig.on{color:var(--accent);}   /* symbol also lights up while gig mode is active */
+  /* light-mode refinements: --accent as *text* is only ~4:1 on the near-white bg (fine as a button
+     fill/icon, sub-AA as readable text), so use a darker orange for the banter + gig label; and
+     soften the chord popover's drop shadow for the lighter surface. */
+  [data-theme="light"] .svbanter,[data-theme="light"] .dock-gig .gig-lbl{color:#b8560c;}   /* ≥AA orange */
+  [data-theme="light"] .chord-pop{box-shadow:0 8px 26px rgba(18,32,47,.16);}
   .app.gig header{display:none;}   /* gig mode: reclaim the header strip for lyrics */
   .dockrow{display:flex;align-items:center;gap:.7rem;}
   .dockrow-label{font-size:.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;font-weight:600;flex:1;}
@@ -419,7 +426,7 @@
 <div class="app">
   <header>
     <button class="back" id="backBtn" style="display:none" aria-label="Back">‹ <span id="backLabel">Back</span></button>
-    <div class="brand" id="brand"><span class="dot"></span>SetList69<small>v2026.07.19.007</small></div>
+    <div class="brand" id="brand"><span class="dot"></span>SetList69<small>v2026.07.19.008</small></div>
     <div class="htitle" id="headerTitle" style="display:none"></div>
     <div class="spacer"></div>
     <button class="iconbtn" id="updateHdr" title="Update ready" aria-label="Update ready — refresh" hidden>⟳</button>
