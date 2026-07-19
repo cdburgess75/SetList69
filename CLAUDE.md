@@ -160,6 +160,9 @@ v2026.07.19.012  New app icon "Note stand": a music stand (cream page + coral no
                  on a navy tile — a four-colour mark. Replaces "Worked & Waiting". Regenerated all four
                  PNGs same as .011 (rounded 192/512, full-bleed safe-zone maskable + apple-touch);
                  filenames unchanged. Icon only — in-app amber/black theme + manifest theme_color kept.
+v2026.07.19.013  Header wordmark (`.brand` "SETLIST69") recoloured amber -> coral via a new `--brand`
+                 token (dark #ff6f5c / light #c8342a) + a coral glow; `--accent` (the rest of the UI)
+                 stays amber. Title only; status dot, version tag, and `.htitle` untouched.
 ```
 
 A GitHub Actions workflow (`.github/workflows/check.yml`) enforces the version discipline on every push: it syntax-checks the extracted inline script and `sw.js`, **fails if the `<small>` brand version ≠ `sw.js` CACHE version**, and fails on duplicate element ids in the markup.
@@ -435,7 +438,8 @@ CSS custom properties define both themes. As of v2026.07.17.001 the palette is *
 
 - `:root` = **dark** (pure-black `--bg:#000000`, cool-white `--ink:#f4f4f6`, amber `--accent`/`--chord:#f0923c`).
 - `[data-theme="light"]` = **light** (cool white `--bg:#f9fbff`, near-black `--ink:#12202f`, deep amber `--accent:#c8600f`).
-- Amber is the single accent (buttons, active states, highlights, brand glow). `--red` (`#e8635a` dark / `#c83430` light) is reserved for **danger only** (delete-hover, danger context items, the "update available" brand dot). `--ok` (`#4be08a` / `#1c8a55`) is the "up to date" brand dot. `--green`/`--green-dim` remain the "played" strike/tag pair (borrowed from PileUp originally).
+- Amber is the single accent (buttons, active states, highlights). `--red` (`#e8635a` dark / `#c83430` light) is reserved for **danger only** (delete-hover, danger context items, the "update available" brand dot). `--ok` (`#4be08a` / `#1c8a55`) is the "up to date" brand dot. `--green`/`--green-dim` remain the "played" strike/tag pair (borrowed from PileUp originally).
+- **Exception (v2026.07.19.013):** the header wordmark `.brand` uses its own `--brand` token — **coral** (`#ff6f5c` dark / `#c8342a` light) with a coral glow — a deliberate, owner-requested departure from amber-only, kept separate from `--accent` so nothing else changes. Coral sits near `--red`; that overlap is intentional.
 - Primary buttons (`.secbtn`/`.stagebtn`/`.fab`) are amber with **dark** text (`#160f06`) for AA contrast on the light-ish amber.
 - Toggle: `themeBtn` (☀/☾) → flips `state.theme`, `applyTheme()` sets `data-theme`. Persisted.
 
