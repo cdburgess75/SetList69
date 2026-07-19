@@ -134,6 +134,8 @@ v2026.07.12.006  Infra: SW offline navigation falls back to the app shell (ignor
                  README/positioning, PileUp palette unification, band user guide, app-icon redesigns.)
 v2026.07.19.001  Robust chord recognizer: detect Cmaj7/C7sus4/Cm7b5/D7#9/F°/slash chords in
                  chords-above detection + import (was one suffix token + digits; accent ! kept).
+v2026.07.19.002  Nashville number display: "123" toggle in #dockSheet renders chords as
+                 scale-degree numbers relative to the key (key-invariant; quality superscripted).
 ```
 
 A GitHub Actions workflow (`.github/workflows/check.yml`) enforces the version discipline on every push: it syntax-checks the extracted inline script and `sw.js`, **fails if the `<small>` brand version ≠ `sw.js` CACHE version**, and fails on duplicate element ids in the markup.
@@ -306,6 +308,10 @@ Goal: render chords stacked directly above the correct syllable, wrapping to scr
 
 `keyColor(key)` maps root pitch class to `hsl(pitchClass*30 52% 42%)`. Unknown root → `#7a7160`.
 
+### Nashville numbers (v2026.07.19.002)
+
+Global `nashville` flag (persisted in `state.nashville`, synced in `boot()` + restore; toggled by `#nashBtn` in `#dockSheet`). When on, chord pills render as scale-degree numbers instead of names. `toNashville(ch, keyPc)` maps each root via `NASH = [1,b2,2,b3,3,4,#4,5,b6,6,b7,7]` (major-scale / "flat-three" convention), keeping the suffix; `nashPill()` superscripts the quality/extension so `5` + a 7th reads `5⁷` not `57`, and does slash chords (`1/3`). Computed from the pill's **raw** `data-ch` chord and the raw song key (`nashKeyPc`, set in `renderSheet`), so the numbers are **key-invariant** — transpose/capo shift both and cancel. Both `renderLine` (initial) and `retuneSheet` (transpose-in-place) are gated on the flag, so with it **off the pill HTML is byte-identical** to before (checksum-verified). Pill background still uses `keyColor` of the sounding root. Needs a key (badge prepends `Nashville · `; no key → toast + graceful fallback to names). The toggle calls `reRender()` (updates the badge too); transpose while on uses the Nashville-aware `retuneSheet`.
+
 -----
 
 ## 7. Persistence
@@ -420,7 +426,7 @@ Fonts (the "mono chrome, readable lyrics" split): `--display` **and** `--mono` a
 Storage:       idbOpen  idbGet  idbSet  persist  flushPersist  isValidState
 Seed/init:     seed  boot  uid  newSongId  applyTheme  toast
 Music core:    transposeNote  transposeChord  looksChord  isChordLine
-               pitchClass  keyColor  cleanEmbeddedChords
+               pitchClass  keyColor  cleanEmbeddedChords  toNashville  nashPill
 Parse/render:  esc  parseSong  inlineToSegs  pairToSegs  renderLine  renderSheet  retuneSheet
 Router/nav:    show  goBack
 List renders:  renderSetlists  renderSetSongs  renderAllSongs  renderPicker  renderAdder

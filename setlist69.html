@@ -109,6 +109,8 @@
                    Cache bump so the precached icons re-fetch.
   v2026.07.19.001  Robust chord recognizer: detect Cmaj7/C7sus4/Cm7b5/D7#9/F°/slash chords in
                    chords-above detection + import (was one suffix token + digits; accent ! kept).
+  v2026.07.19.002  Nashville number display: "123" toggle in #dockSheet renders chords as
+                   scale-degree numbers relative to the key (key-invariant; quality superscripted).
 -->
 <html lang="en">
 <head>
@@ -246,6 +248,7 @@
   .chordpill{display:inline-block;color:#fff;font-family:var(--mono);font-weight:700;font-size:.58em;
     padding:.2em .5em;border-radius:.55em;line-height:1.15;letter-spacing:.2px;
     box-shadow:inset 0 0 0 1px #ffffff2e, 0 1px 2px #0003;}
+  .chordpill .nsuf{font-size:.72em;vertical-align:.32em;line-height:0;letter-spacing:0;}
   .seg .l{display:block;white-space:pre;line-height:1.3;}
   .songkey{font-family:var(--mono);font-size:.82rem;font-weight:600;color:var(--muted);white-space:nowrap;
     align-self:center;}
@@ -387,7 +390,7 @@
 <div class="app">
   <header>
     <button class="back" id="backBtn" style="display:none" aria-label="Back">‹ <span id="backLabel">Back</span></button>
-    <div class="brand" id="brand"><span class="dot"></span>SetList69<small>v2026.07.19.001</small></div>
+    <div class="brand" id="brand"><span class="dot"></span>SetList69<small>v2026.07.19.002</small></div>
     <div class="htitle" id="headerTitle" style="display:none"></div>
     <div class="spacer"></div>
     <button class="iconbtn" id="updateHdr" title="Update ready" aria-label="Update ready — refresh" hidden>⟳</button>
@@ -533,6 +536,8 @@
       <div class="dockrow"><span class="dockrow-label">Transpose</span>
         <div class="ctl"><button id="trDown" aria-label="Transpose down a semitone">♭−</button><span class="val" id="trVal">0</span><button id="trUp" aria-label="Transpose up a semitone">+♯</button></div>
         <div class="ctl"><button id="flatBtn" title="Sharp/flat" aria-label="Toggle sharp or flat spelling">♯/♭</button></div></div>
+      <div class="dockrow"><span class="dockrow-label">Nashville</span>
+        <div class="ctl"><button id="nashBtn" title="Nashville numbers" aria-label="Toggle Nashville number notation">123</button></div></div>
       <div class="dockrow"><span class="dockrow-label">Font size</span>
         <div class="ctl"><button id="fontDown" aria-label="Smaller font">A−</button><button id="fontFit" title="Fit to screen" aria-label="Fit song to screen" style="font-size:.7rem;letter-spacing:.3px">fit</button><button id="fontUp" aria-label="Larger font">A＋</button></div></div>
       <button class="ghostbtn" id="editSong" style="margin:0">✎ Edit song</button>
@@ -651,14 +656,14 @@ function seed(){
   return {songs,setlists:[
     {id:"set1",name:"Front Porch",songIds:["hr","wf","sf"]},
     {id:"set2",name:"Sunday Morning",songIds:["am","wc","st"]}
-  ],theme:"dark",fontSize:1.35,scrollSpeed:3,preferFlats:false};
+  ],theme:"dark",fontSize:1.35,scrollSpeed:3,preferFlats:false,nashville:false};
 }
 
 /* ===== state & nav ===== */
 let state=seed();
 let screen="setlists";
 let curSetlist=null,curSongId=null,curIndex=-1,curSetTranspose=0,stageMode=false,capoVal=0;
-let transpose=0,preferFlats=false,fontSize=1.35,scrollSpeed=3;
+let transpose=0,preferFlats=false,fontSize=1.35,scrollSpeed=3,nashville=false,nashKeyPc=-1;
 let scrolling=false,scrollRAF=null,scrollAccum=0,swipeHintTimer=null;
 let editingId=null,editorReturn="setlists",wakeLock=null,addingSongId=null,editingSetlistId=null;
 let allSearchQ="",pickerSearchQ="";
@@ -684,6 +689,13 @@ function looksChord(t){return /^[A-G][#b]?(?:maj|min|m|M|dim|aug|sus|add|°|ø|\
 function isChordLine(line){const toks=line.trim().split(/\s+/).filter(Boolean);if(!toks.length)return false;let chords=0;for(const t of toks){if(looksChord(t))chords++;else if(/^[\/\-|]+$/.test(t))continue;else return false;}return chords>0;}
 function pitchClass(key){const m=(key||"").match(CHORD_RE);return m&&m[1]in IDX?IDX[m[1]]:-1;}
 function keyColor(key){const pc=pitchClass(key);if(pc<0)return"#7a7160";const hue=(pc*30)%360;return"hsl("+hue+" 52% 42%)";}
+/* Nashville Number System: chord root -> scale degree relative to the key. Computed from the
+   RAW (un-transposed/un-capo'd) chord + raw key, so the numbers are key-invariant by construction
+   (transpose/capo shift both together). Suffix kept. NASH is the major-scale / "flat-three" set. */
+const NASH=["1","b2","2","b3","3","4","#4","5","b6","6","b7","7"];
+function toNashville(ch,keyPc){if(!ch||keyPc<0)return ch;return ch.split("/").map(p=>{const m=p.match(CHORD_RE);if(!m)return p;const pc=IDX[m[1]];if(pc===undefined)return p;return NASH[((pc-keyPc)%12+12)%12]+m[2];}).join("/");}
+// pill inner HTML for a number chord: degree big, quality/extension superscripted (so 5 with a 7th reads as 5⁷, not "57")
+function nashPill(s){return s.split("/").map(p=>{const m=p.match(/^([b#]?[1-7])(.*)$/);return m?esc(m[1])+(m[2]?'<sup class="nsuf">'+esc(m[2])+'</sup>':''):esc(p);}).join("/");}
 
 /* ===== parse to segment-lines (chords stay raw; transposed at render) ===== */
 function esc(s){return (s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#39;");}
@@ -766,7 +778,7 @@ function renderLine(segs){
   return groups.map(g=>{
     const inner=g.map(cell=>{
       const crow=lineHasChord
-        ? '<span class="c">'+(cell.chord?'<span class="chordpill" data-ch="'+esc(cell.raw)+'" style="background:'+keyColor(cell.chord)+'">'+esc(cell.chord)+'</span>':'')+'</span>'
+        ? '<span class="c">'+(cell.chord?'<span class="chordpill" data-ch="'+esc(cell.raw)+'" style="background:'+keyColor(cell.chord)+'">'+((nashville&&nashKeyPc>=0)?nashPill(toNashville(cell.raw,nashKeyPc)):esc(cell.chord))+'</span>':'')+'</span>'
         : '';
       return '<span class="seg">'+crow+'<span class="l">'+(esc(cell.text)||"&nbsp;")+'</span></span>';
     }).join("");
@@ -777,16 +789,19 @@ function renderLine(segs){
    updates from each pill's stored raw chord, instead of re-parsing and rebuilding the whole sheet. */
 function retuneSheet(){
   const pills=document.querySelectorAll("#sheet .chordpill");
-  for(const p of pills){const t=transposeChord(p.dataset.ch||"");p.textContent=t;p.style.background=keyColor(t);}
+  const nash=nashville&&nashKeyPc>=0;
+  for(const p of pills){const raw=p.dataset.ch||"",t=transposeChord(raw);p.style.background=keyColor(t);
+    if(nash)p.innerHTML=nashPill(toNashville(raw,nashKeyPc));else p.textContent=t;}
   updateScrollProg();
 }
 function renderSheet(song){
   const r=parseSong(song),meta=r.meta;
   document.getElementById("svTitle").textContent=meta.title||"Untitled";
   document.getElementById("svSub").textContent=meta.sub||"";
+  nashKeyPc=pitchClass(meta.key);
   const keyEl=document.getElementById("svKey");
   if(meta.key){const tk=transposeChord(meta.key);keyEl.style.display="";
-    keyEl.textContent="Key "+tk+(transpose?" ("+(transpose>0?"+":"")+transpose+")":"");}
+    keyEl.textContent=(nashville&&nashKeyPc>=0?"Nashville · ":"")+"Key "+tk+(transpose?" ("+(transpose>0?"+":"")+transpose+")":"");}
   else keyEl.style.display="none";
   const capoEl=document.getElementById("svCapo");
   if(capoVal>0){capoEl.style.display="";capoEl.textContent="Capo "+capoVal;}
@@ -1064,6 +1079,7 @@ function restoreData(file){
       if(state.fontSize!=null){fontSize=state.fontSize;document.getElementById("sheet").style.setProperty("--sheet-size",fontSize+"rem");}
       if(state.scrollSpeed!=null){scrollSpeed=state.scrollSpeed;document.getElementById("speedVal").textContent=scrollSpeed;}
       if(state.preferFlats!=null){preferFlats=state.preferFlats;document.getElementById("flatBtn").classList.toggle("on",preferFlats);}
+      if(state.nashville!=null){nashville=state.nashville;document.getElementById("nashBtn").classList.toggle("on",nashville);}
       playedSongs=new Set();persist();applyTheme();
       renderSetlists();renderAllSongs();show("setlists");toast("Restored");
     });
@@ -1393,6 +1409,7 @@ document.getElementById("restoreInput").addEventListener("change",e=>{if(e.targe
 document.getElementById("trUp").addEventListener("click",()=>{transpose++;document.getElementById("trVal").textContent=(transpose>0?"+":"")+transpose;const _s=state.songs.find(x=>x.id===curSongId);if(_s){_s.defaultTranspose=transpose+capoVal-curSetTranspose;persist();}retuneSheet();});
 document.getElementById("trDown").addEventListener("click",()=>{transpose--;document.getElementById("trVal").textContent=(transpose>0?"+":"")+transpose;const _s=state.songs.find(x=>x.id===curSongId);if(_s){_s.defaultTranspose=transpose+capoVal-curSetTranspose;persist();}retuneSheet();});
 document.getElementById("flatBtn").addEventListener("click",e=>{preferFlats=!preferFlats;state.preferFlats=preferFlats;persist();e.target.classList.toggle("on",preferFlats);retuneSheet();});
+document.getElementById("nashBtn").addEventListener("click",e=>{nashville=!nashville;state.nashville=nashville;persist();e.target.classList.toggle("on",nashville);if(nashville&&nashKeyPc<0)toast("Set a song key to see numbers");reRender();});
 document.getElementById("fontUp").addEventListener("click",()=>{fontSize=Math.min(2.4,Math.round((fontSize+0.1)*10)/10);state.fontSize=fontSize;persist();document.getElementById("sheet").style.setProperty("--sheet-size",fontSize+"rem");updateScrollProg();});
 document.getElementById("fontDown").addEventListener("click",()=>{fontSize=Math.max(0.7,Math.round((fontSize-0.1)*10)/10);state.fontSize=fontSize;persist();document.getElementById("sheet").style.setProperty("--sheet-size",fontSize+"rem");updateScrollProg();});
 document.getElementById("fontFit").addEventListener("click",()=>{
@@ -1690,8 +1707,10 @@ async function boot(){
   if(state.fontSize!=null)fontSize=state.fontSize;
   if(state.scrollSpeed!=null)scrollSpeed=state.scrollSpeed;
   if(state.preferFlats!=null)preferFlats=state.preferFlats;
+  if(state.nashville!=null)nashville=state.nashville;
   applyTheme();document.getElementById("speedVal").textContent=scrollSpeed;
   document.getElementById("flatBtn").classList.toggle("on",preferFlats);
+  document.getElementById("nashBtn").classList.toggle("on",nashville);
   renderSetlists();renderAllSongs();show("setlists");
   if(!canPersist)setTimeout(()=>toast("Preview mode — use Back up to a file to keep songs"),700);
   setTimeout(maybeShowInstallBanner,600);
