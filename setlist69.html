@@ -103,6 +103,10 @@
   v2026.07.17.002  New app icons in the amber-on-black style (glowing "now playing" row + monospace
                    S69 wordmark) + refreshed README/guide screenshots; icons regenerable via
                    docs/icons.js. Cache bump so the precached icons re-fetch.
+  v2026.07.17.003  App icons redesigned as a grand staff (real Bravura treble + bass clefs, braced
+                   two-staff system, red "now playing" note) inside a glowing amber card. Bravura
+                   (SIL OFL) is used only to rasterize the PNGs at build time; no font ships.
+                   Cache bump so the precached icons re-fetch.
 -->
 <html lang="en">
 <head>
@@ -381,7 +385,7 @@
 <div class="app">
   <header>
     <button class="back" id="backBtn" style="display:none" aria-label="Back">‹ <span id="backLabel">Back</span></button>
-    <div class="brand" id="brand"><span class="dot"></span>SetList69<small>v2026.07.17.002</small></div>
+    <div class="brand" id="brand"><span class="dot"></span>SetList69<small>v2026.07.17.003</small></div>
     <div class="htitle" id="headerTitle" style="display:none"></div>
     <div class="spacer"></div>
     <button class="iconbtn" id="updateHdr" title="Update ready" aria-label="Update ready — refresh" hidden>⟳</button>
