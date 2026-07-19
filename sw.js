@@ -1,4 +1,4 @@
-const CACHE = 'setlist69-v2026.07.19.009';
+const CACHE = 'setlist69-v2026.07.19.010';
 const PRECACHE = [
   './',
   './index.html',

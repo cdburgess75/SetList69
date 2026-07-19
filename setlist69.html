@@ -126,6 +126,8 @@
                    text clears WCAG AA (accent was ~4:1 on near-white); softer chord-popover shadow.
   v2026.07.19.009  Easier editing: a ✎ pencil in the header while viewing a song (hidden in stage/gig
                    mode), and tapping the song title opens the editor. Both call openEditor(curSongId).
+  v2026.07.19.010  Update banner moved to the bottom edge: slides up from below (was down from the top)
+                   so the "Update ready" notice no longer overlaps the header/brand while it flashes.
 -->
 <html lang="en">
 <head>
@@ -397,10 +399,10 @@
     color:var(--bg);padding:.6rem 1rem;border-radius:30px;font-size:.85rem;font-weight:600;opacity:0;
     pointer-events:none;transition:.25s;z-index:60;max-width:90vw;text-align:center;}
   .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
-  .update-banner{position:fixed;left:0;right:0;top:0;z-index:58;display:flex;align-items:center;gap:.7rem;
-    padding:.7rem 1rem;padding-top:max(.7rem,env(safe-area-inset-top));
-    background:var(--panel);border-bottom:2px solid var(--chord);box-shadow:0 6px 24px #0007;
-    transform:translateY(-110%);transition:transform .35s cubic-bezier(.2,.8,.25,1);}
+  .update-banner{position:fixed;left:0;right:0;bottom:0;z-index:58;display:flex;align-items:center;gap:.7rem;
+    padding:.7rem 1rem;padding-bottom:max(.7rem,env(safe-area-inset-bottom));
+    background:var(--panel);border-top:2px solid var(--chord);box-shadow:0 -6px 24px #0007;
+    transform:translateY(110%);transition:transform .35s cubic-bezier(.2,.8,.25,1);}
   .update-banner.show{transform:translateY(0);}
   .ub-dot{width:.55rem;height:.55rem;border-radius:50%;background:var(--chord);box-shadow:0 0 10px var(--chord);flex-shrink:0;}
   .ub-text{flex:1;font-size:.82rem;color:var(--muted);line-height:1.35;min-width:0;}
@@ -428,7 +430,7 @@
 <div class="app">
   <header>
     <button class="back" id="backBtn" style="display:none" aria-label="Back">‹ <span id="backLabel">Back</span></button>
-    <div class="brand" id="brand"><span class="dot"></span>SetList69<small>v2026.07.19.009</small></div>
+    <div class="brand" id="brand"><span class="dot"></span>SetList69<small>v2026.07.19.010</small></div>
     <div class="htitle" id="headerTitle" style="display:none"></div>
     <div class="spacer"></div>
     <button class="iconbtn" id="updateHdr" title="Update ready" aria-label="Update ready — refresh" hidden>⟳</button>
