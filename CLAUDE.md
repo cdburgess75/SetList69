@@ -138,6 +138,8 @@ v2026.07.19.002  Nashville number display: "123" toggle in #dockSheet renders ch
                  scale-degree numbers relative to the key (key-invariant; quality superscripted).
 v2026.07.19.003  Dedicated per-song `banter` field (stage patter): editor input + a line under
                  the title in the performance view; one-time Doubloon Bayou Band sub->banter migration.
+v2026.07.19.004  Guitar chord diagrams: tap a chord pill for an SVG fingering popover. Curated open
+                 voicings + movable E/A barre shapes (maj/min/7/m7/maj7); respects transpose+capo.
 ```
 
 A GitHub Actions workflow (`.github/workflows/check.yml`) enforces the version discipline on every push: it syntax-checks the extracted inline script and `sw.js`, **fails if the `<small>` brand version ≠ `sw.js` CACHE version**, and fails on duplicate element ids in the markup.
@@ -311,6 +313,10 @@ Goal: render chords stacked directly above the correct syllable, wrapping to scr
 
 `keyColor(key)` maps root pitch class to `hsl(pitchClass*30 52% 42%)`. Unknown root → `#7a7160`.
 
+### Chord diagrams (v2026.07.19.004)
+
+Tap a `.chordpill` → an SVG fingering popover (`#chordPop`, `position:fixed`, clamped to the viewport; dismissed by an outside click or a `#songView` scroll). `chordFrets(name)` returns `[E A D G B e]` frets (`-1`=mute, `0`=open): idiomatic **open voicings** from `CHORD_OPEN` first, else movable **E-shape/A-shape barre** generation (`CHORD_ESH`/`CHORD_ASH`) for major/minor/7/m7/maj7 — pick the shape with the lower barre fret; unknown quality → `null` (no diagram, toast). `chordDiagramSVG(frets)` draws it (nut vs. `Nfr` label, X/O markers, dots), themed via CSS (`.cdia` uses `--ink`/`--muted`). Guitar only for now. Diagram is for the **displayed shape** — `showChordPop` uses `transposeChord(pill.dataset.ch)`, so it already reflects transpose *and* capo (capo is folded into `transpose`); in Nashville mode the pill shows a number but `data-ch` is still the raw chord, so tapping shows the real fingering.
+
 ### Nashville numbers (v2026.07.19.002)
 
 Global `nashville` flag (persisted in `state.nashville`, synced in `boot()` + restore; toggled by `#nashBtn` in `#dockSheet`). When on, chord pills render as scale-degree numbers instead of names. `toNashville(ch, keyPc)` maps each root via `NASH = [1,b2,2,b3,3,4,#4,5,b6,6,b7,7]` (major-scale / "flat-three" convention), keeping the suffix; `nashPill()` superscripts the quality/extension so `5` + a 7th reads `5⁷` not `57`, and does slash chords (`1/3`). Computed from the pill's **raw** `data-ch` chord and the raw song key (`nashKeyPc`, set in `renderSheet`), so the numbers are **key-invariant** — transpose/capo shift both and cancel. Both `renderLine` (initial) and `retuneSheet` (transpose-in-place) are gated on the flag, so with it **off the pill HTML is byte-identical** to before (checksum-verified). Pill background still uses `keyColor` of the sounding root. Needs a key (badge prepends `Nashville · `; no key → toast + graceful fallback to names). The toggle calls `reRender()` (updates the badge too); transpose while on uses the Nashville-aware `retuneSheet`.
@@ -430,6 +436,7 @@ Storage:       idbOpen  idbGet  idbSet  persist  flushPersist  isValidState
 Seed/init:     seed  boot  uid  newSongId  applyTheme  toast  migrateBanter
 Music core:    transposeNote  transposeChord  looksChord  isChordLine
                pitchClass  keyColor  cleanEmbeddedChords  toNashville  nashPill
+Chord diagrams: chordFamily  chordFrets  chordDiagramSVG  showChordPop  hideChordPop
 Parse/render:  esc  parseSong  inlineToSegs  pairToSegs  renderLine  renderSheet  retuneSheet
 Router/nav:    show  goBack
 List renders:  renderSetlists  renderSetSongs  renderAllSongs  renderPicker  renderAdder
@@ -464,7 +471,6 @@ No test framework — verification is manual:
 
 **Parked (owner deprioritized; pick up on request):**
 
-- Chord diagrams / fingering charts.
 - Setlist-level notes shown during performance.
 
 **Shipped:** the **per-song `banter` field** (v2026.07.19.003) — `song.banter`, an editor input (`#fBanter`), and a `.svbanter` line (accent, italic) under the title in the performance view (`renderSheet` reads `song.banter`, not `meta`). The Doubloon Bayou Band interim workaround (banter stuffed into `sub`) is migrated by the one-time, idempotent `migrateBanter()` in `boot()` — guarded by `state.bantersMigrated`, it **moves** (not deletes) `sub`→`banter` for that set's songs when `banter` is empty, and no-ops on any device without that set. Safe to delete once every device has booted past it.
