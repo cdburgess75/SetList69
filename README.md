@@ -91,7 +91,7 @@ Inside `setlist69.html`, the code reads top to bottom: persistence (IndexedDB + 
 
 ```js
 state = {
-  songs:    [{ id, title, sub, key, capo, defaultTranspose, body }],
+  songs:    [{ id, title, sub, banter, key, capo, defaultTranspose, body }],
   setlists: [{ id, name, notes, setTranspose, songIds: [...] }],
   theme:    "dark"
 }
