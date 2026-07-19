@@ -284,3 +284,17 @@ There's no test framework — verification is manual but disciplined:
 1. Bump `NNN` in the header `<small>` **and** add a changelog line in the top comment.
 1. If you changed storage shape, add a migration in `boot()` (don't break existing saved state).
 1. Hand the owner anything that needs real-device verification (touch, share, install).
+
+-----
+
+## 16. Companion tool: remote7300 (separate from the song app)
+
+`remote7300/` is an unrelated-to-music companion tool sharing the repo: a
+dependency-free Python bridge (`remote7300.py`, stdlib only) that controls the
+owner's **Icom IC-7300MK2** transceiver over the LAN using Icom's RS-BA1 UDP
+protocol, and serves a touch-friendly web control page (frequency + mode) for
+the iPad on port 7300. `radiosim.py` is a fake radio for testing;
+`test_remote7300.py` runs an automated end-to-end test against it — run it
+after any change to the protocol code. It does not touch `setlist69.html` and
+does not follow the song app's version-bump rule; it keeps its own changelog
+comment at the top of `remote7300.py`. See `remote7300/README.md` for setup.
