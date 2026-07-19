@@ -42,7 +42,7 @@ SetList69 stores songs (lyrics with chords), organizes them into setlists, and r
 |---|---|
 | **Rendering** | Chords positioned above the exact syllable; color-coded by root pitch; inline ChordPro (`[G]word`) and chords-above-lyrics formats both parse; tap a chord for a guitar fingering diagram |
 | **Transposition** | Per-song transpose (remembered), set-wide transpose, sharp/flat spelling toggle, capo support with fingering-shape display, Nashville number notation (key-invariant) |
-| **Performance** | Auto-scroll with live speed control and progress bar, swipe between songs, fit-to-screen font sizing, wake lock across the whole set |
+| **Performance** | Auto-scroll with live speed control and progress bar, swipe between songs, fit-to-screen font sizing, wake lock across the whole set, one-tap fullscreen gig mode |
 | **Stage safety** | Stage mode hides all editing chrome; leaving a song mid-performance requires a deliberate double tap |
 | **Set management** | Drag-to-reorder, per-set notes, duplicate sets, ✓ Played tracking that survives reloads and resets in one tap |
 | **Import** | ChordPro (`.cho/.chordpro/.pro`), OnSong (`.onsong/.txt` incl. `Key:`/`Capo:`), OpenSong XML, plain text, ZIP bundles, paste-from-chord-sites with automatic cleanup |

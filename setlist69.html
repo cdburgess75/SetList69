@@ -117,6 +117,9 @@
                    open voicings + movable E/A barre shapes (maj/min/7/m7/maj7); respects transpose+capo.
   v2026.07.19.005  Showcase song: one-time addShowcaseSong() seeds "Danny Boy" (public domain —
                    Weatherly 1913 lyrics + traditional Londonderry Air) + a ★ Showcase set.
+  v2026.07.19.006  Fullscreen "gig mode": ⛶ dock button requests browser fullscreen (where
+                   supported) + hides the header for lyric space + holds the wake lock; swipe ‹ ›
+                   still moves through the set. Exit via ⛶, Esc, or leaving the song.
 -->
 <html lang="en">
 <head>
@@ -308,6 +311,8 @@
   /* big touch targets for mid-song use */
   .dock .ctl button{padding:.55rem .65rem;font-size:.95rem;min-width:2.6rem;min-height:2.6rem;}
   .dock .iconbtn.dockgear{width:2.9rem;height:2.9rem;font-size:1.15rem;}
+  .dock .iconbtn.dockgear.on{color:var(--accent);}
+  .app.gig header{display:none;}   /* gig mode: reclaim the header strip for lyrics */
   .dockrow{display:flex;align-items:center;gap:.7rem;}
   .dockrow-label{font-size:.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;font-weight:600;flex:1;}
   .dockrow .ctl button{padding:.5rem .7rem;min-width:2.6rem;min-height:2.6rem;font-size:.95rem;}
@@ -407,7 +412,7 @@
 <div class="app">
   <header>
     <button class="back" id="backBtn" style="display:none" aria-label="Back">‹ <span id="backLabel">Back</span></button>
-    <div class="brand" id="brand"><span class="dot"></span>SetList69<small>v2026.07.19.005</small></div>
+    <div class="brand" id="brand"><span class="dot"></span>SetList69<small>v2026.07.19.006</small></div>
     <div class="htitle" id="headerTitle" style="display:none"></div>
     <div class="spacer"></div>
     <button class="iconbtn" id="updateHdr" title="Update ready" aria-label="Update ready — refresh" hidden>⟳</button>
@@ -466,6 +471,7 @@
         <div class="ctl"><button id="prevSong" aria-label="Previous song">◀</button><span class="pos" id="setPos"></span><button id="nextSong" aria-label="Next song">▶</button></div>
         <div class="ctl"><button class="scrollbtn" id="scrollBtn" aria-label="Play or pause auto-scroll">▶</button></div>
         <div class="ctl"><button id="scrollDown" aria-label="Slower auto-scroll">−</button><span class="val" id="speedVal">3</span><button id="scrollUp" aria-label="Faster auto-scroll">+</button></div>
+        <button class="iconbtn dockgear" id="fsBtn" title="Fullscreen gig mode" aria-label="Toggle fullscreen gig mode">⛶</button>
         <button class="iconbtn dockgear" id="dockMore" title="Transpose, font &amp; more" aria-label="Song controls">⚙</button>
       </div>
     </section>
@@ -681,7 +687,7 @@ function seed(){
 /* ===== state & nav ===== */
 let state=seed();
 let screen="setlists";
-let curSetlist=null,curSongId=null,curIndex=-1,curSetTranspose=0,stageMode=false,capoVal=0;
+let curSetlist=null,curSongId=null,curIndex=-1,curSetTranspose=0,stageMode=false,capoVal=0,gigMode=false;
 let transpose=0,preferFlats=false,fontSize=1.35,scrollSpeed=3,nashville=false,nashKeyPc=-1;
 let scrolling=false,scrollRAF=null,scrollAccum=0,swipeHintTimer=null;
 let editingId=null,editorReturn="setlists",wakeLock=null,addingSongId=null,editingSetlistId=null;
@@ -869,7 +875,7 @@ function show(name){
   if(name==="setlists"){stageMode=false;document.getElementById("setSongsScreen").removeAttribute("data-stage");maybeShowUpdatePill();}
   if(name==="song"){const s=state.songs.find(x=>x.id===curSongId);ht.textContent=s?s.title:"";document.getElementById("backLabel").textContent=curIndex>=0?"Set":"Home";}
   if(name==="song"){if(!wakeLock)requestWake();}
-  else{stopScroll();releaseWake();}
+  else{stopScroll();releaseWake();if(gigMode)setGig(false);}
 }
 function goBack(){
   if(screen==="song")show(curIndex>=0&&curSetlist?"setSongs":"setlists");
@@ -979,6 +985,28 @@ document.addEventListener("visibilitychange",()=>{
   else flushPersist();   // backgrounded — commit any pending save before the OS can freeze us
 });
 window.addEventListener("pagehide",flushPersist);
+
+/* ===== fullscreen "gig mode" =====
+   Immersive performance view: request browser fullscreen where supported (Android/desktop/iPad —
+   an installed iOS PWA is already fullscreen), hide the header strip for extra lyric space, and hold
+   the wake lock. The existing swipe ‹ › still moves through the set. Exit via ⛶, Esc, or leaving. */
+function _fsEl(){return document.fullscreenElement||document.webkitFullscreenElement;}
+function _reqFs(){const el=document.documentElement,r=el.requestFullscreen||el.webkitRequestFullscreen;if(r)try{const p=r.call(el);if(p&&p.catch)p.catch(()=>{});}catch(e){}}
+function _exitFs(){const x=document.exitFullscreen||document.webkitExitFullscreen;if(x&&_fsEl())try{const p=x.call(document);if(p&&p.catch)p.catch(()=>{});}catch(e){}}
+function setGig(on){
+  gigMode=on;
+  document.querySelector(".app").classList.toggle("gig",on);
+  document.getElementById("fsBtn").classList.toggle("on",on);
+  if(on){
+    _reqFs();if(!wakeLock)requestWake();
+    if(curIndex>=0){const h=document.getElementById("swipeHint");if(h){h.style.display="";h.style.opacity=".6";clearTimeout(swipeHintTimer);swipeHintTimer=setTimeout(()=>{h.style.opacity="0";},2800);}}
+    toast("Gig mode — screen stays on; swipe ‹ › for songs");
+  }else{_exitFs();}
+  updateScrollProg();
+}
+function toggleGig(){setGig(!gigMode);}
+document.addEventListener("fullscreenchange",()=>{if(!_fsEl()&&gigMode)setGig(false);});
+document.addEventListener("webkitfullscreenchange",()=>{if(!_fsEl()&&gigMode)setGig(false);});
 
 /* ===== editor ===== */
 function openEditor(id,ret){editingId=id;editorReturn=ret||screen;
@@ -1502,6 +1530,7 @@ function openDockSheet(){
 }
 function closeDockSheet(){document.getElementById("dockSheet").classList.remove("show");}
 document.getElementById("dockMore").addEventListener("click",openDockSheet);
+document.getElementById("fsBtn").addEventListener("click",toggleGig);
 document.getElementById("closeDockSheet").addEventListener("click",closeDockSheet);
 document.getElementById("editSong").addEventListener("click",()=>{if(curSongId){closeDockSheet();openEditor(curSongId,"song");}});
 

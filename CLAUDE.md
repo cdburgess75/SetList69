@@ -142,6 +142,9 @@ v2026.07.19.004  Guitar chord diagrams: tap a chord pill for an SVG fingering po
                  voicings + movable E/A barre shapes (maj/min/7/m7/maj7); respects transpose+capo.
 v2026.07.19.005  Showcase song: one-time addShowcaseSong() adds "Danny Boy" (public domain —
                  Weatherly 1913 lyrics + traditional Londonderry Air) + a ★ Showcase set.
+v2026.07.19.006  Fullscreen "gig mode": ⛶ dock button (setGig/toggleGig) requests browser
+                 fullscreen where supported + hides the header for lyric space + holds the wake
+                 lock; existing swipe ‹ › still moves through the set. Exits on ⛶/Esc/leave.
 ```
 
 A GitHub Actions workflow (`.github/workflows/check.yml`) enforces the version discipline on every push: it syntax-checks the extracted inline script and `sw.js`, **fails if the `<small>` brand version ≠ `sw.js` CACHE version**, and fails on duplicate element ids in the markup.
@@ -442,6 +445,7 @@ Chord diagrams: chordFamily  chordFrets  chordDiagramSVG  showChordPop  hideChor
 Parse/render:  esc  parseSong  inlineToSegs  pairToSegs  renderLine  renderSheet  retuneSheet
 Router/nav:    show  goBack
 List renders:  renderSetlists  renderSetSongs  renderAllSongs  renderPicker  renderAdder
+Gig mode:      setGig  toggleGig  (⛶ dock button — fullscreen + hide header + wake lock)
 Song view:     openSongInSet  openSongStandalone  openCurrent  reRender
                nextSong  prevSong  startScroll  stopScroll  updateScrollProg
                requestWake  releaseWake  openDockSheet  closeDockSheet
