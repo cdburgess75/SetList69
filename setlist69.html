@@ -124,6 +124,8 @@
                    (accent), so it reads as an obvious control.
   v2026.07.19.008  Light-mode pass: banter + gig label use a darker orange (#b8560c) in light so the
                    text clears WCAG AA (accent was ~4:1 on near-white); softer chord-popover shadow.
+  v2026.07.19.009  Easier editing: a ✎ pencil in the header while viewing a song (hidden in stage/gig
+                   mode), and tapping the song title opens the editor. Both call openEditor(curSongId).
 -->
 <html lang="en">
 <head>
@@ -249,7 +251,7 @@
 
   #songView{padding-bottom:7.5rem;}
   .svhead{display:flex;align-items:flex-start;gap:.7rem;margin-bottom:.4rem;}
-  .svtitle{font-family:var(--display);font-weight:600;font-size:1.7rem;line-height:1.05;flex:1;}
+  .svtitle{font-family:var(--display);font-weight:600;font-size:1.7rem;line-height:1.05;flex:1;cursor:pointer;}
   .svsub{color:var(--muted);font-size:.88rem;margin-top:.1rem;}
   .svbanter{color:var(--accent);font-size:.84rem;font-style:italic;margin-top:.15rem;line-height:1.35;}
   .sheet{margin-top:1.1rem;font-size:var(--sheet-size,1.35rem);-webkit-user-select:text;user-select:text;
@@ -426,10 +428,11 @@
 <div class="app">
   <header>
     <button class="back" id="backBtn" style="display:none" aria-label="Back">‹ <span id="backLabel">Back</span></button>
-    <div class="brand" id="brand"><span class="dot"></span>SetList69<small>v2026.07.19.008</small></div>
+    <div class="brand" id="brand"><span class="dot"></span>SetList69<small>v2026.07.19.009</small></div>
     <div class="htitle" id="headerTitle" style="display:none"></div>
     <div class="spacer"></div>
     <button class="iconbtn" id="updateHdr" title="Update ready" aria-label="Update ready — refresh" hidden>⟳</button>
+    <button class="iconbtn" id="headerEdit" title="Edit this song" aria-label="Edit this song" style="display:none">✎</button>
     <button class="iconbtn" id="menuBtn" title="Tools &amp; backup" aria-label="Tools and backup">≡</button>
     <button class="iconbtn" id="themeBtn" title="Light / dark mode" aria-label="Toggle light or dark theme">☾</button>
   </header>
@@ -883,6 +886,7 @@ function show(name){
   const back=document.getElementById("backBtn"),brand=document.getElementById("brand"),ht=document.getElementById("headerTitle");
   if(name==="setlists"){back.style.display="none";brand.style.display="";ht.style.display="none";}
   else{back.style.display="";brand.style.display="none";ht.style.display="";}
+  document.getElementById("headerEdit").style.display=(name==="song"&&!stageMode)?"":"none";   // quick edit ✎, hidden while performing
   if(name==="setSongs"){ht.textContent=(state.setlists.find(s=>s.id===curSetlist)||{}).name||"";document.getElementById("backLabel").textContent="Setlists";
     document.getElementById("setSongsScreen").toggleAttribute("data-stage",stageMode);
     document.getElementById("stageBtn").textContent=stageMode?"✎ Edit":"▶ Stage";}
@@ -1425,6 +1429,8 @@ document.getElementById("backBtn").addEventListener("click",()=>{
 });
 document.getElementById("themeBtn").addEventListener("click",()=>{state.theme=state.theme==="light"?"dark":"light";applyTheme();persist();});
 document.getElementById("menuBtn").addEventListener("click",()=>{document.getElementById("toolsSheet").classList.add("show");});
+document.getElementById("headerEdit").addEventListener("click",()=>{if(curSongId)openEditor(curSongId,"song");});
+document.getElementById("svTitle").addEventListener("click",()=>{if(curSongId&&!gigMode&&!stageMode)openEditor(curSongId,"song");});
 
 document.getElementById("newSetlist").addEventListener("click",()=>{
   showPrompt("Name this setlist","New Set","",name=>{

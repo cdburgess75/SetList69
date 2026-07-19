@@ -146,6 +146,10 @@ v2026.07.19.006  Fullscreen "gig mode": ⛶ dock button (setGig/toggleGig) reque
                  fullscreen where supported + hides the header for lyric space + holds the wake
                  lock; existing swipe ‹ › still moves through the set. Exits on ⛶/Esc/leave.
 v2026.07.19.007  Label the gig button "⛶ Gig mode" (`.dock-gig`), wording in bright-orange accent.
+v2026.07.19.008  Light-mode contrast: banter + gig label use a darker orange (#b8560c, ≥AA) in
+                 light (accent as text was ~4:1 on near-white); softer chord-popover shadow.
+v2026.07.19.009  Easier editing: a ✎ pencil in the header while viewing a song (hidden in stage/
+                 gig mode) + tapping the song title opens the editor. Both call openEditor(curSongId).
 ```
 
 A GitHub Actions workflow (`.github/workflows/check.yml`) enforces the version discipline on every push: it syntax-checks the extracted inline script and `sw.js`, **fails if the `<small>` brand version ≠ `sw.js` CACHE version**, and fails on duplicate element ids in the markup.
