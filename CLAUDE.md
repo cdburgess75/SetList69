@@ -140,6 +140,8 @@ v2026.07.19.003  Dedicated per-song `banter` field (stage patter): editor input 
                  the title in the performance view; one-time Doubloon Bayou Band sub->banter migration.
 v2026.07.19.004  Guitar chord diagrams: tap a chord pill for an SVG fingering popover. Curated open
                  voicings + movable E/A barre shapes (maj/min/7/m7/maj7); respects transpose+capo.
+v2026.07.19.005  Showcase song: one-time addShowcaseSong() adds "Danny Boy" (public domain —
+                 Weatherly 1913 lyrics + traditional Londonderry Air) + a ★ Showcase set.
 ```
 
 A GitHub Actions workflow (`.github/workflows/check.yml`) enforces the version discipline on every push: it syntax-checks the extracted inline script and `sw.js`, **fails if the `<small>` brand version ≠ `sw.js` CACHE version**, and fails on duplicate element ids in the markup.
@@ -433,7 +435,7 @@ Fonts (the "mono chrome, readable lyrics" split): `--display` **and** `--mono` a
 
 ```
 Storage:       idbOpen  idbGet  idbSet  persist  flushPersist  isValidState
-Seed/init:     seed  boot  uid  newSongId  applyTheme  toast  migrateBanter
+Seed/init:     seed  boot  uid  newSongId  applyTheme  toast  migrateBanter  addShowcaseSong
 Music core:    transposeNote  transposeChord  looksChord  isChordLine
                pitchClass  keyColor  cleanEmbeddedChords  toNashville  nashPill
 Chord diagrams: chordFamily  chordFrets  chordDiagramSVG  showChordPop  hideChordPop
@@ -474,6 +476,8 @@ No test framework — verification is manual:
 - Setlist-level notes shown during performance.
 
 **Shipped:** the **per-song `banter` field** (v2026.07.19.003) — `song.banter`, an editor input (`#fBanter`), and a `.svbanter` line (accent, italic) under the title in the performance view (`renderSheet` reads `song.banter`, not `meta`). The Doubloon Bayou Band interim workaround (banter stuffed into `sub`) is migrated by the one-time, idempotent `migrateBanter()` in `boot()` — guarded by `state.bantersMigrated`, it **moves** (not deletes) `sub`→`banter` for that set's songs when `banter` is empty, and no-ops on any device without that set. Safe to delete once every device has booted past it.
+
+**Showcase song (v2026.07.19.005):** `addShowcaseSong()` (guarded by `state.showcaseAdded`, called once from `boot()`) adds a perfectly-formatted demo song — **"Danny Boy"** (id `danny`) — plus a `★ Showcase` set (id `showcase`). **Legal basis:** it is public domain — Frederic Weatherly's 1913 lyrics + the traditional "Londonderry Air" (composer unknown) — the only kind of full song safe to ship. Do **not** hardcode a copyrighted song here. Idempotent and delete-safe (the flag stops re-adding, so removing the song/set sticks); reaches existing libraries as well as fresh installs.
 
 **Explicitly out of scope (by design):** cloud sync and any built-in online song catalog. Moving songs between devices is handled by backup-to-file.
 
