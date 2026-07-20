@@ -66,6 +66,36 @@ async function fresh(browser) {
     await ctx.close();
   }
 
+  // 5. Chord fingering diagram — tap a chord pill in the performance view
+  {
+    const { ctx, page } = await fresh(browser);
+    await page.evaluate(() => {
+      curSetlist = state.setlists[0].id;
+      renderSetSongs();
+      openSongInSet(0);                    // House of the Rising Sun
+    });
+    await page.waitForTimeout(300);
+    await page.evaluate(() => {
+      const pill = document.querySelector('#sheet .chordpill');
+      if (pill) showChordPop(pill);
+    });
+    await page.waitForTimeout(300);
+    await page.screenshot({ path: path.join(OUT, 'chord-diagram.png') });
+    await ctx.close();
+  }
+
+  // 6. Editor — how a song is stored (chords + lyrics)
+  {
+    const { ctx, page } = await fresh(browser);
+    await page.evaluate(() => {
+      const s = state.songs.find(x => /Rising Sun/.test(x.title)) || state.songs[0];
+      openEditor(s.id);
+    });
+    await page.waitForTimeout(300);
+    await page.screenshot({ path: path.join(OUT, 'editor.png') });
+    await ctx.close();
+  }
+
   await browser.close();
   console.log('screenshots written to', OUT);
 })();
