@@ -143,6 +143,11 @@
                    so Safari/CDN fetch the new icon on Add-to-Home-Screen instead of a stale cached one.
                    Bump the ?v token whenever the icon PNGs change. SW precache stays unversioned
                    (ignoreSearch match). Already-installed A2HS icons still need a remove+re-add (iOS).
+  v2026.07.19.016  Coral accent through the whole UI: --accent/--chord/--accent2 recoloured amber->coral
+                   (dark #cf3c28 / light #c8342a). Buttons use white text; the dark coral was deepened
+                   from #ff6f5c so white clears AA in both themes. --brand title stays bright #ff6f5c;
+                   --red danger deepened (#ef4034 / #b01810) to stay distinct. keyColor pills + greens
+                   unchanged.
 -->
 <html lang="en">
 <head>
@@ -162,7 +167,7 @@
     /* dark mode: PileUp palette — pure black bg, amber accent glow, cool inks */
     --bg:#000000; --panel:#0e0e0e; --panel2:#181818; --line:#282828;
     --ink:#f4f4f6; --muted:#9aa8c2; --faint:#7e889c;   /* faint kept ≥AA on black bg/panel */
-    --chord:#f0923c; --accent:#f0923c; --accent2:#ffab54; --ok:#4be08a; --red:#e8635a;
+    --chord:#cf3c28; --accent:#cf3c28; --accent2:#e04a34; --ok:#4be08a; --red:#ef4034;
     --brand:#ff6f5c;   /* header wordmark — coral, its own token so --accent stays amber */
     --green:#AED8CA; --green-dim:#2E8B7A;   /* "played" strike + tag (bright on dark) */
     --ui:'Hanken Grotesk',system-ui,-apple-system,sans-serif;
@@ -174,7 +179,7 @@
     /* light mode: PileUp palette — cool white bg, deep amber accent, near-black ink */
     --bg:#f9fbff; --panel:#ffffff; --panel2:#f7f7f7; --line:#e4e4e4;
     --ink:#12202f; --muted:#3a4655; --faint:#5b6676;   /* ≥AA on light bg/panel */
-    --chord:#c8600f; --accent:#c8600f; --accent2:#e0872f; --ok:#1c8a55; --red:#c83430;
+    --chord:#c8342a; --accent:#c8342a; --accent2:#d94a3a; --ok:#1c8a55; --red:#b01810;
     --brand:#c8342a;   /* header wordmark — deeper coral for AA on the white header */
     --green:#2E8B7A; --green-dim:#AED8CA;   /* swapped so the pair still reads on light bg */
   }
@@ -227,7 +232,7 @@
     white-space:nowrap;flex-shrink:0;}
   .set-toolbar{display:flex;align-items:center;gap:.5rem;margin-bottom:.75rem;flex-wrap:wrap;}
   .set-tr-label{font-size:.7rem;color:var(--faint);font-family:var(--mono);}
-  .stagebtn{padding:.38rem .85rem;border-radius:9px;font-size:.78rem;font-weight:700;background:var(--accent);color:#160f06;font-family:var(--mono);text-transform:uppercase;letter-spacing:.06em;}
+  .stagebtn{padding:.38rem .85rem;border-radius:9px;font-size:.78rem;font-weight:700;background:var(--accent);color:#fff;font-family:var(--mono);text-transform:uppercase;letter-spacing:.06em;}
   .stagebtn:hover{background:var(--accent2);}
   /* stage mode: hide all editing chrome */
   #setSongsScreen[data-stage] .drag-handle,
@@ -257,11 +262,11 @@
   .empty .big{font-size:2.2rem;margin-bottom:.4rem;opacity:.55;}
 
   .fab{position:absolute;right:1.1rem;bottom:max(1.3rem,calc(env(safe-area-inset-bottom) + .8rem));
-    width:3.4rem;height:3.4rem;border-radius:50%;background:var(--accent);color:#160f06;font-size:1.6rem;
+    width:3.4rem;height:3.4rem;border-radius:50%;background:var(--accent);color:#fff;font-size:1.6rem;
     display:grid;place-items:center;z-index:15;box-shadow:0 6px 22px #0006,0 0 0 1px #ffffff14;transition:.15s;}
   .fab:hover{background:var(--accent2);transform:scale(1.05);}
 
-  .secbtn{width:100%;padding:.8rem;border-radius:12px;background:var(--accent);color:#160f06;font-weight:700;
+  .secbtn{width:100%;padding:.8rem;border-radius:12px;background:var(--accent);color:#fff;font-weight:700;
     font-family:var(--mono);text-transform:uppercase;font-size:.82rem;margin-bottom:1rem;letter-spacing:.06em;}
   .secbtn:hover{background:var(--accent2);}
   .ghostbtn{width:100%;padding:.7rem;border-radius:12px;background:var(--panel);border:1px solid var(--line);
@@ -447,7 +452,7 @@
 <div class="app">
   <header>
     <button class="back" id="backBtn" style="display:none" aria-label="Back">‹ <span id="backLabel">Back</span></button>
-    <div class="brand" id="brand"><span class="dot"></span>SetList69<small>v2026.07.19.015</small></div>
+    <div class="brand" id="brand"><span class="dot"></span>SetList69<small>v2026.07.19.016</small></div>
     <div class="htitle" id="headerTitle" style="display:none"></div>
     <div class="spacer"></div>
     <button class="iconbtn" id="updateHdr" title="Update ready" aria-label="Update ready — refresh" hidden>⟳</button>
