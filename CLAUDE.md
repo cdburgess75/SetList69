@@ -173,6 +173,12 @@ v2026.07.19.015  Icon cache-busting: the apple-touch-icon `<link>` and the manif
                  the icon PNGs change.** `sw.js` PRECACHE stays unversioned — the SW fetch handler
                  matches with `ignoreSearch:true`. Note: an already-installed A2HS icon can only change
                  by removing + re-adding the app (iOS never refreshes an installed home-screen icon).
+v2026.07.19.016  Coral accent through the whole UI: `--accent`/`--chord`/`--accent2` recoloured
+                 amber -> coral (dark #cf3c28 / light #c8342a). Buttons keep **white** text; the dark
+                 coral was deepened from #ff6f5c so white clears AA in both themes (light #c8342a already
+                 did). `--brand` title stays bright #ff6f5c (coral text on the dark header, no white-text
+                 issue). `--red` danger deepened (#ef4034 dark / #b01810 light) to stay distinct.
+                 `keyColor()` chord/key pills and the greens (`--ok`/`--green`) unchanged.
 ```
 
 A GitHub Actions workflow (`.github/workflows/check.yml`) enforces the version discipline on every push: it syntax-checks the extracted inline script and `sw.js`, **fails if the `<small>` brand version ≠ `sw.js` CACHE version**, and fails on duplicate element ids in the markup.
@@ -448,8 +454,9 @@ CSS custom properties define both themes. As of v2026.07.17.001 the palette is *
 
 - `:root` = **dark** (pure-black `--bg:#000000`, cool-white `--ink:#f4f4f6`, amber `--accent`/`--chord:#f0923c`).
 - `[data-theme="light"]` = **light** (cool white `--bg:#f9fbff`, near-black `--ink:#12202f`, deep amber `--accent:#c8600f`).
-- Amber is the single accent (buttons, active states, highlights). `--red` (`#e8635a` dark / `#c83430` light) is reserved for **danger only** (delete-hover, danger context items, the "update available" brand dot). `--ok` (`#4be08a` / `#1c8a55`) is the "up to date" brand dot. `--green`/`--green-dim` remain the "played" strike/tag pair (borrowed from PileUp originally).
-- **Exception (v2026.07.19.013):** the header wordmark `.brand` uses its own `--brand` token — **coral** (`#ff6f5c` dark / `#c8342a` light) with a coral glow — a deliberate, owner-requested departure from amber-only, kept separate from `--accent` so nothing else changes. Coral sits near `--red`; that overlap is intentional.
+- **Coral is the single accent** (`--accent`/`--chord` `#cf3c28` dark / `#c8342a` light, hover `--accent2` `#e04a34`/`#d94a3a`) — buttons, active states, highlights, current-song mark, progress bar. Buttons put **white** text on the coral; the **dark** coral is deepened to `#cf3c28` (from the brighter `#ff6f5c`) so white clears AA in both themes — don't reintroduce a bright `#ff6f5c` button background. `--red` **danger** (`#ef4034` dark / `#b01810` light) stays distinct from the accent (delete-hover, danger items, "update available" dot). `--ok` (`#4be08a` / `#1c8a55`) is the "up to date" dot. `--green`/`--green-dim` = "played" strike/tag pair.
+- **`--brand` (header wordmark) stays bright coral `#ff6f5c` dark / `#c8342a` light** — it's coral *text* on the dark header (no white-text-on-coral issue), so it keeps the brighter, glowier shade while the button accent runs deeper. That's why `--brand` is its own token, distinct from `--accent` in dark mode.
+- **History:** accent was **amber** (PileUp-matched) through v.012; wordmark went coral in .013, whole UI accent followed in **.016** (white button text, deepened dark coral). Chord/key pills stay pitch-colored via `keyColor()` — independent of the accent.
 - Primary buttons (`.secbtn`/`.stagebtn`/`.fab`) are amber with **dark** text (`#160f06`) for AA contrast on the light-ish amber.
 - Toggle: `themeBtn` (☀/☾) → flips `state.theme`, `applyTheme()` sets `data-theme`. Persisted.
 
