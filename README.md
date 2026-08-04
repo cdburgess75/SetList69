@@ -1,53 +1,192 @@
 <div align="center">
 
-<img src="icons/icon-512.png" alt="SetList69 icon" width="96" height="96">
+<img src="icons/icon-512.png" alt="SetList69 app icon — a cream sheet of music on a stand" width="112" height="112">
 
 # SetList69
 
-**Offline-first chord & lyric setlists for the stage — your whole songbook in one installable HTML file that runs with zero signal.**
-
-[![Live app](https://img.shields.io/badge/live_app-cdburgess75.github.io-cf3c28?style=flat-square)](https://cdburgess75.github.io/SetList69/)
-[![CI](https://github.com/cdburgess75/SetList69/actions/workflows/check.yml/badge.svg)](https://github.com/cdburgess75/SetList69/actions/workflows/check.yml)
-[![Version](https://img.shields.io/badge/version-2026.07.19.016-informational?style=flat-square)](#versioning)
-[![PWA](https://img.shields.io/badge/PWA-installable-8250df?style=flat-square)](#installation)
-[![Offline](https://img.shields.io/badge/offline-first-2ea043?style=flat-square)](#overview)
-[![Runtime deps](https://img.shields.io/badge/runtime_dependencies-0-f5a623?style=flat-square)](#tech-stack)
-[![License](https://img.shields.io/badge/license-MIT-blue?style=flat-square)](LICENSE)
-
-**[▶ Open the live app](https://cdburgess75.github.io/SetList69/)** · [User Guide](docs/USER-GUIDE.md) · [Features](#key-features) · [Tech stack](#tech-stack) · [Install](#installation) · [Usage](#usage) · [Architecture](#architecture)
+### Your band's whole songbook — chords, lyrics and setlists — running offline on the phone clipped to your mic stand.
 
 <br>
 
-<table>
-<tr>
-<td width="50%"><img src="docs/screenshots/song.png" alt="Performance view with chords locked above each syllable" width="100%"></td>
-<td width="50%"><img src="docs/screenshots/home.png" alt="Home screen showing setlists and the song library" width="100%"></td>
-</tr>
-<tr>
-<td align="center"><sub>Performance view — chords locked above the syllable</sub></td>
-<td align="center"><sub>Home — setlists &amp; song library</sub></td>
-</tr>
-</table>
+<a href="https://cdburgess75.github.io/SetList69/">
+  <img src="https://img.shields.io/badge/▶%20%20TRY%20THE%20LIVE%20APP-cf3c28?style=for-the-badge&labelColor=cf3c28&color=cf3c28" alt="Try the live app — opens SetList69 in your browser" width="460">
+</a>
+
+**No signup. No install. Loads once, then works with zero signal.**
+
+<br>
+
+[User Guide](docs/USER-GUIDE.md) · [Features](#features) · [Quick start](#quick-start) · [Save it to your phone](#save-it-to-your-phone) · [Tech stack](#tech-stack) · [Architecture](#architecture)
+
+<br>
+
+<img src="docs/screenshots/demo.gif" alt="SetList69 in action: opening a setlist, tapping into a song, hands-free auto-scroll running through the lyrics, then tapping a chord to bring up its guitar fingering" width="330">
+
+<sub><i>Open a set → tap a song → hands-free auto-scroll → tap any chord for the fingering.</i></sub>
+
+<br>
+
+[![CI](https://github.com/cdburgess75/SetList69/actions/workflows/check.yml/badge.svg)](https://github.com/cdburgess75/SetList69/actions/workflows/check.yml)
+[![Version](https://img.shields.io/badge/version-2026.07.19.016-informational?style=flat-square)](#versioning)
+[![PWA](https://img.shields.io/badge/PWA-installable-5A0FC8?style=flat-square)](#save-it-to-your-phone)
+[![Offline](https://img.shields.io/badge/offline-first-2ea043?style=flat-square)](#features)
+[![Runtime deps](https://img.shields.io/badge/runtime_dependencies-0-f5a623?style=flat-square)](#tech-stack)
+[![License](https://img.shields.io/badge/license-MIT-blue?style=flat-square)](LICENSE)
 
 </div>
 
 ---
 
-## Overview
+## What it is
 
-SetList69 stores songs (lyrics with chords), organizes them into setlists, and renders them in a large, high-contrast reading view designed to be operated while holding an instrument. It **imports your existing library from OnSong and other chord apps** and keeps everything on your device — no subscription, no account, no cloud.
+SetList69 is an offline-first web app for performing musicians. It stores your songs as lyrics with chords, groups them into setlists, and renders them in a large, high-contrast view built to be read while your hands are busy playing.
 
-**The problems it solves:**
+It's the app you actually run the gig from. It **imports the library you already have** — OnSong, ChordPro, OpenSong and plain text all come straight in — and then keeps everything on your device. No account, no subscription, no cloud, nothing to lose when the venue's Wi-Fi doesn't exist.
 
-| Problem | How SetList69 answers it |
+The whole thing is a single `setlist69.html` file. No framework, no build step, no `node_modules`. You can read every line of it, fork it, and host it anywhere.
+
+---
+
+## Features
+
+**On stage**
+
+- **Auto-scroll that keeps your hands free** — starts at a tap, adjustable speed mid-song, with a progress bar and a haptic nudge when you reach the last line.
+- **Never goes dark** — a wake lock is held across the *entire set*, not re-acquired per song, so the screen won't sleep between verses.
+- **Gig mode** — one tap for true fullscreen: no browser chrome, no header, just lyrics.
+- **Stage mode** — hides every editing control so nothing destructive is one fat-fingered tap away, and leaving a song mid-performance deliberately takes two taps.
+- **Swipe between songs** in set order, with your position (`3/12`) always visible.
+- **✓ Played marks** — songs cross off behind you as you play them, and survive a reload or a backgrounded phone.
+
+**Chords and keys**
+
+- **Chords sit on the right syllable** — a custom rendering engine locks each chord above the exact syllable it changes on, wraps to your screen width, never splits a word, and never scrolls sideways.
+- **Transpose** per song (remembered next time) or across a whole set at once, with a ♯/♭ spelling toggle.
+- **Capo support** — set the fret and chords redraw as the shapes your fingers actually make.
+- **Tap any chord for a fingering diagram** — open voicings plus movable barre shapes, always matching what's on screen after transpose and capo.
+- **Nashville numbers** — flip chords to scale degrees for the players who read that way.
+
+**Your library**
+
+- **Import what you already own** — ChordPro (`.cho`/`.chordpro`/`.pro`), OnSong (`.onsong`/`.txt`, including `Key:` and `Capo:`), OpenSong XML, plain chords-above-lyrics, and ZIP bundles of any of those.
+- **Paste from the web** — a built-in helper opens the usual chord sites, and pasted text gets cleaned up and parsed automatically.
+- **Songs are shared, not copied** — fix a typo once and every setlist using that song is fixed.
+- **Share a single setlist** with a bandmate as one file that *merges* into their library instead of trampling it — matching songs are reused, not duplicated.
+- **Back up everything** to plain, readable JSON that you own.
+
+**Offline and yours**
+
+- **Works with zero signal** — a service worker precaches every asset, fonts included, on first load.
+- **Installs to your home screen** and launches like a native app. [How →](#save-it-to-your-phone)
+- **No server, no account, no telemetry.** Your songs live on your device and move by file.
+- **Dark and light themes**, both held at or above WCAG AA contrast, with real pinch-zoom and screen-reader labels throughout.
+
+---
+
+## Tech stack
+
+![HTML5](https://img.shields.io/badge/HTML5-E34F26?style=for-the-badge&logo=html5&logoColor=white)
+![CSS3](https://img.shields.io/badge/CSS3-1572B6?style=for-the-badge&logo=css3&logoColor=white)
+![JavaScript](https://img.shields.io/badge/JavaScript-F7DF1E?style=for-the-badge&logo=javascript&logoColor=black)
+![PWA](https://img.shields.io/badge/PWA-5A0FC8?style=for-the-badge&logo=pwa&logoColor=white)
+![Service Worker](https://img.shields.io/badge/Service_Worker-FF6C37?style=for-the-badge&logoColor=white)
+![IndexedDB](https://img.shields.io/badge/IndexedDB-003B57?style=for-the-badge&logoColor=white)
+![GitHub Actions](https://img.shields.io/badge/GitHub_Actions-2088FF?style=for-the-badge&logo=githubactions&logoColor=white)
+![GitHub Pages](https://img.shields.io/badge/GitHub_Pages-222222?style=for-the-badge&logo=githubpages&logoColor=white)
+
+No React, no Tailwind, no bundler — **the runtime dependency count is zero.** Everything below is either a browser API or a file served straight from this repo.
+
+| Layer | What it uses |
 |---|---|
-| Chord apps stop working when the venue has no signal | Full offline operation via a service worker; every asset is precached |
-| Screens sleep mid-verse | Wake Lock held for the entire set, not just one song |
-| Chord charts wrap badly on phones | A custom rendering engine: chords lock to their syllable, words never split across lines, and the page never scrolls sideways |
-| Moving your songs between apps is a hassle | Imports ChordPro, OnSong, OpenSong XML, plain text, and ZIP bundles; exports plain JSON |
-| Cloud accounts, subscriptions, telemetry | None. Data stays in the browser's local storage; moving it between devices is a file you control |
+| **App** | Hand-written HTML5, CSS (custom-property theming, flexbox/grid) and vanilla JavaScript (ES2017+), all in one `setlist69.html` |
+| **Storage** | IndexedDB for the library with a `localStorage` fallback; state is structurally validated on load and persisted whole |
+| **Offline / install** | Web App Manifest + a cache-first Service Worker precaching every asset; the Wake Lock API keeps the screen alive through a set |
+| **Files / sharing** | File System Access API, Web Share API and an anchor-download fallback, chosen per platform at runtime |
+| **Import** | ChordPro, OnSong and OpenSong XML parsers (the last via `DOMParser`); ZIP bundles unpacked with the native `DecompressionStream` |
+| **Fonts** | Self-hosted WOFF2 (JetBrains Mono, Hanken Grotesk) — no CDN, so text renders identically offline |
+| **Dev tooling** | Node.js `--check` for syntax, Playwright for the screenshots and hero GIF, GitHub Actions for CI, GitHub Pages for hosting — none of it ships to the browser |
 
-**Why it stands out:** the whole app is a single `setlist69.html` — no framework, no build step, no `node_modules`. You can read every line, fork it, and host it on any static server. Reliability, readability while playing, offline operation, and ownership are the four design priorities, in that order.
+---
+
+## Quick start
+
+> **Just want to use it?** You don't need any of this — [open the live app](https://cdburgess75.github.io/SetList69/) and you're done. This section is for running it locally or hosting your own copy.
+
+### Prerequisites
+
+| For | You need |
+|---|---|
+| Using the app | Any modern browser. That's it. |
+| Running it locally | `git` |
+| Regenerating the screenshots / hero GIF | Node.js ≥ 18 and Playwright *(optional)* |
+
+### 1. Clone
+
+```bash
+git clone https://github.com/cdburgess75/SetList69.git
+cd SetList69
+```
+
+### 2. Install
+
+Nothing to install. There's no build step, no package manager and no dependencies — the app is static files.
+
+The only optional install is the dev tooling that regenerates the visuals in this README:
+
+```bash
+npm install playwright gifenc pngjs   # optional — screenshots and hero GIF only
+```
+
+### 3. Run
+
+Open `setlist69.html` in your browser directly, or serve the folder so the service worker and offline caching behave the way they will in production:
+
+```bash
+npx serve .
+# → http://localhost:3000
+```
+
+### 4. Deploy your own
+
+Push the repo to any static host — GitHub Pages, Netlify, Cloudflare Pages, or a folder on your own server. There's no build to run and nothing to configure. (`.nojekyll` is already in place so GitHub Pages serves the files as-is.)
+
+---
+
+## Save it to your phone
+
+SetList69 installs to your home screen and runs fullscreen like a native app — no App Store, no account. This is how you'll actually want it at a gig.
+
+<div align="center">
+<img src="docs/screenshots/home.png" alt="SetList69 running fullscreen on a phone, showing the setlists and song library home screen" width="260">
+</div>
+
+### 📱 iPhone / iPad — Safari
+
+1. Open **[cdburgess75.github.io/SetList69](https://cdburgess75.github.io/SetList69/)** in **Safari**.
+2. Tap the **Share** button (the square with the arrow pointing up).
+3. Scroll down and tap **Add to Home Screen**.
+4. Tap **Add**.
+
+> It has to be Safari — Chrome on iOS can't install home-screen apps.
+
+### 🤖 Android — Chrome
+
+1. Open **[cdburgess75.github.io/SetList69](https://cdburgess75.github.io/SetList69/)** in **Chrome**.
+2. Tap the **⋮** menu (top right).
+3. Tap **Install app** — or **Add to Home Screen** on older versions.
+4. Tap **Install**.
+
+> Chrome often offers this on its own with an install banner along the bottom of the screen.
+
+### 💻 Desktop — Chrome / Edge
+
+Click the **install icon** (a monitor with a downward arrow) at the right-hand end of the address bar, then **Install**.
+
+### After you install
+
+- **Launch it once while you still have signal.** That's when it caches everything.
+- From then on it opens fullscreen and works with **no connection at all** — airplane mode, basement venue, dead rural bar, doesn't matter.
+- When a new version ships, the app slides down an **"Update ready"** banner naming it and keeps a **⟳** button in the header to apply it. It never reloads itself mid-song.
 
 ---
 
@@ -56,101 +195,31 @@ SetList69 stores songs (lyrics with chords), organizes them into setlists, and r
 <div align="center">
 <table>
 <tr>
-<td width="50%"><img src="docs/screenshots/chord-diagram.png" alt="Guitar fingering diagram shown when a chord is tapped" width="100%"></td>
-<td width="50%"><img src="docs/screenshots/editor.png" alt="Song editor showing inline ChordPro, key, and capo fields" width="100%"></td>
+<td width="50%"><img src="docs/screenshots/song.png" alt="Performance view: large lyrics with colour-coded chords locked above the syllable they change on" width="100%"></td>
+<td width="50%"><img src="docs/screenshots/chord-diagram.png" alt="A guitar fingering diagram popover shown after tapping a chord in the performance view" width="100%"></td>
 </tr>
 <tr>
-<td align="center"><sub>Tap any chord for a guitar fingering</sub></td>
-<td align="center"><sub>Editor — inline ChordPro, capo, and import</sub></td>
+<td align="center"><sub><b>Performance view</b> — chords locked to the syllable</sub></td>
+<td align="center"><sub><b>Tap a chord</b> for its fingering</sub></td>
 </tr>
 <tr>
-<td width="50%"><img src="docs/screenshots/played.png" alt="Set view with played songs crossed off" width="100%"></td>
-<td width="50%"><img src="docs/screenshots/song-light.png" alt="Performance view in the light theme" width="100%"></td>
+<td width="50%"><img src="docs/screenshots/played.png" alt="Set view with the first two songs dimmed and struck through in green, marked as already played" width="100%"></td>
+<td width="50%"><img src="docs/screenshots/editor.png" alt="Song editor showing the title, artist, key and capo fields above a body of inline ChordPro text" width="100%"></td>
 </tr>
 <tr>
-<td align="center"><sub>Set view with ✓ Played tracking</sub></td>
-<td align="center"><sub>Light theme</sub></td>
+<td align="center"><sub><b>Set view</b> — songs cross off as you play them</sub></td>
+<td align="center"><sub><b>Editor</b> — inline ChordPro, key and capo</sub></td>
+</tr>
+<tr>
+<td width="50%"><img src="docs/screenshots/song-light.png" alt="The same performance view rendered in the light theme for bright outdoor stages" width="100%"></td>
+<td width="50%"><img src="docs/screenshots/home.png" alt="Home screen listing setlists above a searchable library of every song" width="100%"></td>
+</tr>
+<tr>
+<td align="center"><sub><b>Light theme</b> — for daylight gigs</sub></td>
+<td align="center"><sub><b>Home</b> — setlists and the full library</sub></td>
 </tr>
 </table>
 </div>
-
----
-
-## Key features
-
-| Area | Capability |
-|---|---|
-| **Rendering** | Chords positioned above the exact syllable, color-coded by root pitch; inline ChordPro (`[G]word`) and chords-above-lyrics formats both parse; tap a chord for a guitar fingering diagram |
-| **Transposition** | Per-song transpose (remembered), set-wide transpose, sharp/flat spelling toggle, capo support with fingering-shape display, Nashville number notation (key-invariant) |
-| **Performance** | Auto-scroll with live speed control and a progress bar, swipe between songs, fit-to-screen font sizing, wake lock across the whole set, one-tap fullscreen gig mode |
-| **Stage safety** | Stage mode hides all editing chrome; leaving a song mid-performance takes a deliberate double tap |
-| **Set management** | Drag-to-reorder, per-set notes, duplicate sets, and ✓ Played tracking that survives reloads and resets in one tap |
-| **Import** | ChordPro (`.cho/.chordpro/.pro`), OnSong (`.onsong/.txt`, incl. `Key:`/`Capo:`), OpenSong XML, plain text, ZIP bundles, and paste-from-chord-sites with automatic cleanup |
-| **Export / share** | Full library backup to JSON; single-setlist share files that *merge* into a bandmate's library without creating duplicates |
-| **PWA** | Installable on iOS/Android, offline-first caching, in-app update notifications, and an install nudge |
-| **Theming** | Dark (default) and light themes, both at or above WCAG AA contrast |
-
----
-
-## Tech stack
-
-No framework, no bundler, no `node_modules` in the shipped app — the runtime dependency count is zero. Everything below is either a browser API or a self-hosted asset.
-
-| Layer | What it uses |
-|---|---|
-| **App** | Hand-written HTML5, CSS (custom-property theming, flexbox/grid), and vanilla JavaScript (ES2017+) — all in one `setlist69.html` |
-| **Storage** | IndexedDB for the library with a `localStorage` fallback; state is structurally validated on load and persisted whole |
-| **Offline / install** | Web App Manifest + a cache-first Service Worker that precaches every asset; the Wake Lock API keeps the screen awake through a set |
-| **Sharing / files** | File System Access API, Web Share API, and an anchor-download fallback — selected per platform at runtime |
-| **Import** | ChordPro, OnSong, and OpenSong XML parsers (the last via `DOMParser`); ZIP bundles unpacked with the native `DecompressionStream` |
-| **Fonts** | Self-hosted WOFF2 (JetBrains Mono, Hanken Grotesk) — no external CDN, so text renders identically offline |
-| **Dev tooling** | Node.js `--check` for syntax, Playwright for screenshots, GitHub Actions for CI, GitHub Pages for hosting — none of it ships to the browser |
-
----
-
-## Installation
-
-### Prerequisites
-
-- **To use:** any modern browser. Nothing else — no account, no API keys, no install step beyond the browser.
-- **To develop:** `git`, and Node.js ≥ 18 (only for the syntax checks and screenshot tooling; the app itself has no build).
-
-### As a phone app (recommended)
-
-1. Open **[cdburgess75.github.io/SetList69](https://cdburgess75.github.io/SetList69/)** — Safari on iPhone/iPad, Chrome on Android.
-2. **iPhone:** Share → *Add to Home Screen* · **Android:** ⋮ → *Add to Home Screen*.
-3. Launch it once with signal; it works fully offline afterward. When a new version ships, the app slides down an *"Update ready"* banner naming it (and keeps a ⟳ button in the header to apply it) — no cache clearing needed.
-
-### Self-hosted
-
-```bash
-git clone https://github.com/cdburgess75/SetList69.git
-cd SetList69
-npx serve .          # any static file server works; or just open setlist69.html
-```
-
-Deploying your own copy is a push to any static host — GitHub Pages, Netlify, or a folder on your own server. There is no build step.
-
----
-
-## Usage
-
-**Add a song** — tap **+** next to *Songs* and paste either format:
-
-```
-[G]Amazing [G7]grace how [C]sweet the [G]sound        ← inline ChordPro
-
-G        G7        C          G
-Amazing  grace how sweet the  sound                    ← chords above lyrics
-```
-
-**Build a set** — tap **+** next to *Setlists*, add songs, and drag the `≡` handle to order them.
-
-**Play the gig** — open the set, tap **▶ Stage**, then tap the first song. Swipe left for the next; each one is crossed off behind you. The **⚙** button holds transpose, sharp/flat, font size, and fit-to-screen.
-
-**Import an existing library** — **≡** menu → *Import songs*. Point it at `.onsong` / `.chordpro` / `.txt` / `.xml` files or a ZIP of them. From OnSong: export songs individually, zip them, and import the zip.
-
-A fuller walkthrough lives in the **[User Guide](docs/USER-GUIDE.md)**.
 
 ---
 
@@ -158,23 +227,26 @@ A fuller walkthrough lives in the **[User Guide](docs/USER-GUIDE.md)**.
 
 ```
 SetList69/
-├── setlist69.html          # The entire application — HTML, CSS, and JS in one file
-├── sw.js                   # Service worker: cache-first, precaches all assets
+├── setlist69.html          # The entire application — HTML, CSS and JS in one file
+├── sw.js                   # Service worker: cache-first, precaches every asset
 ├── manifest.json           # PWA manifest (id, icons, screenshots, standalone)
 ├── index.html              # Redirect stub → setlist69.html
-├── .nojekyll               # Tell GitHub Pages to serve the files as-is (no Jekyll)
+├── .nojekyll               # Tell GitHub Pages to serve the files as-is
 ├── fonts/                  # Self-hosted WOFF2 (Hanken Grotesk, JetBrains Mono)
 ├── icons/                  # App icons incl. an Android-maskable variant
 ├── docs/
 │   ├── USER-GUIDE.md       # End-user walkthrough
-│   ├── DEVICE-TESTING.md   # Manual test pass for touch/visual behavior
-│   ├── shots.js            # Playwright helper — regenerates the README screenshots
+│   ├── DEVICE-TESTING.md   # Manual test pass for touch/visual behaviour
+│   ├── shots.js            # Playwright helper — regenerates the screenshots
+│   ├── hero-gif.js         # Playwright helper — regenerates the hero GIF
 │   └── screenshots/
 └── .github/workflows/
-    └── check.yml           # CI: syntax, version-match, duplicate-id, manifest+precache checks
+    └── check.yml           # CI: syntax, version-match, duplicate-id, manifest checks
 ```
 
-Inside `setlist69.html`, the code reads top to bottom: persistence (IndexedDB + localStorage fallback) → seed data → music core (transposition, chord detection) → parsing/rendering engine → screen router → renderers → import/export → event wiring. A single in-memory `state` object holds everything and is persisted whole:
+Inside `setlist69.html` the code reads top to bottom: persistence (IndexedDB + `localStorage` fallback) → seed data → music core (transposition, chord detection) → parsing and rendering engine → screen router → list renderers → import/export → event wiring.
+
+A single in-memory `state` object holds everything and is persisted whole:
 
 ```js
 state = {
@@ -184,27 +256,28 @@ state = {
 }
 ```
 
-Songs are a shared master store; setlists reference them by id, so editing a song updates every set that uses it. Deep architecture notes (rendering pipeline, capo math, merge-import rules) live in [`CLAUDE.md`](CLAUDE.md).
+Songs are a shared master store and setlists reference them by id, so editing a song updates every set that uses it. Deeper notes — the rendering pipeline, capo maths, merge-import rules — live in [`CLAUDE.md`](CLAUDE.md).
 
 ---
 
 ## Development
 
-There is no unit-test framework by design; correctness is enforced by CI checks plus targeted Node harnesses for the music core.
+There's no unit-test framework by design. Correctness is enforced by CI checks plus small targeted Node harnesses when the music core changes.
 
 ```bash
-# What CI runs on every push — syntax-check the extracted script and the service worker:
+# What CI runs on every push — syntax-check the extracted script and the worker:
 node -e "const s=require('fs').readFileSync('setlist69.html','utf8').match(/<script>([\s\S]*?)<\/script>/)[1];require('fs').writeFileSync('/tmp/app.js',s)" \
   && node --check /tmp/app.js && node --check sw.js
 
-# Regenerate the README screenshots after a UI change (needs Playwright + a Chromium):
-node docs/shots.js
+# Regenerate the README visuals after a UI change (needs Playwright + Chromium):
+node docs/shots.js        # the six screenshots
+node docs/hero-gif.js     # the animated hero
 
-# Manual touch/visual verification on a real device:
+# Touch and visual behaviour has to be checked on real hardware:
 # → follow docs/DEVICE-TESTING.md
 ```
 
-CI (`.github/workflows/check.yml`) also fails the build on a version mismatch (see below), duplicate element ids, or a manifest that references a missing precache file.
+CI (`.github/workflows/check.yml`) also fails the build on a version mismatch, duplicate element ids, or a manifest referencing a missing precached file.
 
 ---
 
@@ -216,13 +289,13 @@ Revisions use **`vYYYY.MM.DD.NNN`**. Every app change bumps the version in three
 
 ## Contributing
 
-This is a personal tool developed in the open; issues and PRs are welcome:
+A personal tool developed in the open. Issues and PRs are welcome:
 
-1. Read [`CLAUDE.md`](CLAUDE.md) first — it documents the architecture, the rendering engine's invariants, and the change checklist.
+1. Read [`CLAUDE.md`](CLAUDE.md) first — it documents the architecture, the rendering engine's invariants and the change checklist.
 2. Keep the constraints: **vanilla JS, one file, zero runtime dependencies, no build step.**
 3. Bump the version in all three places (CI will catch you if you don't).
-4. `node --check` the extracted script; add a small Node harness if you touch the music core.
-5. Flag anything that needs real-device testing (touch, share sheet, install flow) in your PR description.
+4. `node --check` the extracted script, and add a small Node harness if you touch the music core.
+5. Flag anything needing real-device testing (touch, share sheet, install flow) in your PR description.
 
 ---
 
@@ -232,4 +305,31 @@ This is a personal tool developed in the open; issues and PRs are welcome:
 
 ---
 
-<div align="center"><sub>Built for performing musicians. No cloud, no subscription, no ads — just your songs.</sub></div>
+<div align="center">
+
+**[▶ Open the live app](https://cdburgess75.github.io/SetList69/)**
+
+<sub>Built for working bands. No cloud, no subscription, no ads — just your songs.</sub>
+
+</div>
+
+<!--
+  VISUAL ASSET MAP — every image slot above, and what belongs in it.
+  All paths are real files in this repo; drop a replacement at the same path and
+  the README picks it up with no edits.
+
+  icons/icon-512.png                  Hero logo. App icon, 512x512.
+  docs/screenshots/demo.gif           Hero animation. 360x740, ~7s loop, 22 frames.
+                                      Regenerate: node docs/hero-gif.js
+  docs/screenshots/home.png           Home — setlists + song library.
+                                      (used twice: "Save it to your phone" and the gallery)
+  docs/screenshots/song.png           Performance view, dark theme.
+  docs/screenshots/chord-diagram.png  Chord fingering popover.
+  docs/screenshots/played.png         Set view with "played" marks.
+  docs/screenshots/editor.png         Song editor.
+  docs/screenshots/song-light.png     Performance view, light theme.
+                                      Regenerate all six: node docs/shots.js
+
+  NOTE: manifest.json references home.png, song.png and played.png by path —
+  renaming or removing those three breaks the PWA install screenshots.
+-->
