@@ -148,6 +148,9 @@
                    from #ff6f5c so white clears AA in both themes. --brand title stays bright #ff6f5c;
                    --red danger deepened (#ef4034 / #b01810) to stay distinct. keyColor pills + greens
                    unchanged.
+  v2026.08.05.001  Tighter sheet: chord rows lose their dead air (.c min-height 1.5em->1em, the pill
+                   is only ~.9em tall), line gap .5em->.3em, blank lines .8em->.55em. Same font size,
+                   ~28% less scrolling on a long song; lyric line-height untouched.
 -->
 <html lang="en">
 <head>
@@ -280,11 +283,11 @@
   .svbanter{color:var(--accent);font-size:.84rem;font-style:italic;margin-top:.15rem;line-height:1.35;}
   .sheet{margin-top:1.1rem;font-size:var(--sheet-size,1.35rem);-webkit-user-select:text;user-select:text;
     line-height:1;}
-  .ln{margin:0 0 .5em;white-space:normal;}            /* a song line; wraps to screen width */
+  .ln{margin:0 0 .3em;white-space:normal;}            /* a song line; wraps to screen width */
   .ln.empty-line{margin:0;}
   .wg{display:inline-block;white-space:nowrap;vertical-align:bottom;}  /* word-group: never splits mid-word */
   .seg{display:inline-block;vertical-align:bottom;}
-  .seg .c{display:block;line-height:1;min-height:1.5em;white-space:nowrap;margin-bottom:.1em;}
+  .seg .c{display:block;line-height:1;min-height:1em;white-space:nowrap;margin-bottom:.08em;}  /* pill is ~.9em tall — keep min-height snug or every chorded row carries dead air */
   .chordpill{display:inline-block;color:#fff;font-family:var(--mono);font-weight:700;font-size:.58em;
     padding:.2em .5em;border-radius:.55em;line-height:1.15;letter-spacing:.2px;
     box-shadow:inset 0 0 0 1px #ffffff2e, 0 1px 2px #0003;}
@@ -303,7 +306,7 @@
   .songkey{font-family:var(--mono);font-size:.82rem;font-weight:600;color:var(--muted);white-space:nowrap;
     align-self:center;}
   .wgspace{display:inline-block;width:.32em;}         /* breakable gap between word-groups */
-  .blank{height:.8em;}
+  .blank{height:.55em;}
   .chorus{border-left:3px solid var(--accent);padding-left:.7rem;margin-left:-.1rem;}
   .comment{color:var(--muted);font-style:italic;font-size:.7em;margin:.3rem 0 .5rem;font-family:var(--ui);}
   .swipehint{text-align:center;color:var(--faint);font-size:.7rem;font-family:var(--mono);margin-top:2rem;opacity:.6;transition:opacity .5s;}
@@ -452,7 +455,7 @@
 <div class="app">
   <header>
     <button class="back" id="backBtn" style="display:none" aria-label="Back">‹ <span id="backLabel">Back</span></button>
-    <div class="brand" id="brand"><span class="dot"></span>SetList69<small>v2026.07.19.016</small></div>
+    <div class="brand" id="brand"><span class="dot"></span>SetList69<small>v2026.08.05.001</small></div>
     <div class="htitle" id="headerTitle" style="display:none"></div>
     <div class="spacer"></div>
     <button class="iconbtn" id="updateHdr" title="Update ready" aria-label="Update ready — refresh" hidden>⟳</button>
