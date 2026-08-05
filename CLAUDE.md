@@ -179,6 +179,11 @@ v2026.07.19.016  Coral accent through the whole UI: `--accent`/`--chord`/`--acce
                  did). `--brand` title stays bright #ff6f5c (coral text on the dark header, no white-text
                  issue). `--red` danger deepened (#ef4034 dark / #b01810 light) to stay distinct.
                  `keyColor()` chord/key pills and the greens (`--ok`/`--green`) unchanged.
+v2026.08.05.001  Tighter sheet spacing (owner: "too much scrolling"): `.seg .c` min-height
+                 1.5em->1em + margin .1->.08em (pill is ~.9em tall, the rest was dead air), `.ln`
+                 margin .5->.3em, `.blank` .8->.55em. Font size + lyric line-height untouched;
+                 ~28% less scrolling on a long song. Comma-joining lines was considered and
+                 rejected — it destroys the phrase-per-line structure players track mid-song.
 ```
 
 A GitHub Actions workflow (`.github/workflows/check.yml`) enforces the version discipline on every push: it syntax-checks the extracted inline script and `sw.js`, **fails if the `<small>` brand version ≠ `sw.js` CACHE version**, and fails on duplicate element ids in the markup.
