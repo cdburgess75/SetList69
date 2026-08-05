@@ -184,6 +184,14 @@ v2026.08.05.001  Tighter sheet spacing (owner: "too much scrolling"): `.seg .c` 
                  margin .5->.3em, `.blank` .8->.55em. Font size + lyric line-height untouched;
                  ~28% less scrolling on a long song. Comma-joining lines was considered and
                  rejected — it destroys the phrase-per-line structure players track mid-song.
+v2026.08.05.002  Header zoom: `A−`/`A+` (`#hdrFontDown`/`#hdrFontUp`, `.iconbtn.fontbtn`) beside
+                 `≡ ☾` in the song view, so font size no longer needs the ⚙ sheet. They **replace
+                 the ✎ pencil** — it was redundant (tapping `#svTitle` opens the editor via the same
+                 `openEditor(curSongId,"song")`) and the header had zero spare width. Unlike the ✎
+                 they stay visible in **stage mode** (reading aid, not an editing control); gig mode
+                 still hides the whole header, where the ⚙ sheet remains the path. New
+                 `nudgeFont(step)` is the single implementation behind both pairs. Header `gap`
+                 .5→.35rem + padding .9→.7rem to buy the width back (title at 320px: 95→116px).
 ```
 
 A GitHub Actions workflow (`.github/workflows/check.yml`) enforces the version discipline on every push: it syntax-checks the extracted inline script and `sw.js`, **fails if the `<small>` brand version ≠ `sw.js` CACHE version**, and fails on duplicate element ids in the markup.
@@ -417,7 +425,9 @@ Globals: `transpose` (semitones, 0 on song open), `preferFlats` (bool), `fontSiz
 
 **Capo:** Set in editor (0–11). Shown as "Capo N" badge in song view (amber, monospaced). Subtracts from `transpose` so chords display as fingering shapes.
 
-**Font:** `A−` / `A+` (0.7–2.4 rem). **`fit`** button scales font so the full song fits the viewport — two-pass (`requestAnimationFrame` after first `reRender()`) to correct for re-wrapping at smaller sizes.
+**Font:** `A−` / `A+` (0.7–2.4 rem, 0.1 steps) via `nudgeFont(step)` — the one implementation behind **both** the header pair (`#hdrFontDown`/`#hdrFontUp`, v2026.08.05.002) and the ⚙ sheet pair (`#fontDown`/`#fontUp`). Note the default 1.35 isn't on the 0.1 grid, so the first tap snaps to it (up → 1.5, down → 1.3); that's long-standing and intentional to keep the scale tidy afterwards. **`fit`** button scales font so the full song fits the viewport — two-pass (`requestAnimationFrame` after first `reRender()`) to correct for re-wrapping at smaller sizes.
+
+**Header zoom (v2026.08.05.002):** `A−`/`A+` sit beside `≡ ☾` in the song view. They took the slot of the old `✎` header button, which was redundant — `#svTitle`'s click handler opens the editor with the same `openEditor(curSongId,"song")` call. Visibility is set in `show()` on `name==="song"` alone, so unlike the `✎` **they stay up in stage mode** (enlarging lyrics is a reading aid). Gig mode hides the header entirely; the ⚙ sheet covers that case. The header has no spare width — adding these required dropping `header` `gap` to .35rem and padding to .7rem, and `.iconbtn.fontbtn` needs `white-space:nowrap` because the flex row shrinks the buttons below their glyph width.
 
 **Auto-scroll:** `startScroll()` / `stopScroll()` use `requestAnimationFrame` with fractional pixel accumulator. Stops at bottom with haptic + amber flash. Speed adjustable live.
 
@@ -489,7 +499,7 @@ List renders:  renderSetlists  renderSetSongs  renderAllSongs  renderPicker  ren
 Gig mode:      setGig  toggleGig  (⛶ dock button — fullscreen + hide header + wake lock)
 Song view:     openSongInSet  openSongStandalone  openCurrent  reRender
                nextSong  prevSong  startScroll  stopScroll  updateScrollProg
-               requestWake  releaseWake  openDockSheet  closeDockSheet
+               requestWake  releaseWake  openDockSheet  closeDockSheet  nudgeFont
 Editor:        openEditor  closeEditor  saveSong
 Context/dialogs: openSongContext  closeSongContext  openAdder  closeAdder  showPrompt  showConfirm
                  closeModal  loadPlayed  savePlayed

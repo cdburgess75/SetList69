@@ -151,6 +151,12 @@
   v2026.08.05.001  Tighter sheet: chord rows lose their dead air (.c min-height 1.5em->1em, the pill
                    is only ~.9em tall), line gap .5em->.3em, blank lines .8em->.55em. Same font size,
                    ~28% less scrolling on a long song; lyric line-height untouched.
+  v2026.08.05.002  Zoom from the header: A− / A＋ (#hdrFontDown/#hdrFontUp) sit beside ≡ ☾ in the song
+                   view, so font size no longer needs the ⚙ sheet. They replace the ✎ pencil, which
+                   was redundant — tapping the song title opens the editor via the same call — and
+                   the header had no spare width. Unlike the ✎ they stay visible in stage mode
+                   (reading aid, not an editing control). New nudgeFont(step) is now the single
+                   implementation behind both the header and ⚙ sheet pairs.
 -->
 <html lang="en">
 <head>
@@ -194,7 +200,7 @@
   button{font-family:inherit;color:inherit;cursor:pointer;border:none;background:none;}
   .app{display:flex;flex-direction:column;height:100vh;height:100dvh;}  /* vh fallback for browsers without dvh */
 
-  header{display:flex;align-items:center;gap:.5rem;padding:.65rem .9rem;
+  header{display:flex;align-items:center;gap:.35rem;padding:.65rem .7rem;
     padding-top:max(.65rem,env(safe-area-inset-top));
     background:var(--panel);
     border-bottom:1px solid var(--line);position:relative;z-index:20;}
@@ -208,6 +214,9 @@
   .iconbtn{width:2.2rem;height:2.2rem;border-radius:10px;display:grid;place-items:center;font-size:1rem;
     color:var(--muted);transition:.15s;border:1px solid transparent;}
   .iconbtn[hidden]{display:none;}   /* the `hidden` attr must beat .iconbtn's display:grid */
+  /* header zoom pair: two glyphs in a button the flex row shrinks to ~28px on a narrow phone */
+  .iconbtn.fontbtn{font-family:var(--mono);font-size:.82rem;font-weight:700;letter-spacing:-.02em;
+    white-space:nowrap;}   /* the flex row shrinks these below their glyph width — without this "A+" breaks onto two lines */
   .iconbtn:hover{background:var(--panel2);color:var(--ink);}
   .back{display:flex;align-items:center;gap:.3rem;font-weight:600;font-size:.9rem;color:var(--muted);padding:.3rem .2rem;}
   .back:hover{color:var(--ink);}
@@ -455,11 +464,12 @@
 <div class="app">
   <header>
     <button class="back" id="backBtn" style="display:none" aria-label="Back">‹ <span id="backLabel">Back</span></button>
-    <div class="brand" id="brand"><span class="dot"></span>SetList69<small>v2026.08.05.001</small></div>
+    <div class="brand" id="brand"><span class="dot"></span>SetList69<small>v2026.08.05.002</small></div>
     <div class="htitle" id="headerTitle" style="display:none"></div>
     <div class="spacer"></div>
     <button class="iconbtn" id="updateHdr" title="Update ready" aria-label="Update ready — refresh" hidden>⟳</button>
-    <button class="iconbtn" id="headerEdit" title="Edit this song" aria-label="Edit this song" style="display:none">✎</button>
+    <button class="iconbtn fontbtn" id="hdrFontDown" title="Smaller lyrics" aria-label="Make lyrics smaller" style="display:none">A−</button>
+    <button class="iconbtn fontbtn" id="hdrFontUp" title="Bigger lyrics" aria-label="Make lyrics bigger" style="display:none">A+</button>
     <button class="iconbtn" id="menuBtn" title="Tools &amp; backup" aria-label="Tools and backup">≡</button>
     <button class="iconbtn" id="themeBtn" title="Light / dark mode" aria-label="Toggle light or dark theme">☾</button>
   </header>
@@ -913,7 +923,11 @@ function show(name){
   const back=document.getElementById("backBtn"),brand=document.getElementById("brand"),ht=document.getElementById("headerTitle");
   if(name==="setlists"){back.style.display="none";brand.style.display="";ht.style.display="none";}
   else{back.style.display="";brand.style.display="none";ht.style.display="";}
-  document.getElementById("headerEdit").style.display=(name==="song"&&!stageMode)?"":"none";   // quick edit ✎, hidden while performing
+  /* Header zoom pair. Unlike the ✎ these formerly replaced, they stay up in stage mode — enlarging
+     lyrics is a reading aid, not an editing control, and stage mode is when you most want it. */
+  const showFont=(name==="song")?"":"none";
+  document.getElementById("hdrFontDown").style.display=showFont;
+  document.getElementById("hdrFontUp").style.display=showFont;
   if(name==="setSongs"){ht.textContent=(state.setlists.find(s=>s.id===curSetlist)||{}).name||"";document.getElementById("backLabel").textContent="Setlists";
     document.getElementById("setSongsScreen").toggleAttribute("data-stage",stageMode);
     document.getElementById("stageBtn").textContent=stageMode?"✎ Edit":"▶ Stage";}
@@ -1456,7 +1470,6 @@ document.getElementById("backBtn").addEventListener("click",()=>{
 });
 document.getElementById("themeBtn").addEventListener("click",()=>{state.theme=state.theme==="light"?"dark":"light";applyTheme();persist();});
 document.getElementById("menuBtn").addEventListener("click",()=>{document.getElementById("toolsSheet").classList.add("show");});
-document.getElementById("headerEdit").addEventListener("click",()=>{if(curSongId)openEditor(curSongId,"song");});
 document.getElementById("svTitle").addEventListener("click",()=>{if(curSongId&&!gigMode&&!stageMode)openEditor(curSongId,"song");});
 
 document.getElementById("newSetlist").addEventListener("click",()=>{
@@ -1530,8 +1543,16 @@ document.getElementById("nashBtn").addEventListener("click",e=>{nashville=!nashv
 document.getElementById("sheet").addEventListener("click",e=>{const pill=e.target.closest(".chordpill");if(pill){e.stopPropagation();showChordPop(pill);}});
 document.addEventListener("click",e=>{if(!e.target.closest(".chordpill")&&!e.target.closest("#chordPop"))hideChordPop();});
 document.getElementById("songView").addEventListener("scroll",hideChordPop,{passive:true});
-document.getElementById("fontUp").addEventListener("click",()=>{fontSize=Math.min(2.4,Math.round((fontSize+0.1)*10)/10);state.fontSize=fontSize;persist();document.getElementById("sheet").style.setProperty("--sheet-size",fontSize+"rem");updateScrollProg();});
-document.getElementById("fontDown").addEventListener("click",()=>{fontSize=Math.max(0.7,Math.round((fontSize-0.1)*10)/10);state.fontSize=fontSize;persist();document.getElementById("sheet").style.setProperty("--sheet-size",fontSize+"rem");updateScrollProg();});
+/* One step of the font scale, shared by the header pair and the ⚙ sheet pair. CSS-only update —
+   no reparse; updateScrollProg() because the height changed without firing a scroll event. */
+function nudgeFont(step){
+  fontSize=Math.max(0.7,Math.min(2.4,Math.round((fontSize+step)*10)/10));
+  state.fontSize=fontSize;persist();
+  document.getElementById("sheet").style.setProperty("--sheet-size",fontSize+"rem");
+  updateScrollProg();
+}
+for(const id of ["fontUp","hdrFontUp"])document.getElementById(id).addEventListener("click",()=>nudgeFont(0.1));
+for(const id of ["fontDown","hdrFontDown"])document.getElementById(id).addEventListener("click",()=>nudgeFont(-0.1));
 document.getElementById("fontFit").addEventListener("click",()=>{
   requestAnimationFrame(()=>{
     const sv=document.getElementById("songView"),sh=document.getElementById("sheet");
