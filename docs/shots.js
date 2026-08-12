@@ -96,6 +96,18 @@ async function fresh(browser) {
     await ctx.close();
   }
 
+  // 7. Two-column sheet — iPad landscape (columns engage automatically on wide screens)
+  {
+    const ctx = await browser.newContext({ viewport: { width: 1024, height: 768 }, deviceScaleFactor: 2 });
+    const page = await ctx.newPage();
+    await page.goto(APP);
+    await page.waitForTimeout(400);
+    await page.evaluate(() => openSongStandalone('danny'));
+    await page.waitForTimeout(300);
+    await page.screenshot({ path: path.join(OUT, 'twocol.png') });
+    await ctx.close();
+  }
+
   await browser.close();
   console.log('screenshots written to', OUT);
 })();

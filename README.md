@@ -27,7 +27,7 @@
 <br>
 
 [![CI](https://github.com/cdburgess75/SetList69/actions/workflows/check.yml/badge.svg)](https://github.com/cdburgess75/SetList69/actions/workflows/check.yml)
-[![Version](https://img.shields.io/badge/version-2026.08.05.002-informational?style=flat-square)](#versioning)
+[![Version](https://img.shields.io/badge/version-2026.08.05.003-informational?style=flat-square)](#versioning)
 [![PWA](https://img.shields.io/badge/PWA-installable-5A0FC8?style=flat-square)](#save-it-to-your-phone)
 [![Offline](https://img.shields.io/badge/offline-first-2ea043?style=flat-square)](#features)
 [![Runtime deps](https://img.shields.io/badge/runtime_dependencies-0-f5a623?style=flat-square)](#tech-stack)
@@ -55,6 +55,7 @@ The whole thing is a single `setlist69.html` file. No framework, no build step, 
 - **Never goes dark** — a wake lock is held across the *entire set*, not re-acquired per song, so the screen won't sleep between verses.
 - **Gig mode** — one tap for true fullscreen: no browser chrome, no header, just lyrics.
 - **Stage mode** — hides every editing control so nothing destructive is one fat-fingered tap away, and leaving a song mid-performance deliberately takes two taps.
+- **Two columns on wide screens** — on a tablet or a phone held sideways, verses flow into side-by-side blocks (each verse kept whole), so most songs fit with little or no scrolling.
 - **Swipe between songs** in set order, with your position (`3/12`) always visible.
 - **✓ Played marks** — songs cross off behind you as you play them, and survive a reload or a backgrounded phone.
 
@@ -219,6 +220,10 @@ Click the **install icon** (a monitor with a downward arrow) at the right-hand e
 <td align="center"><sub><b>Home</b> — setlists and the full library</sub></td>
 </tr>
 </table>
+
+<img src="docs/screenshots/twocol.png" alt="iPad landscape view with the song flowing into two columns, each verse kept whole in its own block" width="88%">
+
+<sub><b>Two columns on tablets</b> — wide screens flow verses into side-by-side blocks automatically, so the whole song fits with little or no scrolling</sub>
 </div>
 
 ---
@@ -328,7 +333,8 @@ A personal tool developed in the open. Issues and PRs are welcome:
   docs/screenshots/played.png         Set view with "played" marks.
   docs/screenshots/editor.png         Song editor.
   docs/screenshots/song-light.png     Performance view, light theme.
-                                      Regenerate all six: node docs/shots.js
+  docs/screenshots/twocol.png         Two-column sheet, iPad landscape (1024x768).
+                                      Regenerate all seven: node docs/shots.js
 
   NOTE: manifest.json references home.png, song.png and played.png by path —
   renaming or removing those three breaks the PWA install screenshots.

@@ -192,6 +192,14 @@ v2026.08.05.002  Header zoom: `A−`/`A+` (`#hdrFontDown`/`#hdrFontUp`, `.iconbt
                  still hides the whole header, where the ⚙ sheet remains the path. New
                  `nudgeFont(step)` is the single implementation behind both pairs. Header `gap`
                  .5→.35rem + padding .9→.7rem to buy the width back (title at 320px: 95→116px).
+v2026.08.05.003  Two-column sheet on wide screens (owner: too much scrolling live at gigs, reads
+                 from an iPad): `.sheet` gets `columns:2 15em` + gap + rule — engages on
+                 iPad/landscape, upright phones stay single-column, and the 15em minimum is in the
+                 sheet's own em (`--sheet-size`) so larger fonts drop back to one column on their
+                 own. `renderSheet` groups lines into `.sect` blocks at blank-line boundaries
+                 (`break-inside:avoid`) so a verse/chorus never shears across a column break;
+                 `.blank` spacer divs removed (section margins replace them). Font size is never
+                 auto-changed (owner declined auto-fit). Long-song scroll at 1024×768: 996→446px.
 ```
 
 A GitHub Actions workflow (`.github/workflows/check.yml`) enforces the version discipline on every push: it syntax-checks the extracted inline script and `sw.js`, **fails if the `<small>` brand version ≠ `sw.js` CACHE version**, and fails on duplicate element ids in the markup.
@@ -314,6 +322,16 @@ Goal: render chords stacked directly above the correct syllable, wrapping to scr
 ### Pipeline
 
 `renderSheet(song)` → `parseSong(song)` → per-line `renderLine(segs)`.
+
+**Section blocks & two-column layout (v2026.08.05.003):** `renderSheet` groups consecutive
+non-blank lines into `<div class="sect">` blocks; blank lines are the boundaries (runs collapse to
+one) and are not rendered — inter-section space comes from `.sect` margin. Comments ride inside the
+section that follows them. On wide screens `.sheet`'s `columns:2 15em` flows those blocks into two
+columns (`break-inside:avoid` keeps each verse/chorus whole); the 15em minimum resolves against the
+sheet's own font size, so upright phones stay single-column and enlarging the font collapses back to
+one column automatically. Font size is never auto-changed by the layout (owner declined auto-fit —
+long songs still scroll). Note `getComputedStyle(...).columnCount` reports the *specified* `2`, not
+the used count — measure distinct `.sect` x-offsets to know what actually rendered.
 
 **`parseSong(song)`** returns `{ meta, lines }`:
 

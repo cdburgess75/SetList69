@@ -157,6 +157,13 @@
                    the header had no spare width. Unlike the ✎ they stay visible in stage mode
                    (reading aid, not an editing control). New nudgeFont(step) is now the single
                    implementation behind both the header and ⚙ sheet pairs.
+  v2026.08.05.003  Two-column sheet on wide screens (owner: too much scrolling live): .sheet gets
+                   columns:2 15em — engages on iPad/landscape, upright phones stay single-column,
+                   and the em minimum tracks --sheet-size so bigger fonts drop back to one column.
+                   renderSheet now groups lines into .sect blocks at blank-line boundaries
+                   (break-inside:avoid), so a verse/chorus never shears across a column break;
+                   blank spacer divs replaced by section margins. Font size is never auto-changed.
+                   Long-song scrolling at 1024x768: 996px -> 446px.
 -->
 <html lang="en">
 <head>
@@ -291,9 +298,14 @@
   .svsub{color:var(--muted);font-size:.88rem;margin-top:.1rem;}
   .svbanter{color:var(--accent);font-size:.84rem;font-style:italic;margin-top:.15rem;line-height:1.35;}
   .sheet{margin-top:1.1rem;font-size:var(--sheet-size,1.35rem);-webkit-user-select:text;user-select:text;
-    line-height:1;}
+    line-height:1;
+    /* Wide screens flow the sheet into two columns (iPad / phone-landscape); the 15em minimum is in
+       the sheet's own em, so a larger font needs a wider screen and columns drop out on their own.
+       Upright phones (~360-430px) never qualify. Capped at 2 — never 3, even on a desktop window. */
+    columns:2 15em;column-gap:2.2em;column-rule:1px solid var(--line);}
+  .sect{break-inside:avoid;margin:0 0 .85em;}         /* verse/chorus block; never splits across columns */
+  .sect .ln:last-child{margin-bottom:0;}
   .ln{margin:0 0 .3em;white-space:normal;}            /* a song line; wraps to screen width */
-  .ln.empty-line{margin:0;}
   .wg{display:inline-block;white-space:nowrap;vertical-align:bottom;}  /* word-group: never splits mid-word */
   .seg{display:inline-block;vertical-align:bottom;}
   .seg .c{display:block;line-height:1;min-height:1em;white-space:nowrap;margin-bottom:.08em;}  /* pill is ~.9em tall — keep min-height snug or every chorded row carries dead air */
@@ -315,7 +327,6 @@
   .songkey{font-family:var(--mono);font-size:.82rem;font-weight:600;color:var(--muted);white-space:nowrap;
     align-self:center;}
   .wgspace{display:inline-block;width:.32em;}         /* breakable gap between word-groups */
-  .blank{height:.55em;}
   .chorus{border-left:3px solid var(--accent);padding-left:.7rem;margin-left:-.1rem;}
   .comment{color:var(--muted);font-style:italic;font-size:.7em;margin:.3rem 0 .5rem;font-family:var(--ui);}
   .swipehint{text-align:center;color:var(--faint);font-size:.7rem;font-family:var(--mono);margin-top:2rem;opacity:.6;transition:opacity .5s;}
@@ -464,7 +475,7 @@
 <div class="app">
   <header>
     <button class="back" id="backBtn" style="display:none" aria-label="Back">‹ <span id="backLabel">Back</span></button>
-    <div class="brand" id="brand"><span class="dot"></span>SetList69<small>v2026.08.05.002</small></div>
+    <div class="brand" id="brand"><span class="dot"></span>SetList69<small>v2026.08.05.003</small></div>
     <div class="htitle" id="headerTitle" style="display:none"></div>
     <div class="spacer"></div>
     <button class="iconbtn" id="updateHdr" title="Update ready" aria-label="Update ready — refresh" hidden>⟳</button>
@@ -905,12 +916,17 @@ function renderSheet(song){
   const capoEl=document.getElementById("svCapo");
   if(capoVal>0){capoEl.style.display="";capoEl.textContent="Capo "+capoVal;}
   else capoEl.style.display="none";
-  let html="";
+  /* Lines are grouped into .sect blocks at blank-line boundaries (runs of blanks collapse into
+     one) so a verse/chorus never shears across a column break in the wide-screen two-column
+     layout. Comments ride inside the section they precede — they label what's coming. */
+  let html="",sect="";
+  const closeSect=()=>{if(sect){html+='<div class="sect">'+sect+'</div>';sect="";}};
   for(const ln of r.lines){
-    if(ln.type==="blank"){html+='<div class="ln empty-line blank"></div>';continue;}
-    if(ln.type==="comment"){html+='<div class="comment">'+esc(ln.text)+'</div>';continue;}
-    html+='<div class="ln '+(ln.chorus?"chorus":"")+'">'+renderLine(ln.segs)+'</div>';
+    if(ln.type==="blank"){closeSect();continue;}
+    if(ln.type==="comment"){sect+='<div class="comment">'+esc(ln.text)+'</div>';continue;}
+    sect+='<div class="ln '+(ln.chorus?"chorus":"")+'">'+renderLine(ln.segs)+'</div>';
   }
+  closeSect();
   const sheet=document.getElementById("sheet");sheet.innerHTML=html;sheet.style.setProperty("--sheet-size",fontSize+"rem");
 }
 
