@@ -170,6 +170,14 @@
                    the swipe handler never fired. #songView gets touch-action:pan-y pinch-zoom
                    (horizontal gestures belong to the app; vertical scroll + a11y pinch stay
                    native) and overflow-x:hidden; the swipe closure resets on touchcancel.
+  v2026.08.13.002  Swipe fix round 2 (iPhone on .001 still dead): the swipe listener moves from
+                   #songView to document-level CAPTURE — WebKit multicol can mis-target touches
+                   inside the columned sheet, bypassing #songView's bubble path entirely, which
+                   also explains why .001's touch-action on #songView changed nothing. Gestures
+                   from the dock/modals/popover/header are now excluded. Legacy
+                   -webkit-overflow-scrolling:touch removed from .screen (default since iOS 13;
+                   gesture-claim suspect). New hidden gesture-debug overlay: 5 taps on the version
+                   tag toggles a live touch-event readout for on-device diagnosis.
 -->
 <html lang="en">
 <head>
@@ -237,7 +245,13 @@
     text-overflow:ellipsis;max-width:55vw;}
 
   main{flex:1;overflow:hidden;position:relative;background:var(--bg);}
-  .screen{position:absolute;inset:0;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:1rem .9rem 6rem;display:none;background:var(--bg);}
+  /* -webkit-overflow-scrolling:touch deliberately absent: legacy since iOS 13 (momentum is
+     default) and its composited scroller is a gesture-claim suspect in the dead-swipe saga. */
+  .screen{position:absolute;inset:0;overflow-y:auto;padding:1rem .9rem 6rem;display:none;background:var(--bg);}
+  /* gesture diagnostic overlay (5 taps on the version tag) — read-only readout, never intercepts */
+  #gestureDbg{position:fixed;left:.4rem;bottom:5.6rem;z-index:99;pointer-events:none;
+    font:10px/1.5 var(--mono);color:var(--ink);background:color-mix(in srgb,var(--panel) 88%,transparent);
+    border:1px solid var(--line);border-radius:8px;padding:.35rem .5rem;white-space:pre;max-width:88vw;overflow:hidden;}
   .screen.show{display:block;}
 
   .listhead{display:flex;align-items:center;gap:.6rem;margin-bottom:.9rem;}
@@ -487,7 +501,7 @@
 <div class="app">
   <header>
     <button class="back" id="backBtn" style="display:none" aria-label="Back">‹ <span id="backLabel">Back</span></button>
-    <div class="brand" id="brand"><span class="dot"></span>SetList69<small>v2026.08.13.001</small></div>
+    <div class="brand" id="brand"><span class="dot"></span>SetList69<small>v2026.08.13.002</small></div>
     <div class="htitle" id="headerTitle" style="display:none"></div>
     <div class="spacer"></div>
     <button class="iconbtn" id="updateHdr" title="Update ready" aria-label="Update ready — refresh" hidden>⟳</button>
@@ -1855,13 +1869,46 @@ document.getElementById("closeSongCtx").addEventListener("click",closeSongContex
   },{passive:true});
 })();
 
-/* swipe between songs in a set */
-(function(){const v=document.getElementById("songView");let x0=0,y0=0,t0=0,active=false;
-  v.addEventListener("touchstart",e=>{if(e.touches.length!==1)return;active=true;x0=e.touches[0].clientX;y0=e.touches[0].clientY;t0=Date.now();},{passive:true});
-  v.addEventListener("touchcancel",()=>{active=false;},{passive:true});   // a browser-claimed gesture must not satisfy a later touchend
-  v.addEventListener("touchend",e=>{if(!active)return;active=false;
+/* Swipe between songs in a set — bound on document in the CAPTURE phase, not on #songView.
+   WebKit multicol (the two-column sheet) can mis-target touches inside columned content, so a
+   bubbling listener on #songView is not guaranteed to hear them; document-capture fires no matter
+   what element the browser decides was touched. Gestures starting on the dock, an open modal, the
+   chord popover, or the header are excluded so control-drags can't change songs. */
+(function(){let x0=0,y0=0,t0=0,active=false;
+  document.addEventListener("touchstart",e=>{
+    if(screen!=="song"||e.touches.length!==1){active=false;return;}
+    if(e.target.closest&&e.target.closest(".modal,.dock,#chordPop,header")){active=false;return;}
+    active=true;x0=e.touches[0].clientX;y0=e.touches[0].clientY;t0=Date.now();},{passive:true,capture:true});
+  document.addEventListener("touchcancel",()=>{active=false;},{passive:true,capture:true});   // a browser-claimed gesture must not satisfy a later touchend
+  document.addEventListener("touchend",e=>{if(!active||screen!=="song")return;active=false;
     const dx=e.changedTouches[0].clientX-x0,dy=e.changedTouches[0].clientY-y0,dt=Date.now()-t0;
-    if(Math.abs(dx)>40&&Math.abs(dx)>Math.abs(dy)*1.8&&dt<700){if(dx<0)nextSong();else prevSong();}},{passive:true});})();
+    if(Math.abs(dx)>40&&Math.abs(dx)>Math.abs(dy)*1.8&&dt<700){if(dx<0)nextSong();else prevSong();}},{passive:true,capture:true});})();
+
+/* Gesture diagnostic overlay — 5 quick taps on the version tag toggle it. Session-only, never
+   persisted. Logs the touch events document-capture actually sees, so a dead swipe on a real
+   device can be reported with data instead of "not working". */
+(function(){
+  let taps=0,tapTimer=null,on=false,box=null,lx=0,ly=0;
+  const col=()=>{const s=document.getElementById("sheet");if(!s)return 0;
+    return [...new Set([...s.querySelectorAll(".sect")].map(el=>Math.round(el.getBoundingClientRect().x/40)))].length;};
+  const desc=t=>{if(!t||!t.tagName)return String(t&&t.nodeName||"?");
+    return t.tagName.toLowerCase()+(t.id?"#"+t.id:t.classList&&t.classList[0]?"."+t.classList[0]:"");};
+  function log(line){if(!on||!box)return;
+    const head="scr:"+screen+" cols:"+col()+" "+(document.querySelector(".brand small")?.textContent||"");
+    box.dataset.lines=((box.dataset.lines||"")+"\n"+line).split("\n").slice(-6).join("\n");
+    box.textContent=head+box.dataset.lines;}
+  function handler(e){if(!on)return;
+    const t=e.changedTouches&&e.changedTouches[0];
+    if(e.type==="touchstart"&&t){lx=t.clientX;ly=t.clientY;log(e.type+" "+desc(e.target));return;}
+    log(e.type+" "+desc(e.target)+(t?" dx:"+Math.round(t.clientX-lx)+" dy:"+Math.round(t.clientY-ly):""));}
+  for(const ev of ["touchstart","touchend","touchcancel"])document.addEventListener(ev,handler,{passive:true,capture:true});
+  document.querySelector(".brand small").addEventListener("click",()=>{
+    taps++;clearTimeout(tapTimer);tapTimer=setTimeout(()=>{taps=0;},2000);
+    if(taps<5)return;taps=0;on=!on;
+    if(on&&!box){box=document.createElement("div");box.id="gestureDbg";box.setAttribute("aria-hidden","true");document.body.appendChild(box);}
+    if(box){box.style.display=on?"":"none";box.dataset.lines="";if(on)box.textContent="scr:"+screen+" — waiting for touches…";}
+    toast("Gesture debug "+(on?"ON":"off"));});
+})();
 
 /* ===== boot ===== */
 /* One-time, idempotent data migration: the "Doubloon Bayou Band" set stored stage banter in each
