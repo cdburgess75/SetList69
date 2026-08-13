@@ -221,6 +221,12 @@ v2026.08.13.003  Case closed via the overlay: the owner's screenshot showed clea
                  standalone song now toasts "Not in a setlist — open the song from a set to swipe
                  between songs". Overlay lines gained `dt` and `idx:` (curIndex) so this class of
                  confusion is one screenshot away from diagnosis next time.
+v2026.08.13.004  Fix ⟳ "update ready" never going away: it only re-flashed the 6s banner instead
+                 of applying, and nothing after launch re-checked the version, so a stale state
+                 stuck all session. ⟳ now reloads directly (staged SW already claimed — reload is
+                 the whole apply); version re-verifies on foreground/pageshow (self-healing) with
+                 a `reg.update()` nudge; `updateFlashed` resets when current. Reproduced and
+                 verified headlessly against a real service worker over localhost HTTP.
 ```
 
 A GitHub Actions workflow (`.github/workflows/check.yml`) enforces the version discipline on every push: it syntax-checks the extracted inline script and `sw.js`, **fails if the `<small>` brand version ≠ `sw.js` CACHE version**, and fails on duplicate element ids in the markup.
@@ -548,7 +554,7 @@ Backup/share:  saveJsonFile  exportData  shareSetlist  restoreData  mergeSetImpo
 Import:        parseImport  expandFiles  unzip  parseOpenSong
 PWA:           showUpdateBanner  maybeShowUpdatePill  maybeShowInstallBanner  isStandalone  dismissInstall
 ```
-Note: `maybeShowUpdatePill` kept its name but now surfaces the slide-down **update banner** + header ⟳ (not the old pill); `renderAllSongs` renders the song library *section of the home screen* (there is no separate All Songs screen).
+Note: `maybeShowUpdatePill` kept its name but now surfaces the slide-down **update banner** + header ⟳ (not the old pill); **⟳ applies the update directly** (`location.reload()` — the staged SW has already claimed; v2026.08.13.004) and version state re-verifies on every foreground return. `renderAllSongs` renders the song library *section of the home screen* (there is no separate All Songs screen).
 
 All DOM event wiring is in one block near the bottom of the script (search `===== events =====`).
 
