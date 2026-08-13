@@ -214,6 +214,13 @@ v2026.08.13.002  Swipe fix round 2 — owner's iPhone on .001 still had a dead s
                  dock/modals/popover/header excluded); legacy `-webkit-overflow-scrolling:touch`
                  removed from `.screen`; new hidden gesture-debug overlay (5 taps on the version
                  tag) shows the live touch-event stream for on-device diagnosis.
+v2026.08.13.003  Case closed via the overlay: the owner's screenshot showed clean touchstart/
+                 touchend pairs with large dx — and a dock missing ◀ 1/3 ▶ plus a "‹ Home" back
+                 label, i.e. the song was opened from the LIBRARY, where swipe has never applied
+                 (`curIndex -1`, by design). The silent no-op was the real bug: a valid swipe on a
+                 standalone song now toasts "Not in a setlist — open the song from a set to swipe
+                 between songs". Overlay lines gained `dt` and `idx:` (curIndex) so this class of
+                 confusion is one screenshot away from diagnosis next time.
 ```
 
 A GitHub Actions workflow (`.github/workflows/check.yml`) enforces the version discipline on every push: it syntax-checks the extracted inline script and `sw.js`, **fails if the `<small>` brand version ≠ `sw.js` CACHE version**, and fails on duplicate element ids in the markup.
@@ -467,7 +474,7 @@ Globals: `transpose` (semitones, 0 on song open), `preferFlats` (bool), `fontSiz
 
 **Global set transpose:** `curSetTranspose` offset applied on top of each song's `defaultTranspose`. Set from the set view header control (±N semitones). Resets to 0 when leaving the set.
 
-**Prev/next:** `nextSong()` / `prevSong()` — hidden when `curIndex < 0`. Swipe left/right triggers these (40px threshold, |dx|>1.8·|dy|, <700ms; resets on `touchcancel`). **The swipe listener is bound on `document` in the CAPTURE phase, not on `#songView` — load-bearing (v2026.08.13.002).** WebKit multicol (the two-column sheet) can mis-target touches inside columned content, so a bubbling listener on `#songView` is not guaranteed to hear them; document-capture fires no matter what element the browser thinks was touched. It gates on `screen==="song"` and ignores gestures starting inside `.modal`, `.dock`, `#chordPop`, or `header`, so control-drags can't change songs. `#songView` also carries `touch-action:pan-y pinch-zoom` + `overflow-x:hidden` (v2026.08.13.001) — keep `pinch-zoom` in the value, plain `pan-y` would revoke the a11y zoom re-enabled in v2026.07.12.004. `-webkit-overflow-scrolling:touch` was deliberately REMOVED from `.screen` in .002 (legacy since iOS 13; its composited scroller is a gesture-claim suspect) — do not reintroduce it.
+**Prev/next:** `nextSong()` / `prevSong()` — hidden when `curIndex < 0`. Swipe left/right triggers these (40px threshold, |dx|>1.8·|dy|, <700ms; resets on `touchcancel`). A valid swipe on a **standalone-opened** song (library, `curIndex<0`) toasts an explanation instead of silently no-oping (v2026.08.13.003 — the silence read as "swipe broken" and burned two debug rounds). **The swipe listener is bound on `document` in the CAPTURE phase, not on `#songView` — load-bearing (v2026.08.13.002).** WebKit multicol (the two-column sheet) can mis-target touches inside columned content, so a bubbling listener on `#songView` is not guaranteed to hear them; document-capture fires no matter what element the browser thinks was touched. It gates on `screen==="song"` and ignores gestures starting inside `.modal`, `.dock`, `#chordPop`, or `header`, so control-drags can't change songs. `#songView` also carries `touch-action:pan-y pinch-zoom` + `overflow-x:hidden` (v2026.08.13.001) — keep `pinch-zoom` in the value, plain `pan-y` would revoke the a11y zoom re-enabled in v2026.07.12.004. `-webkit-overflow-scrolling:touch` was deliberately REMOVED from `.screen` in .002 (legacy since iOS 13; its composited scroller is a gesture-claim suspect) — do not reintroduce it.
 
 **Gesture debug overlay (v2026.08.13.002):** 5 quick taps on the version tag (`.brand small`) toggle `#gestureDbg`, a fixed, `pointer-events:none` readout of the last ~6 touch events seen at document level (type, target, dx/dy) plus screen name and rendered column count. Session-only, never persisted. Exists so a dead gesture on a real device can be reported with the actual event stream — ask the owner to 5-tap, swipe once, and read back the overlay.
 
