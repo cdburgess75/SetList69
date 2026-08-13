@@ -178,6 +178,12 @@
                    -webkit-overflow-scrolling:touch removed from .screen (default since iOS 13;
                    gesture-claim suspect). New hidden gesture-debug overlay: 5 taps on the version
                    tag toggles a live touch-event readout for on-device diagnosis.
+  v2026.08.13.003  Case closed via the overlay: the owner's "dead swipe" screenshot showed clean
+                   touchstart/touchend pairs (dx -173/-154/-157) and a dock with no ◀ 1/3 ▶ —
+                   the song was opened from the LIBRARY, where swipe has never applied (curIndex
+                   -1: no set to move through; by design since June). The silent no-op was the
+                   real bug: a valid swipe on a standalone song now toasts "Not in a setlist —
+                   open the song from a set to swipe between songs". Overlay learns dt + curIndex.
 -->
 <html lang="en">
 <head>
@@ -501,7 +507,7 @@
 <div class="app">
   <header>
     <button class="back" id="backBtn" style="display:none" aria-label="Back">‹ <span id="backLabel">Back</span></button>
-    <div class="brand" id="brand"><span class="dot"></span>SetList69<small>v2026.08.13.002</small></div>
+    <div class="brand" id="brand"><span class="dot"></span>SetList69<small>v2026.08.13.003</small></div>
     <div class="htitle" id="headerTitle" style="display:none"></div>
     <div class="spacer"></div>
     <button class="iconbtn" id="updateHdr" title="Update ready" aria-label="Update ready — refresh" hidden>⟳</button>
@@ -1882,13 +1888,17 @@ document.getElementById("closeSongCtx").addEventListener("click",closeSongContex
   document.addEventListener("touchcancel",()=>{active=false;},{passive:true,capture:true});   // a browser-claimed gesture must not satisfy a later touchend
   document.addEventListener("touchend",e=>{if(!active||screen!=="song")return;active=false;
     const dx=e.changedTouches[0].clientX-x0,dy=e.changedTouches[0].clientY-y0,dt=Date.now()-t0;
-    if(Math.abs(dx)>40&&Math.abs(dx)>Math.abs(dy)*1.8&&dt<700){if(dx<0)nextSong();else prevSong();}},{passive:true,capture:true});})();
+    if(Math.abs(dx)>40&&Math.abs(dx)>Math.abs(dy)*1.8&&dt<700){
+      /* A song opened from the library has no set to move through — say so instead of silently
+         ignoring the gesture (the silence read as "swipe is broken" and cost two debug rounds). */
+      if(curIndex<0){toast("Not in a setlist — open the song from a set to swipe between songs");return;}
+      if(dx<0)nextSong();else prevSong();}},{passive:true,capture:true});})();
 
 /* Gesture diagnostic overlay — 5 quick taps on the version tag toggle it. Session-only, never
    persisted. Logs the touch events document-capture actually sees, so a dead swipe on a real
    device can be reported with data instead of "not working". */
 (function(){
-  let taps=0,tapTimer=null,on=false,box=null,lx=0,ly=0;
+  let taps=0,tapTimer=null,on=false,box=null,lx=0,ly=0,lt=0;
   const col=()=>{const s=document.getElementById("sheet");if(!s)return 0;
     return [...new Set([...s.querySelectorAll(".sect")].map(el=>Math.round(el.getBoundingClientRect().x/40)))].length;};
   const desc=t=>{if(!t||!t.tagName)return String(t&&t.nodeName||"?");
@@ -1899,8 +1909,8 @@ document.getElementById("closeSongCtx").addEventListener("click",closeSongContex
     box.textContent=head+box.dataset.lines;}
   function handler(e){if(!on)return;
     const t=e.changedTouches&&e.changedTouches[0];
-    if(e.type==="touchstart"&&t){lx=t.clientX;ly=t.clientY;log(e.type+" "+desc(e.target));return;}
-    log(e.type+" "+desc(e.target)+(t?" dx:"+Math.round(t.clientX-lx)+" dy:"+Math.round(t.clientY-ly):""));}
+    if(e.type==="touchstart"&&t){lx=t.clientX;ly=t.clientY;lt=Date.now();log(e.type+" "+desc(e.target));return;}
+    log(e.type+" "+desc(e.target)+(t?" dx:"+Math.round(t.clientX-lx)+" dy:"+Math.round(t.clientY-ly):"")+" dt:"+(Date.now()-lt)+"ms idx:"+curIndex);}
   for(const ev of ["touchstart","touchend","touchcancel"])document.addEventListener(ev,handler,{passive:true,capture:true});
   document.querySelector(".brand small").addEventListener("click",()=>{
     taps++;clearTimeout(tapTimer);tapTimer=setTimeout(()=>{taps=0;},2000);
