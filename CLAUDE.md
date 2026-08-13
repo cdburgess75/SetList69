@@ -205,6 +205,15 @@ v2026.08.13.001  Fix iPad swipe-between-songs lost since .003: two-column mode m
                  container (rubber-band) and delivered `touchcancel` instead of `touchend` — the
                  swipe handler never fired. Fix: `#songView{touch-action:pan-y pinch-zoom;
                  overflow-x:hidden}` + the swipe closure resets `active` on `touchcancel`.
+v2026.08.13.002  Swipe fix round 2 — owner's iPhone on .001 still had a dead swipe, which also
+                 falsifies half the .001 story (short songs fit iPhones all July with swipe fine).
+                 Prime suspect now: WebKit multicol mis-targets touches inside the columned sheet
+                 (the "links in CSS columns don't tap on iOS" bug family), bypassing #songView's
+                 bubble path — which would also explain why .001's touch-action there was inert.
+                 The swipe listener moved to document-level CAPTURE (fires regardless of target;
+                 dock/modals/popover/header excluded); legacy `-webkit-overflow-scrolling:touch`
+                 removed from `.screen`; new hidden gesture-debug overlay (5 taps on the version
+                 tag) shows the live touch-event stream for on-device diagnosis.
 ```
 
 A GitHub Actions workflow (`.github/workflows/check.yml`) enforces the version discipline on every push: it syntax-checks the extracted inline script and `sw.js`, **fails if the `<small>` brand version ≠ `sw.js` CACHE version**, and fails on duplicate element ids in the markup.
@@ -458,7 +467,9 @@ Globals: `transpose` (semitones, 0 on song open), `preferFlats` (bool), `fontSiz
 
 **Global set transpose:** `curSetTranspose` offset applied on top of each song's `defaultTranspose`. Set from the set view header control (±N semitones). Resets to 0 when leaving the set.
 
-**Prev/next:** `nextSong()` / `prevSong()` — hidden when `curIndex < 0`. Swipe left/right triggers these (40px threshold, |dx|>1.8·|dy|, <700ms; resets on `touchcancel`). **`#songView` carries `touch-action:pan-y pinch-zoom` and `overflow-x:hidden` — load-bearing.** Without the `touch-action`, iPadOS claims horizontal pans for the scroll container whenever a song fits the viewport (which two-column mode makes the common case) and delivers `touchcancel` instead of `touchend`, silently killing the swipe (the v2026.08.13.001 regression). Keep `pinch-zoom` in the value — plain `pan-y` would revoke the a11y zoom re-enabled in v2026.07.12.004. If a future iPad gesture bug appears here, the next suspect is `-webkit-overflow-scrolling:touch` on `.screen` (legacy; momentum scrolling is default since iOS 13).
+**Prev/next:** `nextSong()` / `prevSong()` — hidden when `curIndex < 0`. Swipe left/right triggers these (40px threshold, |dx|>1.8·|dy|, <700ms; resets on `touchcancel`). **The swipe listener is bound on `document` in the CAPTURE phase, not on `#songView` — load-bearing (v2026.08.13.002).** WebKit multicol (the two-column sheet) can mis-target touches inside columned content, so a bubbling listener on `#songView` is not guaranteed to hear them; document-capture fires no matter what element the browser thinks was touched. It gates on `screen==="song"` and ignores gestures starting inside `.modal`, `.dock`, `#chordPop`, or `header`, so control-drags can't change songs. `#songView` also carries `touch-action:pan-y pinch-zoom` + `overflow-x:hidden` (v2026.08.13.001) — keep `pinch-zoom` in the value, plain `pan-y` would revoke the a11y zoom re-enabled in v2026.07.12.004. `-webkit-overflow-scrolling:touch` was deliberately REMOVED from `.screen` in .002 (legacy since iOS 13; its composited scroller is a gesture-claim suspect) — do not reintroduce it.
+
+**Gesture debug overlay (v2026.08.13.002):** 5 quick taps on the version tag (`.brand small`) toggle `#gestureDbg`, a fixed, `pointer-events:none` readout of the last ~6 touch events seen at document level (type, target, dx/dy) plus screen name and rendered column count. Session-only, never persisted. Exists so a dead gesture on a real device can be reported with the actual event stream — ask the owner to 5-tap, swipe once, and read back the overlay.
 
 **Wake lock:** `requestWake()` on entering song view. `releaseWake()` only on leaving the app entirely — **not** between songs, so the screen stays on through the whole set. Re-acquired on `visibilitychange`.
 
