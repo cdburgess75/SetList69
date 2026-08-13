@@ -200,6 +200,11 @@ v2026.08.05.003  Two-column sheet on wide screens (owner: too much scrolling liv
                  (`break-inside:avoid`) so a verse/chorus never shears across a column break;
                  `.blank` spacer divs removed (section margins replace them). Font size is never
                  auto-changed (owner declined auto-fit). Long-song scroll at 1024×768: 996→446px.
+v2026.08.13.001  Fix iPad swipe-between-songs lost since .003: two-column mode made songs fit the
+                 viewport, so iPadOS claimed horizontal pans for the now scroll-less `#songView`
+                 container (rubber-band) and delivered `touchcancel` instead of `touchend` — the
+                 swipe handler never fired. Fix: `#songView{touch-action:pan-y pinch-zoom;
+                 overflow-x:hidden}` + the swipe closure resets `active` on `touchcancel`.
 ```
 
 A GitHub Actions workflow (`.github/workflows/check.yml`) enforces the version discipline on every push: it syntax-checks the extracted inline script and `sw.js`, **fails if the `<small>` brand version ≠ `sw.js` CACHE version**, and fails on duplicate element ids in the markup.
@@ -453,7 +458,7 @@ Globals: `transpose` (semitones, 0 on song open), `preferFlats` (bool), `fontSiz
 
 **Global set transpose:** `curSetTranspose` offset applied on top of each song's `defaultTranspose`. Set from the set view header control (±N semitones). Resets to 0 when leaving the set.
 
-**Prev/next:** `nextSong()` / `prevSong()` — hidden when `curIndex < 0`. Swipe left/right triggers these (40px threshold, ignores vertical-dominant gestures).
+**Prev/next:** `nextSong()` / `prevSong()` — hidden when `curIndex < 0`. Swipe left/right triggers these (40px threshold, |dx|>1.8·|dy|, <700ms; resets on `touchcancel`). **`#songView` carries `touch-action:pan-y pinch-zoom` and `overflow-x:hidden` — load-bearing.** Without the `touch-action`, iPadOS claims horizontal pans for the scroll container whenever a song fits the viewport (which two-column mode makes the common case) and delivers `touchcancel` instead of `touchend`, silently killing the swipe (the v2026.08.13.001 regression). Keep `pinch-zoom` in the value — plain `pan-y` would revoke the a11y zoom re-enabled in v2026.07.12.004. If a future iPad gesture bug appears here, the next suspect is `-webkit-overflow-scrolling:touch` on `.screen` (legacy; momentum scrolling is default since iOS 13).
 
 **Wake lock:** `requestWake()` on entering song view. `releaseWake()` only on leaving the app entirely — **not** between songs, so the screen stays on through the whole set. Re-acquired on `visibilitychange`.
 

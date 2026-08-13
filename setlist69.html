@@ -164,6 +164,12 @@
                    (break-inside:avoid), so a verse/chorus never shears across a column break;
                    blank spacer divs replaced by section margins. Font size is never auto-changed.
                    Long-song scrolling at 1024x768: 996px -> 446px.
+  v2026.08.13.001  Fix iPad swipe-between-songs lost since .003: once two-column mode made songs
+                   fit the viewport, iPadOS claimed horizontal pans for the (now scroll-less)
+                   #songView scroll container and delivered touchcancel instead of touchend, so
+                   the swipe handler never fired. #songView gets touch-action:pan-y pinch-zoom
+                   (horizontal gestures belong to the app; vertical scroll + a11y pinch stay
+                   native) and overflow-x:hidden; the swipe closure resets on touchcancel.
 -->
 <html lang="en">
 <head>
@@ -292,7 +298,13 @@
     color:var(--muted);font-weight:600;font-size:.85rem;margin-bottom:.6rem;}
   .ghostbtn:hover{color:var(--ink);}
 
-  #songView{padding-bottom:7.5rem;}
+  /* touch-action: horizontal pans belong to the app's swipe-between-songs handler, never the
+     browser. Without this, iPadOS claims horizontal pans for the scroll container the moment a
+     song fits the viewport (as two-column mode makes common) and delivers touchcancel instead of
+     touchend — the swipe silently dies. pan-y keeps native vertical scrolling; pinch-zoom keeps
+     the a11y zoom re-enabled in v2026.07.12.004. overflow-x guards the "never scrolls sideways"
+     promise against any multicol overflow quirk. */
+  #songView{padding-bottom:7.5rem;touch-action:pan-y pinch-zoom;overflow-x:hidden;}
   .svhead{display:flex;align-items:flex-start;gap:.7rem;margin-bottom:.4rem;}
   .svtitle{font-family:var(--display);font-weight:600;font-size:1.7rem;line-height:1.05;flex:1;cursor:pointer;}
   .svsub{color:var(--muted);font-size:.88rem;margin-top:.1rem;}
@@ -475,7 +487,7 @@
 <div class="app">
   <header>
     <button class="back" id="backBtn" style="display:none" aria-label="Back">‹ <span id="backLabel">Back</span></button>
-    <div class="brand" id="brand"><span class="dot"></span>SetList69<small>v2026.08.05.003</small></div>
+    <div class="brand" id="brand"><span class="dot"></span>SetList69<small>v2026.08.13.001</small></div>
     <div class="htitle" id="headerTitle" style="display:none"></div>
     <div class="spacer"></div>
     <button class="iconbtn" id="updateHdr" title="Update ready" aria-label="Update ready — refresh" hidden>⟳</button>
@@ -1846,6 +1858,7 @@ document.getElementById("closeSongCtx").addEventListener("click",closeSongContex
 /* swipe between songs in a set */
 (function(){const v=document.getElementById("songView");let x0=0,y0=0,t0=0,active=false;
   v.addEventListener("touchstart",e=>{if(e.touches.length!==1)return;active=true;x0=e.touches[0].clientX;y0=e.touches[0].clientY;t0=Date.now();},{passive:true});
+  v.addEventListener("touchcancel",()=>{active=false;},{passive:true});   // a browser-claimed gesture must not satisfy a later touchend
   v.addEventListener("touchend",e=>{if(!active)return;active=false;
     const dx=e.changedTouches[0].clientX-x0,dy=e.changedTouches[0].clientY-y0,dt=Date.now()-t0;
     if(Math.abs(dx)>40&&Math.abs(dx)>Math.abs(dy)*1.8&&dt<700){if(dx<0)nextSong();else prevSong();}},{passive:true});})();
