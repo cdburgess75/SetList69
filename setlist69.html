@@ -184,6 +184,14 @@
                    -1: no set to move through; by design since June). The silent no-op was the
                    real bug: a valid swipe on a standalone song now toasts "Not in a setlist —
                    open the song from a set to swipe between songs". Overlay learns dt + curIndex.
+  v2026.08.13.004  Fix the ⟳ "update ready" button never going away (owner report after three
+                   same-day updates): tapping ⟳ only re-flashed the banner — which auto-hides in
+                   6s — so the obvious button never actually applied anything. ⟳ now reloads
+                   (the staged worker has already claimed; a reload IS the apply). Also: version
+                   state re-verifies on every return to foreground + pageshow (stale ⟳ self-
+                   clears; reg.update() nudges iOS past its lazy sw.js cache), and updateFlashed
+                   resets when current so a later update still gets its one banner flash.
+                   Reproduced + verified against a real SW over HTTP with a staged deploy.
 -->
 <html lang="en">
 <head>
@@ -507,7 +515,7 @@
 <div class="app">
   <header>
     <button class="back" id="backBtn" style="display:none" aria-label="Back">‹ <span id="backLabel">Back</span></button>
-    <div class="brand" id="brand"><span class="dot"></span>SetList69<small>v2026.08.13.003</small></div>
+    <div class="brand" id="brand"><span class="dot"></span>SetList69<small>v2026.08.13.004</small></div>
     <div class="htitle" id="headerTitle" style="display:none"></div>
     <div class="spacer"></div>
     <button class="iconbtn" id="updateHdr" title="Update ready" aria-label="Update ready — refresh" hidden>⟳</button>
@@ -1462,6 +1470,7 @@ function setUpdateState(swVersion){
   updateReady=!!(swVersion&&APP_VERSION&&swVersion!==APP_VERSION);
   const dot=document.querySelector("#brand .dot");if(dot)dot.classList.toggle("behind",updateReady);
   document.getElementById("updateHdr").hidden=!updateReady;
+  if(!updateReady)updateFlashed=false;   // back to current — a future update earns a fresh banner flash
   if(updateReady&&screen==="setlists"&&!updateFlashed){updateFlashed=true;showUpdateBanner();}
 }
 // kept for its existing call sites (e.g. show("setlists")): re-flash the banner if genuinely behind
@@ -2078,9 +2087,13 @@ document.getElementById("installDismiss").addEventListener("click",dismissInstal
 
 /* ===== service worker + update notification ===== */
 document.getElementById("updateGo").addEventListener("click",()=>location.reload());
-document.getElementById("updateHdr").addEventListener("click",showUpdateBanner);
+/* ⟳ APPLIES the update. It used to just re-flash the banner — which auto-hides in 6s — so
+   tapping the obvious button did nothing durable and the ⟳ "wouldn't go away". The staged
+   worker already claimed control; a reload is the whole apply step. */
+document.getElementById("updateHdr").addEventListener("click",()=>location.reload());
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('./sw.js');
+  let swReg=null;
+  navigator.serviceWorker.register('./sw.js').then(r=>{swReg=r;}).catch(()=>{});
   // The worker answers GET_VERSION with its cached version; we compare it to APP_VERSION.
   navigator.serviceWorker.addEventListener('message',e=>{
     if(e.data&&e.data.type==='VERSION')setUpdateState(e.data.version);
@@ -2091,6 +2104,13 @@ if ('serviceWorker' in navigator) {
   navigator.serviceWorker.ready.then(askSwVersion);
   if(navigator.serviceWorker.controller)askSwVersion();
   navigator.serviceWorker.addEventListener('controllerchange',askSwVersion);
+  /* Self-healing: re-verify whenever the app returns to the foreground (and on bfcache
+     restores). A stale ⟳ clears the moment versions align, and reg.update() makes iOS look
+     for a newer sw.js instead of waiting out its own HTTP-cache schedule — without this,
+     nothing after launch ever re-checked, so a wrong state stuck for the whole session. */
+  const reverify=()=>{askSwVersion();try{swReg&&swReg.update();}catch(_){}};
+  document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible")reverify();});
+  window.addEventListener("pageshow",e=>{if(e.persisted)reverify();});
 }
 </script>
 </body>
