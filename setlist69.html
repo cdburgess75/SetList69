@@ -200,6 +200,12 @@
                    cache:'reload' (network-fresh, never the HTTP cache). Plus a loop-breaker:
                    a version we already reloaded for doesn't re-flash the banner (⟳ + red dot
                    stay as quiet indicators). Reproduced + fixed against a max-age=600 server.
+  v2026.08.14.002  Library navigation + 🎲 spin (owner requests): a song opened from the Songs
+                   library now navigates the library itself — ‹ › / swipe walk the alphabetical
+                   list, the dock shows "4/23"-style position, and the .003 explainer toast is
+                   retired (swipe simply works everywhere). New 🎲 button beside + in the Songs
+                   header opens a random song for practice (never the same song twice in a row);
+                   it opens standalone, so you can swipe onward from wherever it lands.
 -->
 <html lang="en">
 <head>
@@ -523,7 +529,7 @@
 <div class="app">
   <header>
     <button class="back" id="backBtn" style="display:none" aria-label="Back">‹ <span id="backLabel">Back</span></button>
-    <div class="brand" id="brand"><span class="dot"></span>SetList69<small>v2026.08.14.001</small></div>
+    <div class="brand" id="brand"><span class="dot"></span>SetList69<small>v2026.08.14.002</small></div>
     <div class="htitle" id="headerTitle" style="display:none"></div>
     <div class="spacer"></div>
     <button class="iconbtn" id="updateHdr" title="Update ready" aria-label="Update ready — refresh" hidden>⟳</button>
@@ -549,6 +555,7 @@
       <div class="listhead" style="margin-top:1.6rem">
         <h2>Songs</h2><span class="count" id="allCount"></span>
         <div class="spacer"></div>
+        <button class="iconbtn" id="spinSong" title="Spin — random song" aria-label="Open a random song" style="font-size:1.15rem">🎲</button>
         <button class="iconbtn" id="newSongHome" title="New song" aria-label="New song" style="font-size:1.4rem;color:var(--accent)">+</button>
       </div>
       <div class="searchbar"><input type="search" id="allSearch" placeholder="Search songs…" autocomplete="off"></div>
@@ -1063,13 +1070,33 @@ function openCurrent(){
     if(sl.songIds.length>1){hint.style.display="";hint.style.opacity=".6";
       swipeHintTimer=setTimeout(()=>{hint.style.opacity="0";},2800);}
     else{hint.style.display="none";}}
-  else{ctlNav.style.display="none";hint.style.display="none";}
+  else{
+    /* Standalone (library-opened): navigate the library itself — position is the song's spot
+       in the alphabetical list, and ‹ › / swipe walk that order. */
+    const ids=libraryIds(),li=ids.indexOf(curSongId);
+    ctlNav.style.display="";
+    document.getElementById("setPos").textContent=(li+1)+"/"+ids.length;
+    if(ids.length>1){hint.style.display="";hint.style.opacity=".6";
+      swipeHintTimer=setTimeout(()=>{hint.style.opacity="0";},2800);}
+    else{hint.style.display="none";}
+  }
   backArmed=false;clearTimeout(backArmT);   // a fresh song disarms the stage-safe back guard
   updateScrollProg();
 }
 function reRender(){const s=state.songs.find(x=>x.id===curSongId);if(s)renderSheet(s);updateScrollProg();}
-function nextSong(){if(curIndex<0)return;const sl=state.setlists.find(x=>x.id===curSetlist);if(curIndex<sl.songIds.length-1)openSongInSet(curIndex+1);}
-function prevSong(){if(curIndex<0)return;if(curIndex>0)openSongInSet(curIndex-1);}
+/* The library in the order it renders on the home screen (alphabetical) — standalone songs
+   navigate through this, so swipe order always matches what the user saw in the list. */
+function libraryIds(){return [...state.songs].sort((a,b)=>a.title.localeCompare(b.title)).map(s=>s.id);}
+function nextSong(){
+  if(curIndex>=0){const sl=state.setlists.find(x=>x.id===curSetlist);if(curIndex<sl.songIds.length-1)openSongInSet(curIndex+1);return;}
+  const ids=libraryIds(),i=ids.indexOf(curSongId);
+  if(i>=0&&i<ids.length-1)openSongStandalone(ids[i+1]);
+}
+function prevSong(){
+  if(curIndex>=0){if(curIndex>0)openSongInSet(curIndex-1);return;}
+  const ids=libraryIds(),i=ids.indexOf(curSongId);
+  if(i>0)openSongStandalone(ids[i-1]);
+}
 
 /* ===== auto-scroll ===== */
 function startScroll(){scrolling=true;scrollAccum=0;const b=document.getElementById("scrollBtn");b.classList.add("playing");b.textContent="❚❚";
@@ -1587,6 +1614,16 @@ document.getElementById("allSongList").addEventListener("click",e=>{
   const addBtn=e.target.closest(".addsong");if(addBtn){openAdder(addBtn.dataset.addid);return;}
   const open=e.target.closest(".open-allsong");if(open)openSongStandalone(open.dataset.id);});
 document.getElementById("newSongHome").addEventListener("click",()=>openEditor(null,"setlists"));
+/* 🎲 practice spin: open a random song from the library. Never repeats the song you just had
+   (unless it's the only one). Opens standalone, so ‹ › / swipe then walk the library from there. */
+document.getElementById("spinSong").addEventListener("click",()=>{
+  if(!state.songs.length){toast("No songs yet");return;}
+  let pool=state.songs.filter(s=>s.id!==curSongId);
+  if(!pool.length)pool=state.songs;
+  const pick=pool[Math.floor(Math.random()*pool.length)];
+  toast("🎲 "+pick.title);
+  openSongStandalone(pick.id);
+});
 document.getElementById("onsongBtn").addEventListener("click",()=>document.getElementById("onsongInput").click());
 document.getElementById("onsongInput").addEventListener("change",async e=>{
   const files=[...e.target.files];e.target.value="";if(!files.length)return;
@@ -1909,11 +1946,7 @@ document.getElementById("closeSongCtx").addEventListener("click",closeSongContex
   document.addEventListener("touchcancel",()=>{active=false;},{passive:true,capture:true});   // a browser-claimed gesture must not satisfy a later touchend
   document.addEventListener("touchend",e=>{if(!active||screen!=="song")return;active=false;
     const dx=e.changedTouches[0].clientX-x0,dy=e.changedTouches[0].clientY-y0,dt=Date.now()-t0;
-    if(Math.abs(dx)>40&&Math.abs(dx)>Math.abs(dy)*1.8&&dt<700){
-      /* A song opened from the library has no set to move through — say so instead of silently
-         ignoring the gesture (the silence read as "swipe is broken" and cost two debug rounds). */
-      if(curIndex<0){toast("Not in a setlist — open the song from a set to swipe between songs");return;}
-      if(dx<0)nextSong();else prevSong();}},{passive:true,capture:true});})();
+    if(Math.abs(dx)>40&&Math.abs(dx)>Math.abs(dy)*1.8&&dt<700){if(dx<0)nextSong();else prevSong();}},{passive:true,capture:true});})();
 
 /* Gesture diagnostic overlay — 5 quick taps on the version tag toggle it. Session-only, never
    persisted. Logs the touch events document-capture actually sees, so a dead swipe on a real

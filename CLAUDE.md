@@ -236,6 +236,12 @@ v2026.08.14.001  Fix the update LOOP ("disappears and pops right back up"): SW i
                  the banner (⟳ + red dot stay quiet). Reproduced + fixed against a local
                  max-age=600 server; suite: install→deploy→one-tap apply→green, stale self-heal,
                  retried-version suppression, fresh-version flash.
+v2026.08.14.002  Library navigation + 🎲 spin: standalone songs (`curIndex -1`) now navigate the
+                 library — `nextSong`/`prevSong` fall through to `libraryIds()` (the same
+                 alphabetical order `renderAllSongs` displays), `openCurrent` shows the ‹ n/N ›
+                 cluster + swipe hint for them, and the .003 "not in a setlist" toast is retired.
+                 New `#spinSong` 🎲 in the Songs header opens a random song standalone (never the
+                 same song twice in a row).
 ```
 
 A GitHub Actions workflow (`.github/workflows/check.yml`) enforces the version discipline on every push: it syntax-checks the extracted inline script and `sw.js`, **fails if the `<small>` brand version ≠ `sw.js` CACHE version**, and fails on duplicate element ids in the markup.
@@ -306,7 +312,7 @@ Single-page app with a manual screen router. Layout is a flex column (`.app`): a
 - `screen` — current screen name.
 - `curSetlist` — id of the setlist being viewed.
 - `curSongId` — id of the song in the song view.
-- `curIndex` — index of the current song within `curSetlist` (`-1` = opened standalone; disables prev/next + swipe).
+- `curIndex` — index of the current song within `curSetlist` (`-1` = opened standalone from the library; since v2026.08.14.002 prev/next + swipe then walk the **library** in its rendered alphabetical order via `libraryIds()`, with the dock showing library position).
 - Back target is derived, not stored: `goBack()` returns to the set when `curIndex>=0 && curSetlist`, else home.
 - `curSetTranspose` — global semitone offset applied to every song in the current set.
 - `stageMode` — boolean; hides editing chrome and enlarges cards for hands-free reading.
@@ -489,7 +495,7 @@ Globals: `transpose` (semitones, 0 on song open), `preferFlats` (bool), `fontSiz
 
 **Global set transpose:** `curSetTranspose` offset applied on top of each song's `defaultTranspose`. Set from the set view header control (±N semitones). Resets to 0 when leaving the set.
 
-**Prev/next:** `nextSong()` / `prevSong()` — hidden when `curIndex < 0`. Swipe left/right triggers these (40px threshold, |dx|>1.8·|dy|, <700ms; resets on `touchcancel`). A valid swipe on a **standalone-opened** song (library, `curIndex<0`) toasts an explanation instead of silently no-oping (v2026.08.13.003 — the silence read as "swipe broken" and burned two debug rounds). **The swipe listener is bound on `document` in the CAPTURE phase, not on `#songView` — load-bearing (v2026.08.13.002).** WebKit multicol (the two-column sheet) can mis-target touches inside columned content, so a bubbling listener on `#songView` is not guaranteed to hear them; document-capture fires no matter what element the browser thinks was touched. It gates on `screen==="song"` and ignores gestures starting inside `.modal`, `.dock`, `#chordPop`, or `header`, so control-drags can't change songs. `#songView` also carries `touch-action:pan-y pinch-zoom` + `overflow-x:hidden` (v2026.08.13.001) — keep `pinch-zoom` in the value, plain `pan-y` would revoke the a11y zoom re-enabled in v2026.07.12.004. `-webkit-overflow-scrolling:touch` was deliberately REMOVED from `.screen` in .002 (legacy since iOS 13; its composited scroller is a gesture-claim suspect) — do not reintroduce it.
+**Prev/next:** `nextSong()` / `prevSong()` — in a set (`curIndex>=0`) they walk `songIds`; opened standalone they walk the **library** in its rendered alphabetical order (`libraryIds()`, v2026.08.14.002), so swipe works everywhere and the dock shows "n/N" of whichever list applies. Swipe left/right triggers these (40px threshold, |dx|>1.8·|dy|, <700ms; resets on `touchcancel`). History: .003 shipped a "not in a setlist" toast for standalone swipes after the silent no-op burned two debug rounds; .002 of 08.14 replaced it with real library navigation. **🎲 `#spinSong`** (Songs header) opens a random song standalone, never repeating the previous one. **The swipe listener is bound on `document` in the CAPTURE phase, not on `#songView` — load-bearing (v2026.08.13.002).** WebKit multicol (the two-column sheet) can mis-target touches inside columned content, so a bubbling listener on `#songView` is not guaranteed to hear them; document-capture fires no matter what element the browser thinks was touched. It gates on `screen==="song"` and ignores gestures starting inside `.modal`, `.dock`, `#chordPop`, or `header`, so control-drags can't change songs. `#songView` also carries `touch-action:pan-y pinch-zoom` + `overflow-x:hidden` (v2026.08.13.001) — keep `pinch-zoom` in the value, plain `pan-y` would revoke the a11y zoom re-enabled in v2026.07.12.004. `-webkit-overflow-scrolling:touch` was deliberately REMOVED from `.screen` in .002 (legacy since iOS 13; its composited scroller is a gesture-claim suspect) — do not reintroduce it.
 
 **Gesture debug overlay (v2026.08.13.002):** 5 quick taps on the version tag (`.brand small`) toggle `#gestureDbg`, a fixed, `pointer-events:none` readout of the last ~6 touch events seen at document level (type, target, dx/dy) plus screen name and rendered column count. Session-only, never persisted. Exists so a dead gesture on a real device can be reported with the actual event stream — ask the owner to 5-tap, swipe once, and read back the overlay.
 
@@ -553,7 +559,7 @@ Parse/render:  esc  parseSong  inlineToSegs  pairToSegs  renderLine  renderSheet
 Router/nav:    show  goBack
 List renders:  renderSetlists  renderSetSongs  renderAllSongs  renderPicker  renderAdder
 Gig mode:      setGig  toggleGig  (⛶ dock button — fullscreen + hide header + wake lock)
-Song view:     openSongInSet  openSongStandalone  openCurrent  reRender
+Song view:     openSongInSet  openSongStandalone  openCurrent  reRender  libraryIds
                nextSong  prevSong  startScroll  stopScroll  updateScrollProg
                requestWake  releaseWake  openDockSheet  closeDockSheet  nudgeFont
 Editor:        openEditor  closeEditor  saveSong

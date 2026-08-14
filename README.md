@@ -27,7 +27,7 @@
 <br>
 
 [![CI](https://github.com/cdburgess75/SetList69/actions/workflows/check.yml/badge.svg)](https://github.com/cdburgess75/SetList69/actions/workflows/check.yml)
-[![Version](https://img.shields.io/badge/version-2026.08.14.001-informational?style=flat-square)](#versioning)
+[![Version](https://img.shields.io/badge/version-2026.08.14.002-informational?style=flat-square)](#versioning)
 [![PWA](https://img.shields.io/badge/PWA-installable-5A0FC8?style=flat-square)](#save-it-to-your-phone)
 [![Offline](https://img.shields.io/badge/offline-first-2ea043?style=flat-square)](#features)
 [![Runtime deps](https://img.shields.io/badge/runtime_dependencies-0-f5a623?style=flat-square)](#tech-stack)
@@ -56,7 +56,8 @@ The whole thing is a single `setlist69.html` file. No framework, no build step, 
 - **Gig mode** — one tap for true fullscreen: no browser chrome, no header, just lyrics.
 - **Stage mode** — hides every editing control so nothing destructive is one fat-fingered tap away, and leaving a song mid-performance deliberately takes two taps.
 - **Two columns on wide screens** — on a tablet or a phone held sideways, verses flow into side-by-side blocks (each verse kept whole), so most songs fit with little or no scrolling.
-- **Swipe between songs** in set order, with your position (`3/12`) always visible.
+- **Swipe between songs** — in set order during a gig, or straight through your library when browsing, position (`3/12`) always visible.
+- **🎲 Spin** — one tap opens a random song from your library, for practice nights when nobody can pick.
 - **✓ Played marks** — songs cross off behind you as you play them, and survive a reload or a backgrounded phone.
 
 **Chords and keys**
