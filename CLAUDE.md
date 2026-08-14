@@ -227,6 +227,15 @@ v2026.08.13.004  Fix ⟳ "update ready" never going away: it only re-flashed the
                  the whole apply); version re-verifies on foreground/pageshow (self-healing) with
                  a `reg.update()` nudge; `updateFlashed` resets when current. Reproduced and
                  verified headlessly against a real service worker over localhost HTTP.
+v2026.08.14.001  Fix the update LOOP ("disappears and pops right back up"): SW install precached
+                 through the browser's HTTP cache (Pages serves max-age=600), so a new worker
+                 could precache a STALE app copy under the new version's name — versions never
+                 matched, every reload re-detected an "update". Precache now uses
+                 `new Request(u,{cache:'reload'})` — **load-bearing, never remove** — plus a
+                 sessionStorage loop-breaker: a version we already reloaded for doesn't re-flash
+                 the banner (⟳ + red dot stay quiet). Reproduced + fixed against a local
+                 max-age=600 server; suite: install→deploy→one-tap apply→green, stale self-heal,
+                 retried-version suppression, fresh-version flash.
 ```
 
 A GitHub Actions workflow (`.github/workflows/check.yml`) enforces the version discipline on every push: it syntax-checks the extracted inline script and `sw.js`, **fails if the `<small>` brand version ≠ `sw.js` CACHE version**, and fails on duplicate element ids in the markup.

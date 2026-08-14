@@ -192,6 +192,14 @@
                    clears; reg.update() nudges iOS past its lazy sw.js cache), and updateFlashed
                    resets when current so a later update still gets its one banner flash.
                    Reproduced + verified against a real SW over HTTP with a staged deploy.
+  v2026.08.14.001  Fix the update LOOP (owner: banner "disappears and pops right back up"): the
+                   SW's install precached through the browser's HTTP cache (Pages serves
+                   max-age=600), so a new worker could box up a STALE copy of the app under the
+                   new version's name — page and worker versions then never matched and every
+                   reload re-detected an "update", forever. Precache now fetches with
+                   cache:'reload' (network-fresh, never the HTTP cache). Plus a loop-breaker:
+                   a version we already reloaded for doesn't re-flash the banner (⟳ + red dot
+                   stay as quiet indicators). Reproduced + fixed against a max-age=600 server.
 -->
 <html lang="en">
 <head>
@@ -515,7 +523,7 @@
 <div class="app">
   <header>
     <button class="back" id="backBtn" style="display:none" aria-label="Back">‹ <span id="backLabel">Back</span></button>
-    <div class="brand" id="brand"><span class="dot"></span>SetList69<small>v2026.08.13.004</small></div>
+    <div class="brand" id="brand"><span class="dot"></span>SetList69<small>v2026.08.14.001</small></div>
     <div class="htitle" id="headerTitle" style="display:none"></div>
     <div class="spacer"></div>
     <button class="iconbtn" id="updateHdr" title="Update ready" aria-label="Update ready — refresh" hidden>⟳</button>
@@ -1470,8 +1478,12 @@ function setUpdateState(swVersion){
   updateReady=!!(swVersion&&APP_VERSION&&swVersion!==APP_VERSION);
   const dot=document.querySelector("#brand .dot");if(dot)dot.classList.toggle("behind",updateReady);
   document.getElementById("updateHdr").hidden=!updateReady;
-  if(!updateReady)updateFlashed=false;   // back to current — a future update earns a fresh banner flash
-  if(updateReady&&screen==="setlists"&&!updateFlashed){updateFlashed=true;showUpdateBanner();}
+  if(!updateReady){updateFlashed=false;try{sessionStorage.removeItem("setlist69.updateTried");}catch(_){}}   // back to current
+  /* Loop-breaker: if we already reloaded trying to reach exactly this version and we're STILL
+     behind (a bad precache or a stale CDN edge), keep the quiet indicators (⟳ + red dot) but
+     don't bounce the banner back up on every reload. */
+  let tried="";try{tried=sessionStorage.getItem("setlist69.updateTried")||"";}catch(_){}
+  if(updateReady&&screen==="setlists"&&!updateFlashed&&tried!==updateVersion){updateFlashed=true;showUpdateBanner();}
 }
 // kept for its existing call sites (e.g. show("setlists")): re-flash the banner if genuinely behind
 function maybeShowUpdatePill(){if(updateReady&&screen==="setlists"&&!updateFlashed){updateFlashed=true;showUpdateBanner();}}
@@ -2086,11 +2098,14 @@ document.getElementById("installGo").addEventListener("click",async()=>{
 document.getElementById("installDismiss").addEventListener("click",dismissInstall);
 
 /* ===== service worker + update notification ===== */
-document.getElementById("updateGo").addEventListener("click",()=>location.reload());
+/* Both apply paths note which version this reload is chasing, so setUpdateState can tell a
+   fresh update apart from a failed attempt looping back (see the loop-breaker there). */
+function applyUpdate(){try{sessionStorage.setItem("setlist69.updateTried",updateVersion);}catch(_){}location.reload();}
+document.getElementById("updateGo").addEventListener("click",applyUpdate);
 /* ⟳ APPLIES the update. It used to just re-flash the banner — which auto-hides in 6s — so
    tapping the obvious button did nothing durable and the ⟳ "wouldn't go away". The staged
    worker already claimed control; a reload is the whole apply step. */
-document.getElementById("updateHdr").addEventListener("click",()=>location.reload());
+document.getElementById("updateHdr").addEventListener("click",applyUpdate);
 if ('serviceWorker' in navigator) {
   let swReg=null;
   navigator.serviceWorker.register('./sw.js').then(r=>{swReg=r;}).catch(()=>{});
