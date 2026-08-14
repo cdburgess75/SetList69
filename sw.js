@@ -1,4 +1,4 @@
-const CACHE = 'setlist69-v2026.08.13.004';
+const CACHE = 'setlist69-v2026.08.14.001';
 const PRECACHE = [
   './',
   './index.html',
@@ -16,7 +16,12 @@ const PRECACHE = [
 self.addEventListener('install', e => {
   e.waitUntil(
     caches.open(CACHE)
-      .then(c => c.addAll(PRECACHE))
+      // cache:'reload' is LOAD-BEARING — never remove it. GitHub Pages serves with
+      // max-age=600, and a plain addAll() reads the browser's HTTP cache, so a new worker
+      // can precache a STALE copy of the app under the new version's name. The page and
+      // worker versions then never match and the update banner loops forever (the loop
+      // fixed in v2026.08.14.001). 'reload' forces every precache fetch to the network.
+      .then(c => c.addAll(PRECACHE.map(u => new Request(u, { cache: 'reload' }))))
       .then(() => self.skipWaiting())
   );
 });
