@@ -206,6 +206,11 @@
                    retired (swipe simply works everywhere). New 🎲 button beside + in the Songs
                    header opens a random song for practice (never the same song twice in a row);
                    it opens standalone, so you can swipe onward from wherever it lands.
+  v2026.08.14.003  Header ⇪ share (owner request): a share button beside A− A+ sends the app's
+                   URL via the native sheet (text/email/AirDrop). URL derived from location —
+                   never hardcoded, so MIT forks share their own deployment. Cancelling the sheet
+                   is silent; browsers without navigator.share fall back to clipboard + "Link
+                   copied" toast. Visible on every screen (gig mode hides the whole header).
 -->
 <html lang="en">
 <head>
@@ -529,12 +534,13 @@
 <div class="app">
   <header>
     <button class="back" id="backBtn" style="display:none" aria-label="Back">‹ <span id="backLabel">Back</span></button>
-    <div class="brand" id="brand"><span class="dot"></span>SetList69<small>v2026.08.14.002</small></div>
+    <div class="brand" id="brand"><span class="dot"></span>SetList69<small>v2026.08.14.003</small></div>
     <div class="htitle" id="headerTitle" style="display:none"></div>
     <div class="spacer"></div>
     <button class="iconbtn" id="updateHdr" title="Update ready" aria-label="Update ready — refresh" hidden>⟳</button>
     <button class="iconbtn fontbtn" id="hdrFontDown" title="Smaller lyrics" aria-label="Make lyrics smaller" style="display:none">A−</button>
     <button class="iconbtn fontbtn" id="hdrFontUp" title="Bigger lyrics" aria-label="Make lyrics bigger" style="display:none">A+</button>
+    <button class="iconbtn" id="shareApp" title="Share the app" aria-label="Share the app link">⇪</button>
     <button class="iconbtn" id="menuBtn" title="Tools &amp; backup" aria-label="Tools and backup">≡</button>
     <button class="iconbtn" id="themeBtn" title="Light / dark mode" aria-label="Toggle light or dark theme">☾</button>
   </header>
@@ -1247,6 +1253,20 @@ async function exportData(){
   const name="setlist69-backup-"+new Date().toISOString().slice(0,10)+".json";
   await saveJsonFile(name,JSON.stringify(state,null,2),"SetList69 backup");
 }
+/* Header ⇪: share the app's own URL via the native sheet (text/email/AirDrop…). The URL is
+   derived from location, never hardcoded — an MIT fork shares its own deployment, not ours.
+   Cancelling the sheet is not an error; the clipboard fallback is only for no-share browsers. */
+async function shareApp(){
+  const url=new URL(".",location.href).href;
+  if(navigator.share){
+    try{await navigator.share({title:"SetList69",
+      text:"SetList69 — song chords & setlists for the stage. Free, works offline:",url});}
+    catch(_){/* sheet dismissed */}
+    return;
+  }
+  try{await navigator.clipboard.writeText(url);toast("Link copied");}
+  catch(_){toast(url);}
+}
 async function shareSetlist(id){
   const sl=state.setlists.find(s=>s.id===id);if(!sl)return;
   const songs=sl.songIds.map(sid=>state.songs.find(s=>s.id===sid)).filter(Boolean);
@@ -1614,6 +1634,7 @@ document.getElementById("allSongList").addEventListener("click",e=>{
   const addBtn=e.target.closest(".addsong");if(addBtn){openAdder(addBtn.dataset.addid);return;}
   const open=e.target.closest(".open-allsong");if(open)openSongStandalone(open.dataset.id);});
 document.getElementById("newSongHome").addEventListener("click",()=>openEditor(null,"setlists"));
+document.getElementById("shareApp").addEventListener("click",shareApp);
 /* 🎲 practice spin: open a random song from the library. Never repeats the song you just had
    (unless it's the only one). Opens standalone, so ‹ › / swipe then walk the library from there. */
 document.getElementById("spinSong").addEventListener("click",()=>{
