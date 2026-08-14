@@ -242,11 +242,16 @@ v2026.08.14.002  Library navigation + 🎲 spin: standalone songs (`curIndex -1`
                  cluster + swipe hint for them, and the .003 "not in a setlist" toast is retired.
                  New `#spinSong` 🎲 in the Songs header opens a random song standalone (never the
                  same song twice in a row).
-v2026.08.14.003  Header ⇪ (`#shareApp`, beside the A− A+ pair, all screens): shares the app URL
-                 via `navigator.share` — URL from `new URL(".",location.href)` so forks share
+v2026.08.14.003  Header share (`#shareApp`, beside the A− A+ pair, all screens): shares the app
+                 URL via `navigator.share` — URL from `new URL(".",location.href)` so forks share
                  their own deployment. Sheet-cancel is silent; no-share browsers get clipboard +
                  "Link copied" toast. Song-view title gives up ~30px for the extra button
                  (320px: 116→81px — measured, no overflow).
+v2026.08.14.004  Standard share icon: the ⇪ glyph (.003 shipped it; it is literally the Caps Lock
+                 symbol) replaced by the universal box-with-arrow-up as inline SVG
+                 (`.shareicon`, stroke:currentColor so it follows `.iconbtn` color states,
+                 aria-hidden with labels kept on the buttons) — on both `#shareApp` and the
+                 setlist `#shareSetBtn`. No Unicode codepoint exists for the standard glyph.
 ```
 
 A GitHub Actions workflow (`.github/workflows/check.yml`) enforces the version discipline on every push: it syntax-checks the extracted inline script and `sw.js`, **fails if the `<small>` brand version ≠ `sw.js` CACHE version**, and fails on duplicate element ids in the markup.
