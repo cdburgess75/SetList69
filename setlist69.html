@@ -548,7 +548,7 @@
 <div class="app">
   <header>
     <button class="back" id="backBtn" style="display:none" aria-label="Back">‹ <span id="backLabel">Back</span></button>
-    <div class="brand" id="brand"><span class="dot"></span>SetList69<small>v2026.08.21.002</small></div>
+    <div class="brand" id="brand"><span class="dot"></span>SetList69<small>v2026.08.21.003</small></div>
     <div class="htitle" id="headerTitle" style="display:none"></div>
     <div class="spacer"></div>
     <button class="iconbtn" id="updateHdr" title="Update ready" aria-label="Update ready — refresh" hidden>⟳</button>
@@ -1050,7 +1050,10 @@ function show(name){
     document.getElementById("setSongsScreen").toggleAttribute("data-stage",stageMode);
     document.getElementById("stageBtn").textContent=stageMode?"✎ Edit":"▶ Stage";}
   if(name==="setlists"){stageMode=false;document.getElementById("setSongsScreen").removeAttribute("data-stage");maybeShowUpdatePill();}
-  if(name==="song"){const s=state.songs.find(x=>x.id===curSongId);ht.textContent=s?s.title:"";document.getElementById("backLabel").textContent=curIndex>=0?"Set":"Home";}
+  /* Song view: NO header title — the full-size #svTitle sits right below it (and is the
+     tap-to-edit control), so the truncated header copy was pure duplication eating width
+     (owner, v2026.08.21.003). The set screen keeps its header title: nothing duplicates it. */
+  if(name==="song"){ht.style.display="none";document.getElementById("backLabel").textContent=curIndex>=0?"Set":"Home";}
   if(name!=="song")stopScroll();
 }
 function goBack(){

@@ -269,6 +269,10 @@ v2026.08.21.002  No footer: the dock is tap-to-summon (`summonDock`/`dismissDock
                  a dock child: it is its own fixed line at the viewport bottom (visible while the
                  dock is away — exactly when auto-scroll runs). `#songView` padding-bottom
                  7.5rem→1.4rem+safe-area; fit math no longer subtracts the dock.
+v2026.08.21.003  Song view drops the header title: `#headerTitle` hidden on `name==="song"` —
+                 the full-size `#svTitle` sits right below it and is the tap-to-edit control, so
+                 the truncated header copy was duplication eating width. The setSongs screen
+                 keeps its header title (the set name appears nowhere else there).
 ```
 
 A GitHub Actions workflow (`.github/workflows/check.yml`) enforces the version discipline on every push: it syntax-checks the extracted inline script and `sw.js`, **fails if the `<small>` brand version ≠ `sw.js` CACHE version**, and fails on duplicate element ids in the markup.
