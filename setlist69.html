@@ -360,7 +360,11 @@
   .svhead{display:flex;align-items:flex-start;gap:.7rem;margin-bottom:.4rem;}
   .svtitle{font-family:var(--display);font-weight:600;font-size:1.7rem;line-height:1.05;flex:1;cursor:pointer;}
   .svsub{color:var(--muted);font-size:.88rem;margin-top:.1rem;}
-  .svbanter{color:var(--accent);font-size:.84rem;font-style:italic;margin-top:.15rem;line-height:1.35;}
+  /* Banter: a highlighted stage-note under the title — meant to be read at a glance, so it gets
+     a highlighter-style tinted bar rather than fine print. */
+  .svbanter{display:inline-block;color:var(--accent);background:color-mix(in srgb,var(--accent) 14%,transparent);
+    border-left:3px solid var(--accent);border-radius:6px;padding:.3em .6em;margin-top:.35rem;
+    font-family:var(--ui);font-size:.92rem;font-weight:600;line-height:1.4;}
   .sheet{margin-top:1.1rem;font-size:var(--sheet-size,1.35rem);-webkit-user-select:text;user-select:text;
     line-height:1;
     /* Wide screens flow the sheet into two columns (iPad / phone-landscape); the 15em minimum is in
@@ -390,6 +394,13 @@
   .seg .l{display:block;white-space:pre;line-height:1.3;}
   .songkey{font-family:var(--mono);font-size:.82rem;font-weight:600;color:var(--muted);white-space:nowrap;
     align-self:center;}
+  /* Chord chart: every chord the song uses, with fingering, in first-appearance order.
+     Wraps — never scrolls sideways. Toggled from the ⚙ sheet (state.chordChart). */
+  .chord-chart{display:flex;flex-wrap:wrap;gap:.45rem;margin:.9rem 0 0;}
+  .cc-cell{border:1px solid var(--line);border-radius:8px;padding:.28rem .45rem .12rem;text-align:center;background:var(--panel);}
+  .cc-cell svg{width:60px;height:auto;}   /* slim the popover-sized diagrams so ~4 cells fit a phone row */
+  .cc-name{font-family:var(--mono);font-weight:700;font-size:.72rem;color:var(--ink);margin-bottom:.1rem;}
+  .cc-cell.noshape{padding:.5rem .6rem;}   /* name-only cell for chords with no known fingering */
   .wgspace{display:inline-block;width:.32em;}         /* breakable gap between word-groups */
   .chorus{border-left:3px solid var(--accent);padding-left:.7rem;margin-left:-.1rem;}
   .comment{color:var(--muted);font-style:italic;font-size:.7em;margin:.3rem 0 .5rem;font-family:var(--ui);}
@@ -429,17 +440,8 @@
   .dock .ctl button{padding:.55rem .65rem;font-size:.95rem;min-width:2.6rem;min-height:2.6rem;}
   .dock .iconbtn.dockgear{width:2.9rem;height:2.9rem;font-size:1.15rem;}
   .dock .iconbtn.dockgear.on{color:var(--accent);}
-  .dock-gig{display:flex;align-items:center;gap:.35rem;height:2.9rem;padding:0 .75rem;border-radius:10px;color:var(--muted);transition:.15s;}
-  .dock-gig:hover{color:var(--ink);background:var(--panel2);}
-  .dock-gig .gig-ico{font-size:1.15rem;line-height:1;}
-  .dock-gig .gig-lbl{font-family:var(--mono);font-weight:700;font-size:.72rem;letter-spacing:.05em;text-transform:uppercase;color:var(--accent);}  /* bright orange */
-  .dock-gig.on{color:var(--accent);}   /* symbol also lights up while gig mode is active */
-  /* light-mode refinements: --accent as *text* is only ~4:1 on the near-white bg (fine as a button
-     fill/icon, sub-AA as readable text), so use a darker orange for the banter + gig label; and
-     soften the chord popover's drop shadow for the lighter surface. */
-  [data-theme="light"] .svbanter,[data-theme="light"] .dock-gig .gig-lbl{color:#b8560c;}   /* ≥AA orange */
+  /* light-mode refinement: soften the chord popover's drop shadow for the lighter surface */
   [data-theme="light"] .chord-pop{box-shadow:0 8px 26px rgba(18,32,47,.16);}
-  .app.gig header{display:none;}   /* gig mode: reclaim the header strip for lyrics */
   .dockrow{display:flex;align-items:center;gap:.7rem;}
   .dockrow-label{font-size:.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;font-weight:600;flex:1;}
   .dockrow .ctl button{padding:.5rem .7rem;min-width:2.6rem;min-height:2.6rem;font-size:.95rem;}
@@ -539,12 +541,13 @@
 <div class="app">
   <header>
     <button class="back" id="backBtn" style="display:none" aria-label="Back">‹ <span id="backLabel">Back</span></button>
-    <div class="brand" id="brand"><span class="dot"></span>SetList69<small>v2026.08.14.004</small></div>
+    <div class="brand" id="brand"><span class="dot"></span>SetList69<small>v2026.08.21.001</small></div>
     <div class="htitle" id="headerTitle" style="display:none"></div>
     <div class="spacer"></div>
     <button class="iconbtn" id="updateHdr" title="Update ready" aria-label="Update ready — refresh" hidden>⟳</button>
     <button class="iconbtn fontbtn" id="hdrFontDown" title="Smaller lyrics" aria-label="Make lyrics smaller" style="display:none">A−</button>
     <button class="iconbtn fontbtn" id="hdrFontUp" title="Bigger lyrics" aria-label="Make lyrics bigger" style="display:none">A+</button>
+    <button class="iconbtn" id="spinSong" title="Spin — random song" aria-label="Open a random song" style="font-size:1.05rem">🎲</button>
     <button class="iconbtn" id="shareApp" title="Share the app" aria-label="Share the app link"><svg class="shareicon" width="17" height="19" viewBox="0 0 16 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5.5 7H4a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-1.5"/><path d="M8 12V2"/><path d="M4.8 4.8 8 1.6l3.2 3.2"/></svg></button>
     <button class="iconbtn" id="menuBtn" title="Tools &amp; backup" aria-label="Tools and backup">≡</button>
     <button class="iconbtn" id="themeBtn" title="Light / dark mode" aria-label="Toggle light or dark theme">☾</button>
@@ -566,7 +569,6 @@
       <div class="listhead" style="margin-top:1.6rem">
         <h2>Songs</h2><span class="count" id="allCount"></span>
         <div class="spacer"></div>
-        <button class="iconbtn" id="spinSong" title="Spin — random song" aria-label="Open a random song" style="font-size:1.15rem">🎲</button>
         <button class="iconbtn" id="newSongHome" title="New song" aria-label="New song" style="font-size:1.4rem;color:var(--accent)">+</button>
       </div>
       <div class="searchbar"><input type="search" id="allSearch" placeholder="Search songs…" autocomplete="off"></div>
@@ -595,6 +597,7 @@
           <span class="capo-badge" id="svCapo" style="display:none"></span>
         </div>
       </div>
+      <div class="chord-chart" id="chordChart" style="display:none" aria-label="Chord chart"></div>
       <div class="sheet" id="sheet"></div>
       <div class="swipehint" id="swipeHint">‹ swipe to change song ›</div>
       <div class="dock">
@@ -602,7 +605,6 @@
         <div class="ctl"><button id="prevSong" aria-label="Previous song">◀</button><span class="pos" id="setPos"></span><button id="nextSong" aria-label="Next song">▶</button></div>
         <div class="ctl"><button class="scrollbtn" id="scrollBtn" aria-label="Play or pause auto-scroll">▶</button></div>
         <div class="ctl"><button id="scrollDown" aria-label="Slower auto-scroll">−</button><span class="val" id="speedVal">3</span><button id="scrollUp" aria-label="Faster auto-scroll">+</button></div>
-        <button class="dock-gig" id="fsBtn" title="Fullscreen gig mode" aria-label="Toggle fullscreen gig mode"><span class="gig-ico">⛶</span><span class="gig-lbl">Gig mode</span></button>
         <button class="iconbtn dockgear" id="dockMore" title="Transpose, font &amp; more" aria-label="Song controls">⚙</button>
       </div>
     </section>
@@ -693,6 +695,8 @@
         <div class="ctl"><button id="flatBtn" title="Sharp/flat" aria-label="Toggle sharp or flat spelling">♯/♭</button></div></div>
       <div class="dockrow"><span class="dockrow-label">Nashville</span>
         <div class="ctl"><button id="nashBtn" title="Nashville numbers" aria-label="Toggle Nashville number notation">123</button></div></div>
+      <div class="dockrow"><span class="dockrow-label">Chord chart</span>
+        <div class="ctl"><button id="chartBtn" title="Chord fingering chart" aria-label="Toggle the chord fingering chart">⊞</button></div></div>
       <div class="dockrow"><span class="dockrow-label">Font size</span>
         <div class="ctl"><button id="fontDown" aria-label="Smaller font">A−</button><button id="fontFit" title="Fit to screen" aria-label="Fit song to screen" style="font-size:.7rem;letter-spacing:.3px">fit</button><button id="fontUp" aria-label="Larger font">A＋</button></div></div>
       <button class="ghostbtn" id="editSong" style="margin:0">✎ Edit song</button>
@@ -818,8 +822,8 @@ function seed(){
 /* ===== state & nav ===== */
 let state=seed();
 let screen="setlists";
-let curSetlist=null,curSongId=null,curIndex=-1,curSetTranspose=0,stageMode=false,capoVal=0,gigMode=false;
-let transpose=0,preferFlats=false,fontSize=1.35,scrollSpeed=3,nashville=false,nashKeyPc=-1;
+let curSetlist=null,curSongId=null,curIndex=-1,curSetTranspose=0,stageMode=false,capoVal=0;
+let transpose=0,preferFlats=false,fontSize=1.35,scrollSpeed=3,nashville=false,nashKeyPc=-1,chordChart=false;
 let scrolling=false,scrollRAF=null,scrollAccum=0,swipeHintTimer=null;
 let editingId=null,editorReturn="setlists",wakeLock=null,addingSongId=null,editingSetlistId=null;
 let allSearchQ="",pickerSearchQ="";
@@ -966,7 +970,25 @@ function retuneSheet(){
   const nash=nashville&&nashKeyPc>=0;
   for(const p of pills){const raw=p.dataset.ch||"",t=transposeChord(raw);p.style.background=keyColor(t);
     if(nash)p.innerHTML=nashPill(toNashville(raw,nashKeyPc));else p.textContent=t;}
+  renderChordChart();
   updateScrollProg();
+}
+/* Chord chart: unique chords in first-appearance order, as DISPLAYED (transposeChord folds in
+   transpose + capo, matching the pills). Raw chords are collected by renderSheet; rebuilt by
+   retuneSheet so transpose/♯♭ keep the fingerings honest. Nashville pills stay numbers — the
+   chart deliberately shows real names, it is a fingering reference. */
+let sheetRawChords=[];
+function renderChordChart(){
+  const el=document.getElementById("chordChart");
+  if(!chordChart||!sheetRawChords.length){el.style.display="none";el.innerHTML="";return;}
+  const seen=new Set(),cells=[];
+  for(const raw of sheetRawChords){
+    const shape=transposeChord(raw);
+    if(seen.has(shape))continue;seen.add(shape);
+    const svg=chordDiagramSVG(chordFrets(shape));
+    cells.push('<div class="cc-cell'+(svg?"":" noshape")+'"><div class="cc-name">'+esc(shape)+'</div>'+svg+'</div>');
+  }
+  el.innerHTML=cells.join("");el.style.display="";
 }
 function renderSheet(song){
   const r=parseSong(song),meta=r.meta;
@@ -993,6 +1015,9 @@ function renderSheet(song){
     sect+='<div class="ln '+(ln.chorus?"chorus":"")+'">'+renderLine(ln.segs)+'</div>';
   }
   closeSect();
+  sheetRawChords=[];
+  for(const ln of r.lines)if(ln.type==="segs")for(const sg of ln.segs)if(sg.chord)sheetRawChords.push(sg.chord);
+  renderChordChart();
   const sheet=document.getElementById("sheet");sheet.innerHTML=html;sheet.style.setProperty("--sheet-size",fontSize+"rem");
 }
 
@@ -1005,18 +1030,21 @@ function show(name){
   const back=document.getElementById("backBtn"),brand=document.getElementById("brand"),ht=document.getElementById("headerTitle");
   if(name==="setlists"){back.style.display="none";brand.style.display="";ht.style.display="none";}
   else{back.style.display="";brand.style.display="none";ht.style.display="";}
-  /* Header zoom pair. Unlike the ✎ these formerly replaced, they stay up in stage mode — enlarging
-     lyrics is a reading aid, not an editing control, and stage mode is when you most want it. */
+  /* Context-aware header (v: smart header). Zoom pair only where there are lyrics to zoom — and
+     it stays up in stage mode (reading aid, not an editing control). Share only on home: sharing
+     is rare, and the song view's width goes to the title and the controls used mid-song. The 🎲
+     rides on every screen except stage mode, where a random song is a misfire hazard. */
   const showFont=(name==="song")?"":"none";
   document.getElementById("hdrFontDown").style.display=showFont;
   document.getElementById("hdrFontUp").style.display=showFont;
+  document.getElementById("shareApp").style.display=(name==="setlists")?"":"none";
+  document.getElementById("spinSong").style.display=stageMode?"none":"";
   if(name==="setSongs"){ht.textContent=(state.setlists.find(s=>s.id===curSetlist)||{}).name||"";document.getElementById("backLabel").textContent="Setlists";
     document.getElementById("setSongsScreen").toggleAttribute("data-stage",stageMode);
     document.getElementById("stageBtn").textContent=stageMode?"✎ Edit":"▶ Stage";}
   if(name==="setlists"){stageMode=false;document.getElementById("setSongsScreen").removeAttribute("data-stage");maybeShowUpdatePill();}
   if(name==="song"){const s=state.songs.find(x=>x.id===curSongId);ht.textContent=s?s.title:"";document.getElementById("backLabel").textContent=curIndex>=0?"Set":"Home";}
-  if(name==="song"){if(!wakeLock)requestWake();}
-  else{stopScroll();releaseWake();if(gigMode)setGig(false);}
+  if(name!=="song")stopScroll();
 }
 function goBack(){
   if(screen==="song")show(curIndex>=0&&curSetlist?"setSongs":"setlists");
@@ -1142,7 +1170,9 @@ const updateScrollProg=(function(){
 async function requestWake(){try{if("wakeLock"in navigator)wakeLock=await navigator.wakeLock.request("screen");}catch(e){}}
 function releaseWake(){try{if(wakeLock){wakeLock.release();wakeLock=null;}}catch(e){}}
 document.addEventListener("visibilitychange",()=>{
-  if(document.visibilityState==="visible"){if(screen==="song")requestWake();}
+  /* Wide awake: the whole app holds the screen-wake lock while visible (owner: a stand-mounted
+     device must never sleep, whichever screen it sits on). The OS releases it on hide. */
+  if(document.visibilityState==="visible"){if(!wakeLock)requestWake();}
   else flushPersist();   // backgrounded — commit any pending save before the OS can freeze us
 });
 window.addEventListener("pagehide",flushPersist);
@@ -1151,23 +1181,6 @@ window.addEventListener("pagehide",flushPersist);
    Immersive performance view: request browser fullscreen where supported (Android/desktop/iPad —
    an installed iOS PWA is already fullscreen), hide the header strip for extra lyric space, and hold
    the wake lock. The existing swipe ‹ › still moves through the set. Exit via ⛶, Esc, or leaving. */
-function _fsEl(){return document.fullscreenElement||document.webkitFullscreenElement;}
-function _reqFs(){const el=document.documentElement,r=el.requestFullscreen||el.webkitRequestFullscreen;if(r)try{const p=r.call(el);if(p&&p.catch)p.catch(()=>{});}catch(e){}}
-function _exitFs(){const x=document.exitFullscreen||document.webkitExitFullscreen;if(x&&_fsEl())try{const p=x.call(document);if(p&&p.catch)p.catch(()=>{});}catch(e){}}
-function setGig(on){
-  gigMode=on;
-  document.querySelector(".app").classList.toggle("gig",on);
-  document.getElementById("fsBtn").classList.toggle("on",on);
-  if(on){
-    _reqFs();if(!wakeLock)requestWake();
-    if(curIndex>=0){const h=document.getElementById("swipeHint");if(h){h.style.display="";h.style.opacity=".6";clearTimeout(swipeHintTimer);swipeHintTimer=setTimeout(()=>{h.style.opacity="0";},2800);}}
-    toast("Gig mode — screen stays on; swipe ‹ › for songs");
-  }else{_exitFs();}
-  updateScrollProg();
-}
-function toggleGig(){setGig(!gigMode);}
-document.addEventListener("fullscreenchange",()=>{if(!_fsEl()&&gigMode)setGig(false);});
-document.addEventListener("webkitfullscreenchange",()=>{if(!_fsEl()&&gigMode)setGig(false);});
 
 /* ===== editor ===== */
 function openEditor(id,ret){editingId=id;editorReturn=ret||screen;
@@ -1324,8 +1337,10 @@ function restoreData(file){
       if(state.scrollSpeed!=null){scrollSpeed=state.scrollSpeed;document.getElementById("speedVal").textContent=scrollSpeed;}
       if(state.preferFlats!=null){preferFlats=state.preferFlats;document.getElementById("flatBtn").classList.toggle("on",preferFlats);}
       if(state.nashville!=null){nashville=state.nashville;document.getElementById("nashBtn").classList.toggle("on",nashville);}
+      if(state.chordChart!=null){chordChart=state.chordChart;document.getElementById("chartBtn").classList.toggle("on",chordChart);}
       playedSongs=new Set();persist();applyTheme();
-      renderSetlists();renderAllSongs();show("setlists");toast("Restored");
+      renderSetlists();renderAllSongs();show("setlists");
+  requestWake();   // wide awake from launch — see the visibilitychange notetoast("Restored");
     });
   }catch(e){toast("⚠ Not a valid backup file");}};r.readAsText(file);}
 
@@ -1591,7 +1606,7 @@ document.getElementById("backBtn").addEventListener("click",()=>{
 });
 document.getElementById("themeBtn").addEventListener("click",()=>{state.theme=state.theme==="light"?"dark":"light";applyTheme();persist();});
 document.getElementById("menuBtn").addEventListener("click",()=>{document.getElementById("toolsSheet").classList.add("show");});
-document.getElementById("svTitle").addEventListener("click",()=>{if(curSongId&&!gigMode&&!stageMode)openEditor(curSongId,"song");});
+document.getElementById("svTitle").addEventListener("click",()=>{if(curSongId&&!stageMode)openEditor(curSongId,"song");});
 
 document.getElementById("newSetlist").addEventListener("click",()=>{
   showPrompt("Name this setlist","New Set","",name=>{
@@ -1671,6 +1686,7 @@ document.getElementById("trUp").addEventListener("click",()=>{transpose++;docume
 document.getElementById("trDown").addEventListener("click",()=>{transpose--;document.getElementById("trVal").textContent=(transpose>0?"+":"")+transpose;const _s=state.songs.find(x=>x.id===curSongId);if(_s){_s.defaultTranspose=transpose+capoVal-curSetTranspose;persist();}retuneSheet();});
 document.getElementById("flatBtn").addEventListener("click",e=>{preferFlats=!preferFlats;state.preferFlats=preferFlats;persist();e.target.classList.toggle("on",preferFlats);retuneSheet();});
 document.getElementById("nashBtn").addEventListener("click",e=>{nashville=!nashville;state.nashville=nashville;persist();e.target.classList.toggle("on",nashville);if(nashville&&nashKeyPc<0)toast("Set a song key to see numbers");reRender();});
+document.getElementById("chartBtn").addEventListener("click",e=>{chordChart=!chordChart;state.chordChart=chordChart;persist();e.target.classList.toggle("on",chordChart);renderChordChart();updateScrollProg();});
 // tap a chord pill -> fingering diagram popover (diagram is for the currently displayed shape, so it respects transpose/capo)
 document.getElementById("sheet").addEventListener("click",e=>{const pill=e.target.closest(".chordpill");if(pill){e.stopPropagation();showChordPop(pill);}});
 document.addEventListener("click",e=>{if(!e.target.closest(".chordpill")&&!e.target.closest("#chordPop"))hideChordPop();});
@@ -1706,6 +1722,7 @@ document.getElementById("stageBtn").addEventListener("click",()=>{
   stageMode=!stageMode;
   document.getElementById("setSongsScreen").toggleAttribute("data-stage",stageMode);
   document.getElementById("stageBtn").textContent=stageMode?"✎ Edit":"▶ Stage";
+  document.getElementById("spinSong").style.display=stageMode?"none":"";
 });
 document.getElementById("resetPlayed").addEventListener("click",()=>{
   const sl=state.setlists.find(s=>s.id===curSetlist);if(!sl)return;
@@ -1730,7 +1747,6 @@ function openDockSheet(){
 }
 function closeDockSheet(){document.getElementById("dockSheet").classList.remove("show");}
 document.getElementById("dockMore").addEventListener("click",openDockSheet);
-document.getElementById("fsBtn").addEventListener("click",toggleGig);
 document.getElementById("closeDockSheet").addEventListener("click",closeDockSheet);
 document.getElementById("editSong").addEventListener("click",()=>{if(curSongId){closeDockSheet();openEditor(curSongId,"song");}});
 
@@ -2043,12 +2059,15 @@ async function boot(){
   if(state.scrollSpeed!=null)scrollSpeed=state.scrollSpeed;
   if(state.preferFlats!=null)preferFlats=state.preferFlats;
   if(state.nashville!=null)nashville=state.nashville;
+  if(state.chordChart!=null)chordChart=state.chordChart;
   if(!state.bantersMigrated){migrateBanter();persist();}
   if(!state.showcaseAdded){addShowcaseSong();persist();}
   applyTheme();document.getElementById("speedVal").textContent=scrollSpeed;
   document.getElementById("flatBtn").classList.toggle("on",preferFlats);
   document.getElementById("nashBtn").classList.toggle("on",nashville);
+  document.getElementById("chartBtn").classList.toggle("on",chordChart);
   renderSetlists();renderAllSongs();show("setlists");
+  requestWake();   // wide awake from launch — see the visibilitychange note
   if(!canPersist)setTimeout(()=>toast("Preview mode — use Back up to a file to keep songs"),700);
   setTimeout(maybeShowInstallBanner,600);
 }
