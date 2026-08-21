@@ -356,7 +356,7 @@
      touchend — the swipe silently dies. pan-y keeps native vertical scrolling; pinch-zoom keeps
      the a11y zoom re-enabled in v2026.07.12.004. overflow-x guards the "never scrolls sideways"
      promise against any multicol overflow quirk. */
-  #songView{padding-bottom:7.5rem;touch-action:pan-y pinch-zoom;overflow-x:hidden;}
+  #songView{padding-bottom:calc(1.4rem + env(safe-area-inset-bottom));touch-action:pan-y pinch-zoom;overflow-x:hidden;}
   .svhead{display:flex;align-items:flex-start;gap:.7rem;margin-bottom:.4rem;}
   .svtitle{font-family:var(--display);font-weight:600;font-size:1.7rem;line-height:1.05;flex:1;cursor:pointer;}
   .svsub{color:var(--muted);font-size:.88rem;margin-top:.1rem;}
@@ -424,6 +424,11 @@
   .ctx-btn:hover,.ctx-btn:active{background:var(--panel2);}
   .ctx-btn.ctx-danger{color:var(--red);}
 
+  /* Tap-to-summon (v2026.08.21.002): the dock hides below the screen edge by default — lyrics get
+     the whole height. Tapping the lyrics toggles it; it auto-dismisses after ~4s untouched. */
+  .dock{transition:transform .22s ease;}
+  .dock.away{transform:translateY(112%);}
+  @media (prefers-reduced-motion:reduce){.dock{transition:none;}}
   .dock{position:fixed;left:0;right:0;bottom:0;
     background:var(--panel);
     border-top:1px solid var(--line);padding:.5rem .6rem;
@@ -445,7 +450,9 @@
   .dockrow{display:flex;align-items:center;gap:.7rem;}
   .dockrow-label{font-size:.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;font-weight:600;flex:1;}
   .dockrow .ctl button{padding:.5rem .7rem;min-width:2.6rem;min-height:2.6rem;font-size:.95rem;}
-  .scrollprog{position:absolute;left:0;right:0;top:-1px;height:3px;pointer-events:none;overflow:hidden;}
+  /* The progress line is NOT a dock child (v2026.08.21.002): it pins to the viewport bottom so it
+     stays visible while the dock is dismissed — which is exactly when auto-scroll runs. */
+  .scrollprog{position:fixed;left:0;right:0;bottom:0;height:3px;pointer-events:none;overflow:hidden;z-index:24;}
   .scrollprog .bar{height:100%;background:var(--accent);transform-origin:0 50%;transform:scaleX(0);will-change:transform;}
   .scrollprog[hidden]{display:none;}
   .install-banner{display:flex;align-items:center;gap:.6rem;background:var(--panel);border:1px solid var(--line);
@@ -541,7 +548,7 @@
 <div class="app">
   <header>
     <button class="back" id="backBtn" style="display:none" aria-label="Back">‹ <span id="backLabel">Back</span></button>
-    <div class="brand" id="brand"><span class="dot"></span>SetList69<small>v2026.08.21.001</small></div>
+    <div class="brand" id="brand"><span class="dot"></span>SetList69<small>v2026.08.21.002</small></div>
     <div class="htitle" id="headerTitle" style="display:none"></div>
     <div class="spacer"></div>
     <button class="iconbtn" id="updateHdr" title="Update ready" aria-label="Update ready — refresh" hidden>⟳</button>
@@ -600,8 +607,8 @@
       <div class="chord-chart" id="chordChart" style="display:none" aria-label="Chord chart"></div>
       <div class="sheet" id="sheet"></div>
       <div class="swipehint" id="swipeHint">‹ swipe to change song ›</div>
+      <div class="scrollprog" id="scrollProg" hidden><div class="bar" id="scrollProgBar"></div></div>
       <div class="dock">
-        <div class="scrollprog" id="scrollProg" hidden><div class="bar" id="scrollProgBar"></div></div>
         <div class="ctl"><button id="prevSong" aria-label="Previous song">◀</button><span class="pos" id="setPos"></span><button id="nextSong" aria-label="Next song">▶</button></div>
         <div class="ctl"><button class="scrollbtn" id="scrollBtn" aria-label="Play or pause auto-scroll">▶</button></div>
         <div class="ctl"><button id="scrollDown" aria-label="Slower auto-scroll">−</button><span class="val" id="speedVal">3</span><button id="scrollUp" aria-label="Faster auto-scroll">+</button></div>
@@ -1121,6 +1128,7 @@ function openCurrent(){
   }
   backArmed=false;clearTimeout(backArmT);   // a fresh song disarms the stage-safe back guard
   updateScrollProg();
+  summonDock();
 }
 function reRender(){const s=state.songs.find(x=>x.id===curSongId);if(s)renderSheet(s);updateScrollProg();}
 /* The library in the order it renders on the home screen (alphabetical) — standalone songs
@@ -1148,6 +1156,13 @@ function startScroll(){scrolling=true;scrollAccum=0;const b=document.getElementB
     }else scrollRAF=requestAnimationFrame(step);}
   scrollRAF=requestAnimationFrame(step);}
 function stopScroll(){scrolling=false;if(scrollRAF)cancelAnimationFrame(scrollRAF);const b=document.getElementById("scrollBtn");if(b){b.classList.remove("playing");b.textContent="▶";}}
+/* Tap-to-summon dock: hidden by default so lyrics get the whole screen. Summoned on song open
+   (flashes the n/N position after a swipe) and by tapping the lyrics; auto-dismisses after ~4s
+   untouched, and shortly after play starts. Interacting with the dock re-arms the timer. */
+let dockTimer=null;
+function summonDock(){const d=document.querySelector(".dock");if(!d)return;d.classList.remove("away");
+  clearTimeout(dockTimer);dockTimer=setTimeout(dismissDock,4000);}
+function dismissDock(){clearTimeout(dockTimer);const d=document.querySelector(".dock");if(d)d.classList.add("away");}
 
 /* scroll progress bar along the top edge of the dock (auto-scroll AND manual) */
 const updateScrollProg=(function(){
@@ -1591,6 +1606,18 @@ function showConfirm(title,msg,actionLabel,cb){
 }
 function closeConfirmModal(){document.getElementById("confirmModal").classList.remove("show");_confirmCb=null;}
 
+/* Tap the lyrics: toggle the dock. Skips taps on the dock itself, the title (opens the editor),
+   chord pills (their handler stops propagation anyway), and the tap that closes an open chord
+   popover. Fast swipes emit no click, so changing songs never flaps the dock. */
+document.getElementById("songView").addEventListener("click",e=>{
+  if(e.target.closest(".dock,#svTitle,.chordpill"))return;
+  const pop=document.getElementById("chordPop");
+  if(pop&&pop.classList.contains("show"))return;
+  const d=document.querySelector(".dock");
+  if(d.classList.contains("away"))summonDock();else dismissDock();
+});
+document.querySelector(".dock").addEventListener("click",()=>{clearTimeout(dockTimer);dockTimer=setTimeout(dismissDock,4000);});
+
 /* ===== events ===== */
 /* Stage-safe back: while performing (auto-scroll running or stage mode on),
    require a second tap within 1.5s to actually leave the song. */
@@ -1704,7 +1731,7 @@ for(const id of ["fontDown","hdrFontDown"])document.getElementById(id).addEventL
 document.getElementById("fontFit").addEventListener("click",()=>{
   requestAnimationFrame(()=>{
     const sv=document.getElementById("songView"),sh=document.getElementById("sheet");
-    const avail=sv.clientHeight-(sv.querySelector(".svhead")?.offsetHeight||70)-(sv.querySelector(".dock")?.offsetHeight||88)-24;
+    const avail=sv.clientHeight-(sv.querySelector(".svhead")?.offsetHeight||70)-34;   // dock is tap-summoned, not resident — only the progress line + padding to clear
     if(avail<=0||sh.scrollHeight<=avail)return;
     const newSize=Math.max(0.9,Math.min(2.4,parseFloat((fontSize*avail/sh.scrollHeight).toFixed(2))));
     if(Math.abs(newSize-fontSize)<0.04)return;
@@ -1736,7 +1763,10 @@ document.getElementById("setTrDown").addEventListener("click",()=>{
   const sl=state.setlists.find(s=>s.id===curSetlist);if(!sl)return;
   sl.setTranspose=(sl.setTranspose||0)-1;persist();renderSetSongs();
 });
-document.getElementById("scrollBtn").addEventListener("click",()=>{scrolling?stopScroll():startScroll();});
+document.getElementById("scrollBtn").addEventListener("click",()=>{
+  if(scrolling)stopScroll();
+  else{startScroll();setTimeout(dismissDock,400);}   // reading time — get out of the way
+});
 document.getElementById("scrollUp").addEventListener("click",()=>{scrollSpeed=Math.min(9,scrollSpeed+1);state.scrollSpeed=scrollSpeed;persist();document.getElementById("speedVal").textContent=scrollSpeed;});
 document.getElementById("scrollDown").addEventListener("click",()=>{scrollSpeed=Math.max(1,scrollSpeed-1);state.scrollSpeed=scrollSpeed;persist();document.getElementById("speedVal").textContent=scrollSpeed;});
 document.getElementById("prevSong").addEventListener("click",prevSong);
