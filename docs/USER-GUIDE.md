@@ -106,7 +106,12 @@ Open a set and tap a song (or tap the big **▶** to start from the first). This
 
 **Chords sit directly above the syllable they change on**, color-coded by key, and never split a word across a line.
 
-### The dock (bottom bar)
+### The dock (tap the lyrics to show it)
+
+The controls stay **hidden while you read** — the lyrics get the whole screen. **Tap anywhere on
+the lyrics** to slide the dock up; it slides away again after a few seconds (and right after you
+press play). It also pops up briefly each time you change songs, so you can see your place in the
+set.
 
 | Control | Does |
 |---|---|
@@ -115,7 +120,7 @@ Open a set and tap a song (or tap the big **▶** to start from the first). This
 | **− 3 +** | Auto-scroll speed (1–9) |
 | **⚙** | Opens more controls: transpose, ♯/♭, font size, fit-to-screen, and **✎ Edit** |
 
-- A thin **progress bar** on top of the dock shows how much song is left.
+- A thin **progress bar** along the bottom edge of the screen shows how much song is left — visible even while the dock is hidden.
 - **Swipe left / right** on the lyrics to change songs.
 - The screen **won't sleep** while the app is open — any screen, all night.
 

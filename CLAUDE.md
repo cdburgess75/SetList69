@@ -262,6 +262,13 @@ v2026.08.21.001  Simplify: gig mode REMOVED (⛶ dock button, setGig/toggleGig, 
                  `renderChordChart()` from raw chords collected in `renderSheet`, rebuilt by
                  `retuneSheet`, unique displayed chords in first-appearance order, wraps (never
                  sideways-scrolls), name-only cells for unknown fingerings.
+v2026.08.21.002  No footer: the dock is tap-to-summon (`summonDock`/`dismissDock`, ~4s auto-
+                 dismiss, dock clicks re-arm, play dismisses after ~400ms, `openCurrent` flashes
+                 it so n/N shows after a swipe). Lyric taps toggle it — guarded against `.dock`,
+                 `#svTitle`, `.chordpill`, and the popover-closing tap. `#scrollProg` is NO LONGER
+                 a dock child: it is its own fixed line at the viewport bottom (visible while the
+                 dock is away — exactly when auto-scroll runs). `#songView` padding-bottom
+                 7.5rem→1.4rem+safe-area; fit math no longer subtracts the dock.
 ```
 
 A GitHub Actions workflow (`.github/workflows/check.yml`) enforces the version discipline on every push: it syntax-checks the extracted inline script and `sw.js`, **fails if the `<small>` brand version ≠ `sw.js` CACHE version**, and fails on duplicate element ids in the markup.

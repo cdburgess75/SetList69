@@ -27,7 +27,7 @@
 <br>
 
 [![CI](https://github.com/cdburgess75/SetList69/actions/workflows/check.yml/badge.svg)](https://github.com/cdburgess75/SetList69/actions/workflows/check.yml)
-[![Version](https://img.shields.io/badge/version-2026.08.21.001-informational?style=flat-square)](#versioning)
+[![Version](https://img.shields.io/badge/version-2026.08.21.002-informational?style=flat-square)](#versioning)
 [![PWA](https://img.shields.io/badge/PWA-installable-5A0FC8?style=flat-square)](#save-it-to-your-phone)
 [![Offline](https://img.shields.io/badge/offline-first-2ea043?style=flat-square)](#features)
 [![Runtime deps](https://img.shields.io/badge/runtime_dependencies-0-f5a623?style=flat-square)](#tech-stack)
@@ -52,6 +52,7 @@ The whole thing is a single `setlist69.html` file. No framework, no build step, 
 **On stage**
 
 - **Auto-scroll that keeps your hands free** — starts at a tap, adjustable speed mid-song, with a progress bar and a haptic nudge when you reach the last line.
+- **No chrome while you read** — the control dock hides itself; tap the lyrics when you need it and it gets back out of the way.
 - **Never goes dark** — the app holds a screen-wake lock the whole time it's open, so the screen won't sleep between verses, songs, or sets.
 - **Chord chart** — flip on a strip of fingering diagrams for every chord the song uses, straight from the ⚙ sheet.
 - **Stage mode** — hides every editing control so nothing destructive is one fat-fingered tap away, and leaving a song mid-performance deliberately takes two taps.
