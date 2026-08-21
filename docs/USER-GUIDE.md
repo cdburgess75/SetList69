@@ -117,7 +117,7 @@ Open a set and tap a song (or tap the big **▶** to start from the first). This
 
 - A thin **progress bar** on top of the dock shows how much song is left.
 - **Swipe left / right** on the lyrics to change songs.
-- The screen **won't sleep** while you're in a song.
+- The screen **won't sleep** while the app is open — any screen, all night.
 
 ### Stage mode
 

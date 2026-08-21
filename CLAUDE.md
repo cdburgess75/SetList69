@@ -252,6 +252,16 @@ v2026.08.14.004  Standard share icon: the ⇪ glyph (.003 shipped it; it is lite
                  (`.shareicon`, stroke:currentColor so it follows `.iconbtn` color states,
                  aria-hidden with labels kept on the buttons) — on both `#shareApp` and the
                  setlist `#shareSetBtn`. No Unicode codepoint exists for the standard glyph.
+v2026.08.21.001  Simplify: gig mode REMOVED (⛶ dock button, setGig/toggleGig, fullscreen plumbing;
+                 stage mode stays); wake lock now held APP-WIDE while visible (boot +
+                 visibilitychange — never released between screens); banter restyled as a tinted
+                 highlight bar under the title; smart header (🎲 in the header on all screens,
+                 hidden in stage mode — the stageBtn handler also flips it, since it doesn't route
+                 through show(); share home-only; A−/A+ song-view-only); chord chart strip —
+                 `#chartBtn` in ⚙ toggles `state.chordChart` (nashville-flag pattern), built by
+                 `renderChordChart()` from raw chords collected in `renderSheet`, rebuilt by
+                 `retuneSheet`, unique displayed chords in first-appearance order, wraps (never
+                 sideways-scrolls), name-only cells for unknown fingerings.
 ```
 
 A GitHub Actions workflow (`.github/workflows/check.yml`) enforces the version discipline on every push: it syntax-checks the extracted inline script and `sw.js`, **fails if the `<small>` brand version ≠ `sw.js` CACHE version**, and fails on duplicate element ids in the markup.
@@ -497,7 +507,7 @@ Globals: `transpose` (semitones, 0 on song open), `preferFlats` (bool), `fontSiz
 
 **Font:** `A−` / `A+` (0.7–2.4 rem, 0.1 steps) via `nudgeFont(step)` — the one implementation behind **both** the header pair (`#hdrFontDown`/`#hdrFontUp`, v2026.08.05.002) and the ⚙ sheet pair (`#fontDown`/`#fontUp`). Note the default 1.35 isn't on the 0.1 grid, so the first tap snaps to it (up → 1.5, down → 1.3); that's long-standing and intentional to keep the scale tidy afterwards. **`fit`** button scales font so the full song fits the viewport — two-pass (`requestAnimationFrame` after first `reRender()`) to correct for re-wrapping at smaller sizes.
 
-**Header zoom (v2026.08.05.002):** `A−`/`A+` sit beside `≡ ☾` in the song view. They took the slot of the old `✎` header button, which was redundant — `#svTitle`'s click handler opens the editor with the same `openEditor(curSongId,"song")` call. Visibility is set in `show()` on `name==="song"` alone, so unlike the `✎` **they stay up in stage mode** (enlarging lyrics is a reading aid). Gig mode hides the header entirely; the ⚙ sheet covers that case. The header has no spare width — adding these required dropping `header` `gap` to .35rem and padding to .7rem, and `.iconbtn.fontbtn` needs `white-space:nowrap` because the flex row shrinks the buttons below their glyph width.
+**Header zoom (v2026.08.05.002):** `A−`/`A+` sit beside `≡ ☾` in the song view. They took the slot of the old `✎` header button, which was redundant — `#svTitle`'s click handler opens the editor with the same `openEditor(curSongId,"song")` call. Visibility is set in `show()` on `name==="song"` alone, so unlike the `✎` **they stay up in stage mode** (enlarging lyrics is a reading aid). The header has no spare width — adding these required dropping `header` `gap` to .35rem and padding to .7rem, and `.iconbtn.fontbtn` needs `white-space:nowrap` because the flex row shrinks the buttons below their glyph width.
 
 **Auto-scroll:** `startScroll()` / `stopScroll()` use `requestAnimationFrame` with fractional pixel accumulator. Stops at bottom with haptic + amber flash. Speed adjustable live.
 
@@ -509,7 +519,7 @@ Globals: `transpose` (semitones, 0 on song open), `preferFlats` (bool), `fontSiz
 
 **Gesture debug overlay (v2026.08.13.002):** 5 quick taps on the version tag (`.brand small`) toggle `#gestureDbg`, a fixed, `pointer-events:none` readout of the last ~6 touch events seen at document level (type, target, dx/dy) plus screen name and rendered column count. Session-only, never persisted. Exists so a dead gesture on a real device can be reported with the actual event stream — ask the owner to 5-tap, swipe once, and read back the overlay.
 
-**Wake lock:** `requestWake()` on entering song view. `releaseWake()` only on leaving the app entirely — **not** between songs, so the screen stays on through the whole set. Re-acquired on `visibilitychange`.
+**Wake lock (v2026.08.21.001 — app-wide):** acquired at `boot()` and re-acquired on `visibilitychange→visible` on ANY screen; never released between screens (the OS drops it on hide). The owner runs the app on a stand all night — it must not sleep anywhere.
 
 **Dock layout (v2026.07.04.004):** the dock keeps only the between-songs-frequent controls with ≥2.6rem targets — prev/pos/next, play/pause (`scrollBtn`), speed −/+, and a `⚙` (`dockMore`) button. Transpose, `♯/♭`, font (`A−`/`fit`/`A+`) and `✎ Edit` live in `#dockSheet`, a `.modal.bottom` opened by `⚙`. **The controls kept their original ids**, so all handlers, boot wiring, and `openCurrent`'s set-nav hide still work after the DOM move — don't rename them. `openDockSheet()` hides `#editSong` when `stageMode` is on.
 
@@ -566,9 +576,9 @@ Music core:    transposeNote  transposeChord  looksChord  isChordLine
                pitchClass  keyColor  cleanEmbeddedChords  toNashville  nashPill
 Chord diagrams: chordFamily  chordFrets  chordDiagramSVG  showChordPop  hideChordPop
 Parse/render:  esc  parseSong  inlineToSegs  pairToSegs  renderLine  renderSheet  retuneSheet
+               renderChordChart
 Router/nav:    show  goBack
 List renders:  renderSetlists  renderSetSongs  renderAllSongs  renderPicker  renderAdder
-Gig mode:      setGig  toggleGig  (⛶ dock button — fullscreen + hide header + wake lock)
 Song view:     openSongInSet  openSongStandalone  openCurrent  reRender  libraryIds
                nextSong  prevSong  startScroll  stopScroll  updateScrollProg
                requestWake  releaseWake  openDockSheet  closeDockSheet  nudgeFont
