@@ -216,6 +216,26 @@
                    the setlist "Share" button now draw the universal box-with-arrow-up glyph as
                    inline SVG (stroke:currentColor, themes with the button; aria-hidden — the
                    buttons keep their labels). No Unicode codepoint exists for it, hence SVG.
+  v2026.08.26.003  Share a song as a LINK (owner: one song took a whole session to install, via a
+                   file they still had to save and pick out of Files). shareSong() packs the song
+                   into the URL FRAGMENT — never sent to a server, so a shared chart never lands in
+                   a Pages access log — as {app,kind:"song",version:1,song} JSON, deflate-raw'd via
+                   CompressionStream ("z." tag; "j." = plain-JSON fallback). A full chart fits in
+                   ~800 chars. Share from the ⚙ sheet or the long-press menu; receive by opening the
+                   link (maybeImportFromLink in boot, always confirms, then strips the fragment) OR
+                   by pasting it into ≡ → "Add a song from a link". BOTH receive paths are needed:
+                   an installed iOS A2HS app has storage separate from Safari's, so a tapped link
+                   lands in a copy of the app you never use — pasting is the only route there.
+                   Incoming songs are untrusted input (mergeSetImport's coerce/clamp/fresh-id shape).
+                   index.html now redirects in script, because a meta refresh DROPS the fragment.
+  v2026.08.26.004  Showcase song restored: House of the Rising Sun (traditional, PUBLIC DOMAIN — the
+                   only kind safe to ship, CLAUDE.md §14) expands from a 4-line stub to a full
+                   arrangement — intro/solo/outro bars, five verses, a marked {soc} chorus, section
+                   headings and a banter line. retireShowcase() dropped Danny Boy in .26.001 and
+                   left the app with NO worked example. One-time upgradeShowcase() reaches existing
+                   libraries, replacing the body only if it still matches the old stub exactly, so
+                   an owner-edited copy is never overwritten. Also: restoreData's toast("Restored")
+                   had been swallowed into a trailing // comment and never ran.
 -->
 <html lang="en">
 <head>
@@ -549,7 +569,7 @@
 <div class="app">
   <header>
     <button class="back" id="backBtn" style="display:none" aria-label="Back">‹ <span id="backLabel">Back</span></button>
-    <div class="brand" id="brand"><span class="dot"></span>SetList69<small>v2026.08.26.002</small></div>
+    <div class="brand" id="brand"><span class="dot"></span>SetList69<small>v2026.08.26.004</small></div>
     <div class="htitle" id="headerTitle" style="display:none"></div>
     <div class="spacer"></div>
     <button class="iconbtn" id="updateHdr" title="Update ready" aria-label="Update ready — refresh" hidden>⟳</button>
@@ -707,6 +727,7 @@
         <div class="ctl"><button id="chartBtn" title="Chord fingering chart" aria-label="Toggle the chord fingering chart">⊞</button></div></div>
       <div class="dockrow"><span class="dockrow-label">Font size</span>
         <div class="ctl"><button id="fontDown" aria-label="Smaller font">A−</button><button id="fontFit" title="Fit to screen" aria-label="Fit song to screen" style="font-size:.7rem;letter-spacing:.3px">fit</button><button id="fontUp" aria-label="Larger font">A＋</button></div></div>
+      <button class="ghostbtn" id="shareSongBtn" style="margin:0 0 .5rem"><svg class="shareicon" width="13" height="15" viewBox="0 0 16 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="vertical-align:-.15em"><path d="M5.5 7H4a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-1.5"/><path d="M8 12V2"/><path d="M4.8 4.8 8 1.6l3.2 3.2"/></svg> Share this song</button>
       <button class="ghostbtn" id="editSong" style="margin:0">✎ Edit song</button>
     </div>
   </div>
@@ -735,6 +756,7 @@
       <button class="ghostbtn" id="pasteBtn">↗ Search &amp; paste lyrics</button>
       <button class="ghostbtn" id="onsongBtn">♫ Import songs — OnSong · ChordPro · OpenSong · .zip</button>
       <input type="file" id="onsongInput" accept=".onsong,.txt,.cho,.chordpro,.chopro,.pro,.crd,.xml,.zip,text/plain,application/zip" multiple hidden>
+      <button class="ghostbtn" id="linkImportBtn">🔗 Add a song from a link</button>
       <button class="ghostbtn" id="exportBtn">⤓ Back up all data to a file</button>
       <button class="ghostbtn" id="importBtn">⤒ Restore from a backup file</button>
       <input type="file" id="restoreInput" accept=".json,application/json" hidden>
@@ -811,11 +833,18 @@ function isValidState(d){
 }
 
 /* ===== seed (public-domain songs) ===== */
+/* The showcase song: the one fully-worked example in the app, demonstrating section headings,
+   a marked chorus, stage banter, and chords that resolve to fingering diagrams. Traditional /
+   PUBLIC DOMAIN - the only kind of song safe to ship, see CLAUDE.md 14. Replaced Danny Boy,
+   which retireShowcase() removed in v2026.08.26.001 without a successor. */
+const HR_SHOWCASE_BODY="{c: Intro - let it breathe, 8 bars}\n[Am] [C] [D] [F] [Am] [C] [E] [E]\n\n{c: Verse 1}\n[Am]There [C]is a [D]house in [F]New Or[Am]leans\nThey [C]call the [E]Rising [E]Sun\nAnd it's [Am]been the [C]ruin of [D]many a poor [F]boy\nAnd [Am]God I [E]know I'm [Am]one\n\n{c: Verse 2}\n[Am]My [C]mother [D]was a [F]tailor\nShe [Am]sewed my [C]new blue [E]jeans\nMy [Am]father [C]was a [D]gamblin' [F]man\nDown [Am]in [E]New Or[Am]leans\n\n{c: Verse 3}\n[Am]Now the [C]only [D]thing a [F]gambler [Am]needs\nIs a [C]suitcase and a [E]trunk\nAnd the [Am]only [C]time he's [D]satis[F]fied\nIs [Am]when he's [E]on a [Am]drunk\n\n{soc}\n{c: Chorus}\nOh [Am]mother [C]tell your [D]chil[F]dren\nNot to [Am]do what [C]I have [E]done\n[Am]Spend your [C]lives in [D]sin and [F]misery\nIn the [Am]House of the [E]Rising [Am]Sun\n{eoc}\n\n{c: Organ solo - same changes, 8 bars}\n[Am] [C] [D] [F] [Am] [C] [E] [E]\n\n{c: Verse 4}\n[Am]Well I got [C]one foot [D]on the [F]platform\nThe [Am]other [C]foot on the [E]train\nI'm [Am]goin' [C]back to [D]New Or[F]leans\nTo [Am]wear that [E]ball and [Am]chain\n\n{c: Verse 5 - drop to almost nothing, then build}\n[Am]Well there [C]is a [D]house in [F]New Or[Am]leans\nThey [C]call the [E]Rising [E]Sun\nAnd it's [Am]been the [C]ruin of [D]many a poor [F]boy\nAnd [Am]God I [E]know I'm [Am]one\n\n{c: Outro - ritard on the last Am}\n[Am] [C] [D] [F] [Am] [E] [Am]";
+const HR_SHOWCASE_BANTER="Last verse: voice and arpeggio only until the final line, then everyone back in.";
 function seed(){
   const S=(id,title,sub,key,body)=>({id,title,sub,key,body});
   const songs=[
     S("am","Amazing Grace","Traditional","G","[G]Amazing [G7]grace how [C]sweet the [G]sound\nThat [G]saved a [Em]wretch like [D]me\nI [G]once was [G7]lost but [C]now am [G]found\nWas [Em]blind but [D]now I [G]see"),
-    S("hr","House of the Rising Sun","Traditional","Am","[Am]There [C]is a [D]house in [F]New Or[Am]leans\nThey [Am]call the [C]Rising [E]Sun\nAnd it's [Am]been the [C]ruin of [D]many a poor [F]boy\nAnd [Am]God I [E]know I'm [Am]one"),
+    {id:"hr",title:"House of the Rising Sun",sub:"Traditional",key:"Am",
+     banter:HR_SHOWCASE_BANTER,body:HR_SHOWCASE_BODY},
     S("wf","Wayfaring Stranger","Traditional","Em","[Em]I am a poor way[Am]faring [Em]stranger\nWhile [Em]traveling through this [B7]world of [Em]woe\nYet [Em]there's no sickness, [Am]toil nor [Em]danger\nIn [Em]that bright land to [B7]which I [Em]go"),
     S("wc","Will the Circle Be Unbroken","Traditional","G","[G]Will the circle [G7]be un[C]broken\n[G]By and by, Lord, [D]by and [G]by\n[G]There's a better [G7]home a[C]waiting\n[G]In the sky, Lord, [D]in the [G]sky"),
     S("sf","Scarborough Fair","Traditional","Am","[Am]Are you going to [G]Scarborough [Am]Fair?\n[Am]Parsley, [C]sage, rose[G]mary and [Am]thyme\n[Am]Remember [G]me to one who [Am]lives there\n[C]She once [Am]was a [G]true love of [Am]mine"),
@@ -1326,6 +1355,91 @@ async function shareApp(){
   try{await navigator.clipboard.writeText(url);toast("Link copied");}
   catch(_){toast(url);}
 }
+/* ===== share ONE SONG as a link =====
+   The song rides in the URL FRAGMENT. Browsers never send a fragment to the server, so a shared
+   song never lands in a GitHub Pages access log - a "?song=" query would ship the owner's chart to
+   GitHub on every tap, which breaks the no-server constraint in spirit. Keep it a hash.
+   Payload shape mirrors shareSetlist's: {app,kind,version,song}. The tag before the base64 says how
+   it was packed: "z." = deflate-raw (the same native stream unzip() already relies on), "j." = plain
+   JSON for browsers without CompressionStream. A typical chart is ~1.2KB raw, ~800 chars deflated. */
+function b64urlEnc(bytes){let s="";for(let i=0;i<bytes.length;i++)s+=String.fromCharCode(bytes[i]);
+  return btoa(s).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");}
+function b64urlDec(str){const s=str.replace(/-/g,"+").replace(/_/g,"/");
+  const bin=atob(s+"=".repeat((4-s.length%4)%4)),out=new Uint8Array(bin.length);
+  for(let i=0;i<bin.length;i++)out[i]=bin.charCodeAt(i);return out;}
+async function streamBytes(stream,bytes){const w=stream.writable.getWriter();w.write(bytes);w.close();
+  return new Uint8Array(await new Response(stream.readable).arrayBuffer());}
+
+async function songToLink(song){
+  const payload={app:"setlist69",kind:"song",version:1,song:{
+    title:song.title||"",sub:song.sub||"",banter:song.banter||"",key:song.key||"",
+    capo:song.capo||0,defaultTranspose:song.defaultTranspose||0,body:song.body||""}};
+  const raw=new TextEncoder().encode(JSON.stringify(payload));
+  let tag="j",bytes=raw;
+  if(typeof CompressionStream!=="undefined"){
+    try{const z=await streamBytes(new CompressionStream("deflate-raw"),raw);
+      if(z.length<raw.length){tag="z";bytes=z;}}catch(_){}
+  }
+  return location.href.split("#")[0].split("?")[0]+"#s="+tag+"."+b64urlEnc(bytes);
+}
+/* Accepts a whole URL or a bare "z.xxxx" payload, so the paste field can take either. */
+async function linkToSong(text){
+  const t=String(text||"").trim();
+  const hit=t.match(/#s=([a-z])\.([A-Za-z0-9\-_]+)/)||t.match(/^([a-z])\.([A-Za-z0-9\-_]+)$/);
+  if(!hit)return null;
+  try{
+    let bytes=b64urlDec(hit[2]);
+    if(hit[1]==="z")bytes=await streamBytes(new DecompressionStream("deflate-raw"),bytes);
+    const d=JSON.parse(new TextDecoder().decode(bytes));
+    if(!d||d.kind!=="song"||!d.song||typeof d.song!=="object")return null;
+    return d.song;
+  }catch(_){return null;}
+}
+/* A song off a link is UNTRUSTED input - same defensive shape as mergeSetImport: coerce every
+   field, clamp the numbers, fresh id, unknown keys dropped. Never trust an id from the payload. */
+function addSharedSong(raw){
+  const str=v=>(typeof v==="string"?v:v==null?"":String(v));
+  const num=(v,lo,hi)=>{const n=parseInt(v,10);return Number.isFinite(n)?Math.min(hi,Math.max(lo,n)):0;};
+  const id=newSongId();
+  state.songs.push({id,title:str(raw.title).trim()||"Untitled",sub:str(raw.sub),banter:str(raw.banter),
+    key:str(raw.key),capo:num(raw.capo,0,11),defaultTranspose:num(raw.defaultTranspose,-11,11),
+    body:str(raw.body)});
+  persist();renderSetlists();renderAllSongs();
+  return id;
+}
+/* Never write to someone's library straight off a link - always confirm. Duplicate identity is
+   title+sub case-folded, the same convention mergeSetImport uses. */
+function offerSharedSong(raw){
+  const str=v=>(typeof v==="string"?v:v==null?"":String(v));
+  const title=str(raw.title).trim()||"Untitled",sub=str(raw.sub).trim();
+  const NULSEP=String.fromCharCode(0);   // NOT a space - see CLAUDE.md 8: "a b"+"c" would collide with "a"+"b c"
+  const keyOf=(t,u)=>t.trim().toLowerCase()+NULSEP+u.trim().toLowerCase();
+  const dupe=state.songs.some(s=>keyOf(str(s.title),str(s.sub))===keyOf(title,sub));
+  showConfirm(dupe?"Already in your library":"Add song",
+    '"'+title+'"'+(sub?" — "+sub:"")+(dupe?" is already here. Add another copy?":" — add it to your library?"),
+    dupe?"Add copy":"Add",
+    ()=>{const id=addSharedSong(raw);openSongStandalone(id);toast("Song added");});
+}
+async function maybeImportFromLink(){
+  if(!/#s=/.test(location.hash))return;
+  const raw=await linkToSong(location.hash);
+  // Strip the fragment either way, so a reload doesn't re-prompt for a song already added.
+  try{history.replaceState(null,"",location.href.split("#")[0]);}catch(_){}
+  if(!raw){toast("That song link couldn't be read");return;}
+  offerSharedSong(raw);
+}
+async function shareSong(id){
+  const s=state.songs.find(x=>x.id===id);if(!s)return;
+  const url=await songToLink(s);
+  if(url.length>4000)toast("Long song — some apps may trim the link");
+  if(navigator.share){
+    try{await navigator.share({title:s.title,
+      text:s.title+(s.sub?" — "+s.sub:"")+" · open in SetList69:",url});}
+    catch(_){/* sheet dismissed */}
+    return;
+  }
+  try{await navigator.clipboard.writeText(url);toast("Song link copied");}catch(_){toast(url);}
+}
 async function shareSetlist(id){
   const sl=state.setlists.find(s=>s.id===id);if(!sl)return;
   const songs=sl.songIds.map(sid=>state.songs.find(s=>s.id===sid)).filter(Boolean);
@@ -1381,7 +1495,8 @@ function restoreData(file){
       if(state.chordChart!=null){chordChart=state.chordChart;document.getElementById("chartBtn").classList.toggle("on",chordChart);}
       playedSongs=new Set();persist();applyTheme();
       renderSetlists();renderAllSongs();show("setlists");
-  requestWake();   // wide awake from launch — see the visibilitychange notetoast("Restored");
+      requestWake();   // wide awake from launch — see the visibilitychange note
+      toast("Restored");
     });
   }catch(e){toast("⚠ Not a valid backup file");}};r.readAsText(file);}
 
@@ -1750,6 +1865,20 @@ document.getElementById("onsongInput").addEventListener("change",async e=>{
 });
 document.getElementById("exportBtn").addEventListener("click",exportData);
 document.getElementById("importBtn").addEventListener("click",()=>document.getElementById("restoreInput").click());
+document.getElementById("shareSongBtn").addEventListener("click",()=>{closeDockSheet();if(curSongId)shareSong(curSongId);});
+/* Paste path for song links. On iOS an installed (A2HS) app has storage SEPARATE from Safari's, so
+   tapping a link opens Safari and would add the song to a copy of the app the owner never uses.
+   Pasting the link into the installed app is the only reliable route there - this is NOT redundant
+   with maybeImportFromLink(); do not drop it in favour of the hash handler alone. */
+document.getElementById("linkImportBtn").addEventListener("click",()=>{
+  document.getElementById("toolsSheet").classList.remove("show");
+  showPrompt("Add a song from a link","Paste the song link here","",async v=>{
+    if(!v||!v.trim())return;
+    const raw=await linkToSong(v);
+    if(!raw){toast("That song link couldn't be read");return;}
+    offerSharedSong(raw);
+  });
+});
 document.getElementById("restoreInput").addEventListener("change",e=>{if(e.target.files[0])restoreData(e.target.files[0]);e.target.value="";});
 
 document.getElementById("trUp").addEventListener("click",()=>{transpose++;document.getElementById("trVal").textContent=(transpose>0?"+":"")+transpose;const _s=state.songs.find(x=>x.id===curSongId);if(_s){_s.defaultTranspose=transpose+capoVal-curSetTranspose;persist();}retuneSheet();});
@@ -1938,6 +2067,7 @@ function openSongContext(songId,fromScreen){
     body.appendChild(b);
   }
   mkBtn("✎","Edit song",false,()=>openEditor(songId,fromScreen));
+  mkBtn("🔗","Share song as a link",false,()=>shareSong(songId));
   if(fromScreen==="setSongs"){
     const played=playedSongs.has(songId);
     mkBtn(played?"↺":"✓",played?"Mark unplayed":"Mark as played",false,()=>{
@@ -2106,6 +2236,20 @@ function migrateBanter(){
    it gone — the app has their real catalogue in it now). Only touches the reserved seed id, runs
    once via state.showcaseRetired, and anything the owner created is untouched. A copy is always
    recoverable from a backup file if it is ever wanted back. */
+/* One-time: promote the old four-line House of the Rising Sun stub to the full showcase
+   arrangement. seed() only runs on a fresh install, so without this the example never reaches
+   a library that already exists. Replaces the body ONLY if it still matches the old seed string
+   exactly - if the owner edited their copy, theirs wins. Silently overwriting someone's chart
+   would break design priority #1 (never lose a song). */
+const HR_STUB_BODY="[Am]There [C]is a [D]house in [F]New Or[Am]leans\nThey [Am]call the [C]Rising [E]Sun\nAnd it's [Am]been the [C]ruin of [D]many a poor [F]boy\nAnd [Am]God I [E]know I'm [Am]one";
+function upgradeShowcase(){
+  if(state.showcaseV2)return false;
+  state.showcaseV2=true;
+  const s=state.songs.find(x=>x.id==="hr");
+  if(!s||s.body!==HR_STUB_BODY)return false;   // absent, or edited by the owner - leave it alone
+  s.body=HR_SHOWCASE_BODY;s.banter=HR_SHOWCASE_BANTER;
+  return true;
+}
 function retireShowcase(){
   if(state.showcaseRetired)return false;
   const had=state.songs.some(s=>s.id==="danny");
@@ -2132,11 +2276,13 @@ async function boot(){
   if(state.chordChart!=null)chordChart=state.chordChart;
   if(!state.bantersMigrated){migrateBanter();persist();}
   if(!state.showcaseRetired){retireShowcase();persist();}
+  if(!state.showcaseV2){upgradeShowcase();persist();}
   applyTheme();document.getElementById("speedVal").textContent=scrollSpeed;
   document.getElementById("flatBtn").classList.toggle("on",preferFlats);
   document.getElementById("nashBtn").classList.toggle("on",nashville);
   document.getElementById("chartBtn").classList.toggle("on",chordChart);
   renderSetlists();renderAllSongs();show("setlists");
+  maybeImportFromLink();   // a "#s=" fragment carries a shared song
   requestWake();   // wide awake from launch — see the visibilitychange note
   if(!canPersist)setTimeout(()=>toast("Preview mode — use Back up to a file to keep songs"),700);
   setTimeout(maybeShowInstallBanner,600);

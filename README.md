@@ -27,7 +27,7 @@
 <br>
 
 [![CI](https://github.com/cdburgess75/SetList69/actions/workflows/check.yml/badge.svg)](https://github.com/cdburgess75/SetList69/actions/workflows/check.yml)
-[![Version](https://img.shields.io/badge/version-2026.08.26.002-informational?style=flat-square)](#versioning)
+[![Version](https://img.shields.io/badge/version-2026.08.26.004-informational?style=flat-square)](#versioning)
 [![PWA](https://img.shields.io/badge/PWA-installable-5A0FC8?style=flat-square)](#save-it-to-your-phone)
 [![Offline](https://img.shields.io/badge/offline-first-2ea043?style=flat-square)](#features)
 [![Runtime deps](https://img.shields.io/badge/runtime_dependencies-0-f5a623?style=flat-square)](#tech-stack)
@@ -85,6 +85,19 @@ The whole thing is a single `setlist69.html` file. No framework, no build step, 
 - **Dark and light themes**, both held at or above WCAG AA contrast, with real pinch-zoom and screen-reader labels throughout.
 
 ---
+
+## Sending a song to a bandmate
+
+Open a song → **⚙** → **Share this song** (or long-press it in the library). You get a link with the
+whole chart — chords, sections, key, stage banter — packed into it. Text it, email it, AirDrop it.
+Whoever opens it is asked whether to add it to their library.
+
+Nothing is uploaded anywhere: the song rides in the URL's `#fragment`, which browsers never send to
+a server. There's no account and no backend to sync through.
+
+> **On an installed iPhone/iPad app,** open **≡ → Add a song from a link** and paste the link there.
+> Tapping a link opens Safari, and iOS gives an installed home-screen app its own separate storage —
+> so a tapped link would land in a copy of the app you don't use.
 
 ## Tech stack
 

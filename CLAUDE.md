@@ -296,7 +296,30 @@ v2026.08.26.002  Pre-fix charts self-repair at render. The .21.004 cleanup runs 
                  monospace) for guitar-tab rows. **Slide rewrites must stay LENGTH-PRESERVING**
                  (`slide`→5 spaces, `s`→1 space) in BOTH paths: `pairToSegs` aligns chords by
                  column, so a shortened chord line drops every chord onto the first word.
+v2026.08.26.003  Share a song as a LINK. `shareSong()` packs `{app,kind:"song",version:1,song}` into
+                 the URL **fragment** (never sent to a server, so a shared chart never reaches a
+                 Pages access log — do NOT "simplify" this to a `?query=`), deflate-raw'd via
+                 `CompressionStream` (`z.` tag; `j.` = plain-JSON fallback). A full chart ≈800 chars.
+                 Share from `#dockSheet` or the long-press menu. **Two receive paths, both needed:**
+                 `maybeImportFromLink()` in `boot()` reads a `#s=` fragment (always confirms, then
+                 strips the hash so a reload can't re-prompt), and ≡ → "Add a song from a link"
+                 takes a pasted URL — on iOS an installed A2HS app has storage SEPARATE from
+                 Safari's, so a *tapped* link lands in a copy of the app the owner never opens, and
+                 pasting is the only route that reaches the installed one. Incoming songs are
+                 untrusted input: `mergeSetImport`'s coerce/clamp/fresh-id shape. `index.html` now
+                 redirects in script — a meta refresh DROPS the fragment.
+v2026.08.26.004  Showcase restored: House of the Rising Sun grows from a 4-line stub to a full
+                 arrangement (intro/solo/outro bar rows, five verses, `{soc}` chorus, section
+                 headings, banter). `retireShowcase()` dropped Danny Boy in .26.001 and left the app
+                 with **no** worked example. One-time `upgradeShowcase()` (guard `state.showcaseV2`)
+                 reaches existing libraries but replaces the body ONLY if it still matches the old
+                 stub exactly — an owner-edited copy is never overwritten. Also: `restoreData`'s
+                 `toast("Restored")` had been swallowed into a trailing `//` comment and never ran.
 ```
+
+> **Note:** the changelog comment at the top of `setlist69.html` is missing entries
+> `v2026.08.21.001` – `v2026.08.26.002`; they live only in this file. Backfill from here if you
+> want the two in sync.
 
 A GitHub Actions workflow (`.github/workflows/check.yml`) enforces the version discipline on every push: it syntax-checks the extracted inline script and `sw.js`, **fails if the `<small>` brand version ≠ `sw.js` CACHE version**, and fails on duplicate element ids in the markup.
 
@@ -527,6 +550,18 @@ Filename: `setlist69-backup-YYYY-MM-DD.json`. Payload: full `state`.
 
 **Not supported:** `.onsongarchive` / `.onsongbook` (proprietary binary), `.backup` (ZIP but SQLite inside). Bulk OnSong export path: export individual songs as `.onsong`, zip them, import the zip.
 
+**Share one song as a link** — `shareSong(id)` → `songToLink(song)` builds
+`<app-url>#s=<tag>.<base64url>`, where the payload is `{app:"setlist69",kind:"song",version:1,song}`
+and `tag` is `z` (deflate-raw via `CompressionStream`) or `j` (plain JSON when that API is missing).
+**It must stay a fragment** — a fragment is never transmitted to the server, so a shared chart never
+lands in a GitHub Pages access log; a `?query=` would break the no-server constraint in spirit.
+Received two ways, and **both are load-bearing**: `maybeImportFromLink()` (called from `boot()`)
+handles a `#s=` fragment on open, and ≡ → *Add a song from a link* accepts a pasted URL — on iOS an
+installed A2HS app has storage separate from Safari's, so a tapped link imports into a copy of the
+app the owner never uses. Either way `offerSharedSong()` confirms first and `addSharedSong()`
+sanitises (coerce every field, clamp `capo`/`defaultTranspose`, fresh `newSongId()`, payload id
+ignored). Unlike a file import, a link carries **`banter`** — `parseImport` has no field for it.
+
 **Search & paste modal** (`pasteModal`) — editor has a "Find chords" button that opens this. User types a song name, opens one of 6 linked sites in a new tab (Chordie, E-Chords, Cifraclub, AZLyrics, Genius, Google), copies the result, pastes into the textarea, taps Import. `parseImport()` handles the rest. There is no server-side proxy — CORS prevents fetching arbitrary external sites from the browser; the manual copy-paste step is intentional.
 
 -----
@@ -620,6 +655,8 @@ Editor:        openEditor  closeEditor  saveSong
 Context/dialogs: openSongContext  closeSongContext  openAdder  closeAdder  showPrompt  showConfirm
                  closeModal  loadPlayed  savePlayed
 Backup/share:  saveJsonFile  exportData  shareApp  shareSetlist  restoreData  mergeSetImport
+Song links:    b64urlEnc  b64urlDec  streamBytes  songToLink  linkToSong  shareSong
+               addSharedSong  offerSharedSong  maybeImportFromLink
 Import:        parseImport  expandFiles  unzip  parseOpenSong
 PWA:           showUpdateBanner  maybeShowUpdatePill  maybeShowInstallBanner  isStandalone  dismissInstall
 ```
@@ -648,7 +685,23 @@ No test framework — verification is manual:
 
 **Shipped:** the **per-song `banter` field** (v2026.07.19.003) — `song.banter`, an editor input (`#fBanter`), and a `.svbanter` line (accent, italic) under the title in the performance view (`renderSheet` reads `song.banter`, not `meta`). The Doubloon Bayou Band interim workaround (banter stuffed into `sub`) is migrated by the one-time, idempotent `migrateBanter()` in `boot()` — guarded by `state.bantersMigrated`, it **moves** (not deletes) `sub`→`banter` for that set's songs when `banter` is empty, and no-ops on any device without that set. Safe to delete once every device has booted past it.
 
-**Showcase song (v2026.07.19.005):** `addShowcaseSong()` (guarded by `state.showcaseAdded`, called once from `boot()`) adds a perfectly-formatted demo song — **"Danny Boy"** (id `danny`) — plus a `★ Showcase` set (id `showcase`). **Legal basis:** it is public domain — Frederic Weatherly's 1913 lyrics + the traditional "Londonderry Air" (composer unknown) — the only kind of full song safe to ship. Do **not** hardcode a copyrighted song here. Idempotent and delete-safe (the flag stops re-adding, so removing the song/set sticks); reaches existing libraries as well as fresh installs.
+**Showcase song (v2026.08.26.004):** the one fully-worked example in the app is
+**House of the Rising Sun** (seed id `hr`) — traditional, **public domain**, which is the only kind
+of song safe to ship in a repo that is public and served publicly by GitHub Pages. It exists to show
+what a well-formatted chart looks like: `{c:}` section headings, bar-only rows for intro/solo/outro,
+a `{soc}`/`{eoc}` chorus, a `banter` line, and chords that all resolve to fingering diagrams.
+
+`upgradeShowcase()` (one-time, guarded by `state.showcaseV2`, called from `boot()`) carries it to
+libraries that already exist, since `seed()` only runs on a fresh install. It replaces the body
+**only when it still matches `HR_STUB_BODY` exactly** — if the owner edited their copy, theirs
+wins. Never make this migration unconditional; overwriting someone's edited chart breaks design
+priority #1.
+
+*History:* the previous showcase was Danny Boy (v2026.07.19.005), also public domain, retired by
+`retireShowcase()` in v2026.08.26.001 — which left the app with no example at all until .26.004.
+
+**Do not hardcode a copyrighted song here.** Requests to do so are answered with a **song link**
+(§8): the chart travels in the link's own payload and never enters the repo.
 
 **Explicitly out of scope (by design):** cloud sync and any built-in online song catalog. Moving songs between devices is handled by backup-to-file.
 
