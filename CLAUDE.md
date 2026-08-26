@@ -273,6 +273,16 @@ v2026.08.21.003  Song view drops the header title: `#headerTitle` hidden on `nam
                  the full-size `#svTitle` sits right below it and is the tap-to-edit control, so
                  the truncated header copy was duplication eating width. The setSongs screen
                  keeps its header title (the set name appears nowhere else there).
+v2026.08.21.004  Chord-site paste import fixed. `[Verse]`/`[Chorus]` headers used to satisfy
+                 `hasInline`, so section labels rendered as chord pills AND every chords-above
+                 line fell through to plain lyrics (the Angel Eyes bug). Four changes:
+                 `parseImport` rewrites a bare bracketed non-chord label — trailing `(x4)` kept —
+                 to `{c:…}`; `hasInline` now requires a bracket whose contents `looksChord`
+                 (rescues already-saved songs); the OnSong title/artist sniffer skips `{…}` lines
+                 so a converted header is not eaten as the title; slide shorthand
+                 (`B slide C#`, `G#sA`) normalises to two real chords **at import** — a fused
+                 token would transpose to nonsense (`G#sA` +2 → `A#sA`). `stripNotesBtn` also
+                 drops guitar-tab rows and `Page n/m`.
 ```
 
 A GitHub Actions workflow (`.github/workflows/check.yml`) enforces the version discipline on every push: it syntax-checks the extracted inline script and `sw.js`, **fails if the `<small>` brand version ≠ `sw.js` CACHE version**, and fails on duplicate element ids in the markup.
