@@ -102,7 +102,14 @@ async function fresh(browser) {
     const page = await ctx.newPage();
     await page.goto(APP);
     await page.waitForTimeout(400);
-    await page.evaluate(() => openSongStandalone('danny'));
+    await page.evaluate(() => {
+      // Two columns need a song tall enough to fill them; build one from a seed song's verses
+      // (capture-only fixture, never persisted).
+      const seed = [...state.songs].sort((a, b) => b.body.length - a.body.length)[0];
+      state.songs.push({ id: '__demo', title: seed.title, sub: seed.sub, key: seed.key,
+                         body: [seed.body, seed.body, seed.body].join('\n\n') });
+      openSongStandalone('__demo');
+    });
     await page.waitForTimeout(300);
     await page.screenshot({ path: path.join(OUT, 'twocol.png') });
     await ctx.close();
