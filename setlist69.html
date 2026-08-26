@@ -236,6 +236,20 @@
                    libraries, replacing the body only if it still matches the old stub exactly, so
                    an owner-edited copy is never overwritten. Also: restoreData's toast("Restored")
                    had been swallowed into a trailing // comment and never ran.
+  v2026.08.26.005  Fix the screen going to sleep on a song (owner: "when I took away gig mode my
+                   power settings changed"). Correct diagnosis: navigator.wakeLock.request() hands
+                   back a WakeLockSentinel that the browser AUTO-RELEASES whenever the page hides,
+                   but `wakeLock` kept pointing at the dead sentinel - so the guard
+                   `if(!wakeLock)requestWake()` was never true again and, from the FIRST background/
+                   foreground cycle on, the app held no lock at all on every screen. Masked until
+                   v2026.08.21.001 because show() used to re-request on each navigation and gig mode
+                   held its own; making the lock app-wide left the broken guard as the only path.
+                   requestWake() now tests `.released`, nulls the handle on the sentinel's release
+                   event, and self-guards (so a redundant call is a no-op); visibilitychange
+                   re-requests unconditionally; openCurrent() and startScroll() re-assert it.
+                   Also removed: dead releaseWake() (no call sites) and the orphaned gig-mode
+                   comment block. Reproduced with a stubbed wakeLock first - 8 failing assertions
+                   before, 11 passing after.
 -->
 <html lang="en">
 <head>
@@ -569,7 +583,7 @@
 <div class="app">
   <header>
     <button class="back" id="backBtn" style="display:none" aria-label="Back">‹ <span id="backLabel">Back</span></button>
-    <div class="brand" id="brand"><span class="dot"></span>SetList69<small>v2026.08.26.004</small></div>
+    <div class="brand" id="brand"><span class="dot"></span>SetList69<small>v2026.08.26.005</small></div>
     <div class="htitle" id="headerTitle" style="display:none"></div>
     <div class="spacer"></div>
     <button class="iconbtn" id="updateHdr" title="Update ready" aria-label="Update ready — refresh" hidden>⟳</button>
@@ -1160,6 +1174,7 @@ function openSongInSet(index){const sl=state.setlists.find(s=>s.id===curSetlist)
 function openSongStandalone(id){curIndex=-1;curSongId=id;curSetTranspose=0;openCurrent();}
 function openCurrent(){
   const s=state.songs.find(x=>x.id===curSongId);if(!s)return;
+  requestWake();   // never sleep on a song - idempotent, no-ops when the lock is already live
   capoVal=s.capo||0;
   transpose=(s.defaultTranspose||0)+curSetTranspose-capoVal;stopScroll();document.getElementById("trVal").textContent=(transpose>0?"+":"")+transpose;
   renderSheet(s);show("song");document.getElementById("songView").scrollTop=0;
@@ -1201,7 +1216,7 @@ function prevSong(){
 }
 
 /* ===== auto-scroll ===== */
-function startScroll(){scrolling=true;scrollAccum=0;const b=document.getElementById("scrollBtn");b.classList.add("playing");b.textContent="❚❚";
+function startScroll(){scrolling=true;scrollAccum=0;requestWake();const b=document.getElementById("scrollBtn");b.classList.add("playing");b.textContent="❚❚";
   const v=document.getElementById("songView");let last=performance.now();
   function step(t){if(!scrolling)return;const dt=t-last;last=t;scrollAccum+=(scrollSpeed*0.012)*dt;
     if(scrollAccum>=1){const px=Math.floor(scrollAccum);v.scrollTop+=px;scrollAccum-=px;}
@@ -1236,21 +1251,29 @@ const updateScrollProg=(function(){
   return kick;
 })();
 
-/* ===== wake lock ===== */
-async function requestWake(){try{if("wakeLock"in navigator)wakeLock=await navigator.wakeLock.request("screen");}catch(e){}}
-function releaseWake(){try{if(wakeLock){wakeLock.release();wakeLock=null;}}catch(e){}}
+/* ===== wake lock =====
+   Wide awake: the whole app holds the screen-wake lock while visible (owner: a stand-mounted device
+   must never sleep, whichever screen it sits on).
+
+   THE TRAP (fixed v2026.08.26.005): navigator.wakeLock.request() returns a WakeLockSentinel, and the
+   browser AUTO-RELEASES it every time the page hides - but our variable keeps pointing at the dead
+   sentinel. The old guard was `if(!wakeLock)requestWake()`, which was therefore never true again, so
+   from the first background/foreground cycle onward the app held NO lock and the screen slept on
+   every screen, song view included. Test `.released`, never the handle for null. */
+async function requestWake(){
+  try{
+    if(!("wakeLock" in navigator))return;
+    if(wakeLock&&!wakeLock.released)return;            // already holding a LIVE lock - no-op
+    wakeLock=await navigator.wakeLock.request("screen");
+    wakeLock.addEventListener("release",()=>{wakeLock=null;});  // OS took it back; let the next request run
+  }catch(e){}                                          // refused (low battery / no permission) - carry on unlocked
+}
 document.addEventListener("visibilitychange",()=>{
-  /* Wide awake: the whole app holds the screen-wake lock while visible (owner: a stand-mounted
-     device must never sleep, whichever screen it sits on). The OS releases it on hide. */
-  if(document.visibilityState==="visible"){if(!wakeLock)requestWake();}
-  else flushPersist();   // backgrounded — commit any pending save before the OS can freeze us
+  // requestWake() self-guards now, so re-request unconditionally rather than testing the handle.
+  if(document.visibilityState==="visible")requestWake();
+  else flushPersist();   // backgrounded - commit any pending save before the OS can freeze us
 });
 window.addEventListener("pagehide",flushPersist);
-
-/* ===== fullscreen "gig mode" =====
-   Immersive performance view: request browser fullscreen where supported (Android/desktop/iPad —
-   an installed iOS PWA is already fullscreen), hide the header strip for extra lyric space, and hold
-   the wake lock. The existing swipe ‹ › still moves through the set. Exit via ⛶, Esc, or leaving. */
 
 /* ===== editor ===== */
 function openEditor(id,ret){editingId=id;editorReturn=ret||screen;

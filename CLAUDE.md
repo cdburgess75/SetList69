@@ -315,6 +315,18 @@ v2026.08.26.004  Showcase restored: House of the Rising Sun grows from a 4-line 
                  reaches existing libraries but replaces the body ONLY if it still matches the old
                  stub exactly — an owner-edited copy is never overwritten. Also: `restoreData`'s
                  `toast("Restored")` had been swallowed into a trailing `//` comment and never ran.
+v2026.08.26.005  Fix the screen sleeping on a song (owner: "when I took away gig mode my power
+                 settings changed" — correct, and it was a bug, not a setting). A
+                 `WakeLockSentinel` is **auto-released by the browser every time the page hides**,
+                 but `wakeLock` kept pointing at the dead sentinel, so the guard
+                 `if(!wakeLock)requestWake()` was never true again — from the FIRST background/
+                 foreground cycle the app held no lock at all, on every screen. Masked until
+                 .21.001, when `show()` still re-requested per navigation and gig mode held its own;
+                 going app-wide left the broken guard as the only re-acquire path. `requestWake()`
+                 now tests `.released`, nulls the handle on the sentinel's `release` event and
+                 self-guards; `visibilitychange` re-requests unconditionally; `openCurrent()` and
+                 `startScroll()` re-assert. Dead `releaseWake()` and the orphaned gig-mode comment
+                 removed. Reproduced against a stubbed `wakeLock` first: 8 failing, then 11 passing.
 ```
 
 > **Note:** the changelog comment at the top of `setlist69.html` is missing entries
@@ -382,7 +394,7 @@ Single-page app with a manual screen router. Layout is a flex column (`.app`): a
 | `pasteModal` | Search-and-paste lyrics assistant (opens chord sites, parses pasted text). |
 | `dockSheet` | ⚙ song-controls sheet: transpose, ♯/♭, font/fit, edit (edit hidden in stage mode). |
 
-**Navigation** is driven by `show(name)` where `name` ∈ `setlists | setSongs | song`. It toggles `.show`, swaps the header, manages the wake lock, and stops auto-scroll on leave. `goBack()` implements contextual back.
+**Navigation** is driven by `show(name)` where `name` ∈ `setlists | setSongs | song`. It toggles `.show`, swaps the header, and stops auto-scroll on leave. (It no longer touches the wake lock — that has been app-wide since v2026.08.21.001; see §9.) `goBack()` implements contextual back.
 
 **Navigation state globals:**
 
@@ -588,7 +600,9 @@ Globals: `transpose` (semitones, 0 on song open), `preferFlats` (bool), `fontSiz
 
 **Gesture debug overlay (v2026.08.13.002):** 5 quick taps on the version tag (`.brand small`) toggle `#gestureDbg`, a fixed, `pointer-events:none` readout of the last ~6 touch events seen at document level (type, target, dx/dy) plus screen name and rendered column count. Session-only, never persisted. Exists so a dead gesture on a real device can be reported with the actual event stream — ask the owner to 5-tap, swipe once, and read back the overlay.
 
-**Wake lock (v2026.08.21.001 — app-wide):** acquired at `boot()` and re-acquired on `visibilitychange→visible` on ANY screen; never released between screens (the OS drops it on hide). The owner runs the app on a stand all night — it must not sleep anywhere.
+**Wake lock (app-wide; sentinel trap fixed v2026.08.26.005):** acquired at `boot()`, re-requested on every `visibilitychange→visible` on ANY screen, and re-asserted by `openCurrent()` and `startScroll()`. The owner runs the app on a stand all night — it must not sleep anywhere.
+
+> **Never test the handle for null.** `navigator.wakeLock.request()` returns a `WakeLockSentinel` that the browser **auto-releases whenever the page hides**, leaving `wakeLock` pointing at a dead object. The original guard `if(!wakeLock)requestWake()` was therefore never true after the first background cycle, and the app silently held no lock at all. `requestWake()` now checks **`wakeLock.released`**, attaches a `release` listener that nulls the handle, and self-guards so redundant calls are free. There is no `releaseWake()` — nothing releases it deliberately; the OS does. Regression cover: `test-wake.js` stubs `navigator.wakeLock` with a sentinel that auto-releases on hide.
 
 **Dock layout (v2026.07.04.004):** the dock keeps only the between-songs-frequent controls with ≥2.6rem targets — prev/pos/next, play/pause (`scrollBtn`), speed −/+, and a `⚙` (`dockMore`) button. Transpose, `♯/♭`, font (`A−`/`fit`/`A+`) and `✎ Edit` live in `#dockSheet`, a `.modal.bottom` opened by `⚙`. **The controls kept their original ids**, so all handlers, boot wiring, and `openCurrent`'s set-nav hide still work after the DOM move — don't rename them. `openDockSheet()` hides `#editSong` when `stageMode` is on.
 
@@ -650,7 +664,7 @@ Router/nav:    show  goBack
 List renders:  renderSetlists  renderSetSongs  renderAllSongs  renderPicker  renderAdder
 Song view:     openSongInSet  openSongStandalone  openCurrent  reRender  libraryIds
                nextSong  prevSong  startScroll  stopScroll  updateScrollProg
-               requestWake  releaseWake  openDockSheet  closeDockSheet  nudgeFont
+               requestWake  openDockSheet  closeDockSheet  nudgeFont
 Editor:        openEditor  closeEditor  saveSong
 Context/dialogs: openSongContext  closeSongContext  openAdder  closeAdder  showPrompt  showConfirm
                  closeModal  loadPlayed  savePlayed
