@@ -289,6 +289,13 @@ v2026.08.26.001  Showcase retired: `addShowcaseSong()` → one-time `retireShowc
                  **§14's "showcase song" entry is now historical** — there is no shipped demo song,
                  and the rule it existed to honour still stands: never hardcode a copyrighted song
                  into the source, which is a public repo served publicly by GitHub Pages.
+v2026.08.26.002  Pre-fix charts self-repair at render. The .21.004 cleanup runs only at import, so
+                 songs already in a library kept raw `[Verse]` labels, `G#sA` slides and tab rows
+                 as literal lyrics. `parseSong` now converts a bare bracketed non-chord label to a
+                 heading, resolves slide shorthand, and emits a `tab` line type (`.tabline`,
+                 monospace) for guitar-tab rows. **Slide rewrites must stay LENGTH-PRESERVING**
+                 (`slide`→5 spaces, `s`→1 space) in BOTH paths: `pairToSegs` aligns chords by
+                 column, so a shortened chord line drops every chord onto the first word.
 ```
 
 A GitHub Actions workflow (`.github/workflows/check.yml`) enforces the version discipline on every push: it syntax-checks the extracted inline script and `sw.js`, **fails if the `<small>` brand version ≠ `sw.js` CACHE version**, and fails on duplicate element ids in the markup.
