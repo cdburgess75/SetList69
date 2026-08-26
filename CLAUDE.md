@@ -283,6 +283,12 @@ v2026.08.21.004  Chord-site paste import fixed. `[Verse]`/`[Chorus]` headers use
                  (`B slide C#`, `G#sA`) normalises to two real chords **at import** — a fused
                  token would transpose to nonsense (`G#sA` +2 → `A#sA`). `stripNotesBtn` also
                  drops guitar-tab rows and `Page n/m`.
+v2026.08.26.001  Showcase retired: `addShowcaseSong()` → one-time `retireShowcase()`, removing the
+                 seeded Danny Boy song and `★ Showcase` set from existing libraries (not just new
+                 installs) and scrubbing dangling `songIds`. Guarded by `state.showcaseRetired`.
+                 **§14's "showcase song" entry is now historical** — there is no shipped demo song,
+                 and the rule it existed to honour still stands: never hardcode a copyrighted song
+                 into the source, which is a public repo served publicly by GitHub Pages.
 ```
 
 A GitHub Actions workflow (`.github/workflows/check.yml`) enforces the version discipline on every push: it syntax-checks the extracted inline script and `sw.js`, **fails if the `<small>` brand version ≠ `sw.js` CACHE version**, and fails on duplicate element ids in the markup.

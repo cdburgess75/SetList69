@@ -548,7 +548,7 @@
 <div class="app">
   <header>
     <button class="back" id="backBtn" style="display:none" aria-label="Back">‹ <span id="backLabel">Back</span></button>
-    <div class="brand" id="brand"><span class="dot"></span>SetList69<small>v2026.08.21.004</small></div>
+    <div class="brand" id="brand"><span class="dot"></span>SetList69<small>v2026.08.26.001</small></div>
     <div class="htitle" id="headerTitle" style="display:none"></div>
     <div class="spacer"></div>
     <button class="iconbtn" id="updateHdr" title="Update ready" aria-label="Update ready — refresh" hidden>⟳</button>
@@ -2085,22 +2085,17 @@ function migrateBanter(){
   if(dbb)for(const id of dbb.songIds){const so=state.songs.find(x=>x.id===id);if(so&&so.sub&&!so.banter){so.banter=so.sub;so.sub="";n++;}}
   state.bantersMigrated=true;return n;
 }
-/* One-time, idempotent: seed a perfectly-formatted public-domain showcase song ("Danny Boy" —
-   Frederic Weatherly's 1913 lyrics + the traditional Londonderry Air, both public domain) into the
-   library, plus a tiny "★ Showcase" set to find it. Guarded by state.showcaseAdded; reaches existing
-   libraries as well as fresh installs. Deleting the song/set sticks (the flag stops it re-adding). */
-function addShowcaseSong(){
-  if(state.showcaseAdded)return false;
-  const add=!state.songs.some(s=>s.id==="danny");
-  if(add){
-    state.songs.push({id:"danny",title:"Danny Boy",sub:"Traditional · Londonderry Air",
-      banter:"Slow and out of tempo — let the last 'I love you so' ring before the final chord.",
-      key:"C",capo:0,
-      body:"Oh [C]Danny [F]Boy, the [C]pipes, the [G]pipes are [C]calling\nFrom [C]glen to [Am]glen, and [F]down the [G]mountain [C]side\nThe [C]summer's [F]gone, and [Am]all the [Em]roses [Am]falling\n'Tis [C]you, 'tis [G]you must [C]go and [G7]I must [C]bide.\n\nBut [C]come ye [G]back when [C]summer's [F]in the [C]meadow\nOr [Am]when the [Em]valley's [Dm]hushed and [G]white with [G7]snow\n'Tis [C]I'll be [F]here in [C]sunshine [Am]or in [F]shadow\nOh [C]Danny [G]Boy, oh [Dm]Danny [G]Boy, I [C]love you [F]so.[C]"});
-    if(!state.setlists.some(sl=>sl.id==="showcase"))
-      state.setlists.push({id:"showcase",name:"★ Showcase",notes:"A perfectly formatted public-domain classic — tap a chord for its shape, or hit 123 for Nashville numbers.",setTranspose:0,songIds:["danny"]});
-  }
-  state.showcaseAdded=true;return add;
+/* One-time: retire the seeded "Danny Boy" showcase song and its "★ Showcase" set (owner asked for
+   it gone — the app has their real catalogue in it now). Only touches the reserved seed id, runs
+   once via state.showcaseRetired, and anything the owner created is untouched. A copy is always
+   recoverable from a backup file if it is ever wanted back. */
+function retireShowcase(){
+  if(state.showcaseRetired)return false;
+  const had=state.songs.some(s=>s.id==="danny");
+  state.songs=state.songs.filter(s=>s.id!=="danny");
+  state.setlists=state.setlists.filter(sl=>sl.id!=="showcase");
+  for(const sl of state.setlists)sl.songIds=(sl.songIds||[]).filter(id=>id!=="danny");
+  state.showcaseRetired=true;return had;
 }
 async function boot(){
   // Ask the browser to keep our IndexedDB from being evicted under storage pressure (design priority #1).
@@ -2119,7 +2114,7 @@ async function boot(){
   if(state.nashville!=null)nashville=state.nashville;
   if(state.chordChart!=null)chordChart=state.chordChart;
   if(!state.bantersMigrated){migrateBanter();persist();}
-  if(!state.showcaseAdded){addShowcaseSong();persist();}
+  if(!state.showcaseRetired){retireShowcase();persist();}
   applyTheme();document.getElementById("speedVal").textContent=scrollSpeed;
   document.getElementById("flatBtn").classList.toggle("on",preferFlats);
   document.getElementById("nashBtn").classList.toggle("on",nashville);

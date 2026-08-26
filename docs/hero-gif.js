@@ -15,9 +15,10 @@
  * frame after the first is diffed against its predecessor so unchanged pixels are
  * written as transparent. Both keep the file small.
  *
- * It deliberately picks the longest song in the library (the showcase "Danny Boy")
- * — the short seed songs fit the viewport whole, so auto-scroll has nothing to
- * scroll and the motion frames come out identical.
+ * The seed songs all fit the viewport whole, so auto-scroll would have nothing to
+ * scroll and every motion frame would come out identical. The capture therefore
+ * builds its own tall fixture by repeating a seed song's verses — in page memory
+ * only, never persisted and never shipped.
  */
 const { chromium } = require('playwright');
 const { GIFEncoder, quantize, applyPalette } = require('gifenc');
@@ -47,8 +48,17 @@ const shoot = async (page, delay) => frames.push({ buf: await page.screenshot(),
   await shoot(page, 1200);
 
   // 2. Into the set holding the longest song, so step 4 has something to scroll.
+  //    No shipped song is long enough on its own (the demo showcase song was retired), so the
+  //    capture builds its own fixture by repeating a seed song's verses. Capture-only — it lives
+  //    in the page's memory for the length of this run and is never persisted.
   const target = await page.evaluate(() => {
-    const song = [...state.songs].sort((a, b) => b.body.length - a.body.length)[0];
+    const seed = [...state.songs].sort((a, b) => b.body.length - a.body.length)[0];
+    const demo = { id: '__demo', title: seed.title, sub: seed.sub, key: seed.key,
+                   banter: 'Hold the last line — let it ring.',
+                   body: [seed.body, seed.body, seed.body].join('\n\n') };
+    state.songs.push(demo);
+    state.setlists[0].songIds.push('__demo');
+    const song = demo;
     const set = state.setlists.find(s => s.songIds.includes(song.id));
     if (!set) return null;
     curSetlist = set.id;
