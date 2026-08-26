@@ -548,7 +548,7 @@
 <div class="app">
   <header>
     <button class="back" id="backBtn" style="display:none" aria-label="Back">‹ <span id="backLabel">Back</span></button>
-    <div class="brand" id="brand"><span class="dot"></span>SetList69<small>v2026.08.21.003</small></div>
+    <div class="brand" id="brand"><span class="dot"></span>SetList69<small>v2026.08.21.004</small></div>
     <div class="htitle" id="headerTitle" style="display:none"></div>
     <div class="spacer"></div>
     <button class="iconbtn" id="updateHdr" title="Update ready" aria-label="Update ready — refresh" hidden>⟳</button>
@@ -887,7 +887,13 @@ function esc(s){return (s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replac
 function parseSong(song){
   const meta={title:song.title||"",sub:song.sub||"",key:song.key||""};
   const lines=(song.body||"").replace(/\r/g,"").split("\n");
-  const out=[];let inChorus=false;const hasInline=/\[[^\]]+\]/.test(song.body||"");
+  /* hasInline must require a bracket that holds a REAL chord. Chord sites mark sections as
+     [Verse] / [Chorus] / [Instrumental]; treating those as inline chords used to flip the whole
+     song into inline mode, which turned the labels into pills named "Verse" AND made every
+     chords-above-lyrics line render as plain lyrics (v2026.08.21.004). Import rewrites such
+     labels to comments, but songs already saved with them need this guard too. */
+  const out=[];let inChorus=false;
+  const hasInline=(song.body||"").match(/\[([^\]]+)\]/g)?.some(m=>looksChord(m.slice(1,-1).trim()))||false;
   for(let i=0;i<lines.length;i++){
     let line=lines[i];
     const dir=line.trim().match(/^\{\s*([a-z_]+)\s*:?\s*(.*?)\s*\}$/i);
@@ -1502,6 +1508,23 @@ function parseImport(text,fallbackName){
   if((text||"").trimStart().startsWith("<")){const r=parseOpenSong(text,fallbackName);if(r)return r;}
   text=cleanEmbeddedChords(text);
   let lines=(text||"").replace(/\r/g,"").split("\n");
+  /* Chord sites (Ultimate Guitar and friends) label sections as [Verse] / [Chorus] /
+     [Instrumental]. Left alone those read as inline chords and poison the whole song — rewrite a
+     bare bracketed NON-chord label to a ChordPro comment. Guarded by looksChord so a real
+     "[Am]" line is untouched. */
+  lines=lines.map(l=>{const m=l.trim().match(/^\[([^\]]+)\]\s*(.*)$/);
+    if(!m||looksChord(m[1].trim()))return l;
+    const tail=m[2].trim();                      // keep "(x4)" / "x2" riding with the label
+    if(tail&&!/^(\(.*\)|x\s*\d+)$/i.test(tail))return l;
+    return "{c:"+(m[1].trim()+(tail?" "+tail:""))+"}";});
+  /* Slide shorthand -> the two chords it means, so both transpose and get fingerings. A fused
+     "G#sA" token would keep root G# with suffix "sA" and transpose to nonsense ("A#sA").
+     Only applied where the result is a genuine chord line, so lyrics saying "slide" are safe. */
+  lines=lines.map(l=>{
+    if(!l.trim()||/^\{/.test(l.trim()))return l;
+    const n=l.replace(/\b([A-G][#b]?)\s+slide\s+([A-G][#b]?)\b/g,"$1 $2")
+             .replace(/\b([A-G][#b]?)s([A-G][#b]?)\b/g,"$1 $2");
+    return (n!==l&&isChordLine(n))?n:l;});
   let title="",sub="",key="";
   // 1) lift ChordPro directives, removing those lines
   lines=lines.filter(l=>{
@@ -1516,9 +1539,9 @@ function parseImport(text,fallbackName){
   const metaRe=/^([A-Za-z][A-Za-z0-9 #\/]*?)\s*:\s*(.*)$/;
   let i=0;while(i<lines.length&&lines[i].trim()==="")i++;
   // 2) OnSong plain header: first content line = title, next = artist
-  if(!title&&i<lines.length&&lines[i].trim()!==""&&!looksChordy(lines[i])&&!metaRe.test(lines[i])){title=lines[i].trim();lines.splice(i,1);}
+  if(!title&&i<lines.length&&lines[i].trim()!==""&&!looksChordy(lines[i])&&!metaRe.test(lines[i])&&!/^\{.*\}$/.test(lines[i].trim())){title=lines[i].trim();lines.splice(i,1);}
   while(i<lines.length&&lines[i].trim()==="")i++;
-  if(!sub&&i<lines.length&&lines[i].trim()!==""&&!looksChordy(lines[i])&&!metaRe.test(lines[i])){sub=lines[i].trim();lines.splice(i,1);}
+  if(!sub&&i<lines.length&&lines[i].trim()!==""&&!looksChordy(lines[i])&&!metaRe.test(lines[i])&&!/^\{.*\}$/.test(lines[i].trim())){sub=lines[i].trim();lines.splice(i,1);}
   // 3) consume known metadata at the top; keep everything else as body
   const known=["key","tempo","time","capo","duration","flow","copyright","ccli","book","number","year","keywords","topic","pages","midi","tags","album","subtitle","artist"];
   const body=[];let inBody=false;let capo=0;
@@ -1863,6 +1886,8 @@ document.getElementById("stripNotesBtn").addEventListener("click",()=>{
     const t=l.trim();
     if(t==='')return true;
     if(t.includes(':='))return false;
+    if(/^[eEADGB]b?\s*\|[-0-9hpbrx\/\\~|\s]*\|?\s*$/.test(t))return false;   // guitar tab row
+    if(/^Page\s*\d+\s*\/\s*\d+$/i.test(t))return false;                       // PDF page junk
     if(/^\([^)]*\)$/.test(t)&&!isChordLine(l)&&!/\[[^\]]+\]/.test(l))return false;
     return true;
   });
