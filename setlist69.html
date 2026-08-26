@@ -403,6 +403,7 @@
   .cc-cell.noshape{padding:.5rem .6rem;}   /* name-only cell for chords with no known fingering */
   .wgspace{display:inline-block;width:.32em;}         /* breakable gap between word-groups */
   .chorus{border-left:3px solid var(--accent);padding-left:.7rem;margin-left:-.1rem;}
+  .tabline{font-family:var(--mono);font-size:.62em;color:var(--muted);white-space:pre;overflow-x:auto;line-height:1.35;}
   .comment{color:var(--muted);font-style:italic;font-size:.7em;margin:.3rem 0 .5rem;font-family:var(--ui);}
   .swipehint{text-align:center;color:var(--faint);font-size:.7rem;font-family:var(--mono);margin-top:2rem;opacity:.6;transition:opacity .5s;}
   .modal.bottom{align-items:flex-end;}
@@ -548,7 +549,7 @@
 <div class="app">
   <header>
     <button class="back" id="backBtn" style="display:none" aria-label="Back">‹ <span id="backLabel">Back</span></button>
-    <div class="brand" id="brand"><span class="dot"></span>SetList69<small>v2026.08.26.001</small></div>
+    <div class="brand" id="brand"><span class="dot"></span>SetList69<small>v2026.08.26.002</small></div>
     <div class="htitle" id="headerTitle" style="display:none"></div>
     <div class="spacer"></div>
     <button class="iconbtn" id="updateHdr" title="Update ready" aria-label="Update ready — refresh" hidden>⟳</button>
@@ -906,6 +907,21 @@ function parseSong(song){
       else if(k==="comment"||k==="c")out.push({type:"comment",text:v});
       continue;}
     if(line.trim()===""){out.push({type:"blank"});continue;}
+    /* Repair pass for charts saved BEFORE the import cleanup existed (v2026.08.26.002). Their
+       stored body still holds raw [Verse] labels, "G#sA" slide shorthand and guitar-tab rows, and
+       an import-time fix cannot reach back for them — so handle it at render and the song heals
+       itself with no re-import. Slide rewrites are LENGTH-PRESERVING: pairToSegs aligns chords by
+       COLUMN, so shortening a chord line would slide every chord onto the wrong syllable. */
+    const bareLbl=line.trim().match(/^\[([^\]]+)\]\s*(\(.*\)|x\s*\d+)?\s*$/i);
+    if(bareLbl&&!looksChord(bareLbl[1].trim())){
+      out.push({type:"comment",text:bareLbl[1].trim()+(bareLbl[2]?" "+bareLbl[2].trim():"")});continue;}
+    if(/^[eEADGB]b?\s*\|[-0-9hpbrx\/\\~|\s]*\|?\s*$/.test(line.trim())){
+      out.push({type:"tab",text:line});continue;}
+    if(!hasInline){
+      const n=line.replace(/\b([A-G][#b]?)(\s+)slide(\s+)([A-G][#b]?)\b/g,"$1$2     $3$4")
+                  .replace(/\b([A-G][#b]?)s([A-G][#b]?)\b/g,"$1 $2");
+      if(n!==line&&isChordLine(n))line=n;
+    }
     if(hasInline&&/\[[^\]]+\]/.test(line)){out.push({type:"segs",segs:inlineToSegs(line),chorus:inChorus});}
     else if(!hasInline&&isChordLine(line)&&i+1<lines.length&&lines[i+1].trim()!==""&&!isChordLine(lines[i+1])){
       out.push({type:"segs",segs:pairToSegs(line,lines[i+1]),chorus:inChorus});i++;}
@@ -1025,6 +1041,7 @@ function renderSheet(song){
   for(const ln of r.lines){
     if(ln.type==="blank"){closeSect();continue;}
     if(ln.type==="comment"){sect+='<div class="comment">'+esc(ln.text)+'</div>';continue;}
+    if(ln.type==="tab"){sect+='<div class="tabline">'+esc(ln.text)+'</div>';continue;}
     sect+='<div class="ln '+(ln.chorus?"chorus":"")+'">'+renderLine(ln.segs)+'</div>';
   }
   closeSect();
@@ -1522,7 +1539,7 @@ function parseImport(text,fallbackName){
      Only applied where the result is a genuine chord line, so lyrics saying "slide" are safe. */
   lines=lines.map(l=>{
     if(!l.trim()||/^\{/.test(l.trim()))return l;
-    const n=l.replace(/\b([A-G][#b]?)\s+slide\s+([A-G][#b]?)\b/g,"$1 $2")
+    const n=l.replace(/\b([A-G][#b]?)(\s+)slide(\s+)([A-G][#b]?)\b/g,"$1$2     $3$4")
              .replace(/\b([A-G][#b]?)s([A-G][#b]?)\b/g,"$1 $2");
     return (n!==l&&isChordLine(n))?n:l;});
   let title="",sub="",key="";
