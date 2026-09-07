@@ -274,6 +274,26 @@
                    the DOM but display:none because CI greps it and APP_VERSION reads it, and the
                    5-tap gesture-debug trigger moved onto #aboutLine with it. Sheet renderer
                    verified byte-identical across all six seed songs.
+  v2026.09.07.002  Real-world charts render (owner screenshot: a ZZ Top chart with almost no
+                   coloured chords and no visible sections). Two defects, both in detection.
+                   (1) isChordLine required EVERY token to be a chord, so one mangled token took
+                   the whole line down to plain lyrics — "E G#dD#" lost its E, and a song pasted
+                   with damaged chords showed nearly none. Now a line qualifies when every token
+                   is a chord, a separator, a cue, or at least chord-SHAPED (starts A-G, no
+                   word-like run of 3+ lowercase after the root — so "G#dD#" and "C#d" pass while
+                   "Cause" and "Blackis" do not); at least one is a REAL chord; and real chords
+                   are at least half the musical tokens. That ratio is what keeps lyrics out —
+                   "A big deal" is one chord in three. Unrecognised tokens render as a neutral
+                   dashed pill (.unk) keeping their literal text, and are NEVER transposed or
+                   colour-coded: the root parser would read "G#dD#" as G# and shift only that.
+                   Inline cues ("E riff", "A (x4)") get a muted italic .cue pill instead.
+                   (2) Bare "Intro Riff:" / "Verse 1:" / "Chorus:" labels — what chord sites and
+                   OnSong actually emit — now become headings; only {c:...} did before, so the
+                   shipped showcase looked immaculate while every imported song's structure was
+                   invisible. The colon must be the LAST character, which excludes metadata
+                   ("Key: G" carries a value) and ordinary lyrics; chord lines win the tie.
+                   Both fixes are at RENDER time, so existing songs heal with no re-import.
+                   Seed songs verified byte-identical.
 -->
 <html lang="en">
 <head>
@@ -398,6 +418,12 @@
   .chev{color:var(--faint);font-size:1.1rem;}
   .num{font-family:var(--mono);color:var(--faint);font-size:.85rem;min-width:1.3rem;text-align:right;}
 
+  /* chord-line token we can't parse: neutral, outlined, obviously not a real chord */
+  .chordpill.unk{background:transparent;color:var(--faint);border:1px dashed var(--line);
+    box-shadow:none;font-weight:600;}
+  /* a performance cue on the chord line ("E riff") — muted, no border, clearly not a chord */
+  .chordpill.cue{background:transparent;color:var(--muted);border:none;box-shadow:none;
+    font-family:var(--ui);font-style:italic;font-weight:600;letter-spacing:0;}
   .pill{font-family:var(--mono);font-size:.72rem;font-weight:700;padding:.2rem .5rem;border-radius:7px;
     color:#fff;letter-spacing:.3px;white-space:nowrap;box-shadow:inset 0 0 0 1px #ffffff22;}
 
@@ -663,7 +689,7 @@
 <div class="app">
   <header>
     <button class="back" id="backBtn" style="display:none" aria-label="Back"><svg class="ico" aria-hidden="true"><use href="#i-back"/></svg><span id="backLabel">Back</span></button>
-    <div class="brand" id="brand"><span class="dot"></span>SetList69<small>v2026.09.07.001</small></div>
+    <div class="brand" id="brand"><span class="dot"></span>SetList69<small>v2026.09.07.002</small></div>
     <div class="htitle" id="headerTitle" style="display:none"></div>
     <div class="spacer"></div>
     <button class="iconbtn" id="updateHdr" title="Update ready" aria-label="Update ready — refresh" hidden><svg class="ico" aria-hidden="true"><use href="#i-refresh"/></svg></button>
@@ -978,7 +1004,29 @@ function transposeChord(ch){if(!ch)return ch;return ch.split("/").map(p=>{const 
 // marker. Recognises Cmaj7, C7sus4, Cm7b5, Bbm7b5, D7#9, Cadd9, F°, Bø, slash chords, Gm! — while
 // still rejecting ordinary lyric words (used by isChordLine for chords-above detection + import).
 function looksChord(t){return /^[A-G][#b]?(?:maj|min|m|M|dim|aug|sus|add|°|ø|\+|-|[#b]?(?:2|4|5|6|7|9|11|13)|\([^)]*\))*(?:\/[A-G][#b]?)?[!*]?$/.test(t);}
-function isChordLine(line){const toks=line.trim().split(/\s+/).filter(Boolean);if(!toks.length)return false;let chords=0;for(const t of toks){if(looksChord(t))chords++;else if(/^[\/\-|]+$/.test(t))continue;else return false;}return chords>0;}
+/* Inline cues that sit on a chord line without being chords: "E riff", "A (x4)", "D 2x". */
+const CHORD_CUE=/^(\(.*\)|x\s*\d+|\d+\s*x|riff|solo|fill|break|tacet|hold|ring|let|only|repeat|out|end|tag|intro|outro|verse|chorus|bridge)$/i;
+/* "Chord-shaped" = could plausibly BE a chord: starts on A-G, no punctuation a chord never has,
+   and no word-like run of 3+ lowercase letters after the root ("Cause" and "Blackis" are words,
+   "G#dD#" and "C#d" are mangled chords). */
+function chordShaped(t){return /^[A-G][#b]?[A-Za-z0-9#b°ø+\-\/()]*$/.test(t)&&!/[a-z]{3}/.test(t.slice(1));}
+/* A single unrecognised token used to drop the WHOLE line to plain lyrics, taking its good chords
+   with it — a chart pasted with mangled chords ("E G#dD#") lost the E as well, and every chord in
+   the song vanished. Now a line is a chord line when every token is a chord, a separator, a cue, or
+   at least chord-shaped; at least one is a REAL chord; and real chords are at least half the
+   musical tokens. That last ratio is what keeps lyrics out: "A big deal" has one chord in three. */
+function isChordLine(line){
+  const toks=line.trim().split(/\s+/).filter(Boolean);if(!toks.length)return false;
+  let real=0,musical=0;
+  for(const t of toks){
+    if(/^[\/\-|]+$/.test(t))continue;
+    if(CHORD_CUE.test(t))continue;
+    musical++;
+    if(looksChord(t))real++;
+    else if(!chordShaped(t))return false;   // an actual word — this is a lyric line
+  }
+  return real>0&&real*2>=musical;
+}
 function pitchClass(key){const m=(key||"").match(CHORD_RE);return m&&m[1]in IDX?IDX[m[1]]:-1;}
 function keyColor(key){const pc=pitchClass(key);if(pc<0)return"#7a7160";const hue=(pc*30)%360;return"hsl("+hue+" 52% 42%)";}
 /* Nashville Number System: chord root -> scale degree relative to the key. Computed from the
@@ -1041,6 +1089,15 @@ function parseSong(song){
       out.push({type:"comment",text:bareLbl[1].trim()+(bareLbl[2]?" "+bareLbl[2].trim():"")});continue;}
     if(/^[eEADGB]b?\s*\|[-0-9hpbrx\/\\~|\s]*\|?\s*$/.test(line.trim())){
       out.push({type:"tab",text:line});continue;}
+    /* Bare section labels — "Intro Riff:", "Verse 1:", "Chorus:" — which is what chord sites and
+       OnSong actually emit. Only {c:...} used to become a heading, so the markers in real imported
+       songs stayed invisible while the shipped showcase looked immaculate. The colon must be the
+       LAST character: that excludes metadata rows ("Key: G" carries a value) and ordinary lyrics
+       (they carry sentence punctuation). Chord lines win the tie, so "E:" stays a chord. */
+    const secLbl=line.trim();
+    if(/^[A-Za-z][A-Za-z0-9 #'&.\/-]{0,38}:$/.test(secLbl)&&secLbl.split(/\s+/).length<=5
+       &&!isChordLine(secLbl.slice(0,-1))){
+      out.push({type:"comment",text:secLbl.slice(0,-1)});continue;}
     if(!hasInline){
       const n=line.replace(/\b([A-G][#b]?)(\s+)slide(\s+)([A-G][#b]?)\b/g,"$1$2     $3$4")
                   .replace(/\b([A-G][#b]?)s([A-G][#b]?)\b/g,"$1 $2");
@@ -1108,8 +1165,18 @@ function renderLine(segs){
   const lineHasChord=groups.some(g=>g.some(c=>c.chord));
   return groups.map(g=>{
     const inner=g.map(cell=>{
+      /* A token on the chord line that isn't a recognisable chord gets a neutral pill instead of a
+         pitch colour, and keeps its literal text: transposing or colouring it would be a lie (the
+         root parser would read "G#dD#" as G# and shift only that). It stays visible so a mangled
+         import can be spotted and fixed, rather than silently dropping the whole line to lyrics. */
+      const known=cell.raw?looksChord(cell.raw):false;
       const crow=lineHasChord
-        ? '<span class="c">'+(cell.chord?'<span class="chordpill" data-ch="'+esc(cell.raw)+'" style="background:'+keyColor(cell.chord)+'">'+((nashville&&nashKeyPc>=0)?nashPill(toNashville(cell.raw,nashKeyPc)):esc(cell.chord))+'</span>':'')+'</span>'
+        ? '<span class="c">'+(cell.chord?(known
+            ? '<span class="chordpill" data-ch="'+esc(cell.raw)+'" style="background:'+keyColor(cell.chord)+'">'+((nashville&&nashKeyPc>=0)?nashPill(toNashville(cell.raw,nashKeyPc)):esc(cell.chord))+'</span>'
+            : (CHORD_CUE.test(cell.raw)
+                ? '<span class="chordpill cue">'+esc(cell.raw)+'</span>'
+                : '<span class="chordpill unk" title="Not a recognised chord — tap the title to edit">'+esc(cell.raw)+'</span>'))
+          :'')+'</span>'
         : '';
       return '<span class="seg">'+crow+'<span class="l">'+(esc(cell.text)||"&nbsp;")+'</span></span>';
     }).join("");
@@ -1121,7 +1188,8 @@ function renderLine(segs){
 function retuneSheet(){
   const pills=document.querySelectorAll("#sheet .chordpill");
   const nash=nashville&&nashKeyPc>=0;
-  for(const p of pills){const raw=p.dataset.ch||"",t=transposeChord(raw);p.style.background=keyColor(t);
+  for(const p of pills){if(p.classList.contains("unk")||p.classList.contains("cue"))continue;   // literal text, never transposed
+    const raw=p.dataset.ch||"",t=transposeChord(raw);p.style.background=keyColor(t);
     if(nash)p.innerHTML=nashPill(toNashville(raw,nashKeyPc));else p.textContent=t;}
   renderChordChart();
   updateScrollProg();
@@ -1170,7 +1238,7 @@ function renderSheet(song){
   }
   closeSect();
   sheetRawChords=[];
-  for(const ln of r.lines)if(ln.type==="segs")for(const sg of ln.segs)if(sg.chord)sheetRawChords.push(sg.chord);
+  for(const ln of r.lines)if(ln.type==="segs")for(const sg of ln.segs)if(sg.chord&&looksChord(sg.chord))sheetRawChords.push(sg.chord);
   renderChordChart();
   const sheet=document.getElementById("sheet");sheet.innerHTML=html;sheet.style.setProperty("--sheet-size",fontSize+"rem");
 }

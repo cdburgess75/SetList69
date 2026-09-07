@@ -345,6 +345,17 @@ v2026.09.07.001  Visual pass — one icon language, real type hierarchy, readabl
                  `install()` in the long-press IIFE now takes the opener as its 3rd argument.
                  Played = a `✓` in the `.num` slot only. Version tag moved to `#aboutLine` in the
                  ≡ sheet; see §9 for why `.brand small` must stay in the DOM.
+v2026.09.07.002  Real-world charts render. `isChordLine` no longer requires every token to be a
+                 chord — one mangled token used to drop the whole line (and its good chords) to
+                 plain lyrics. New rule: every token is a chord, separator, cue, or **chord-shaped**
+                 (`chordShaped()`: starts A-G, no run of 3+ lowercase after the root); ≥1 real
+                 chord; and real chords ≥ half the musical tokens (that ratio is the lyric guard —
+                 "A big deal" is 1-in-3). Unrecognised tokens render as `.chordpill.unk` (neutral,
+                 dashed, literal text) and are **never transposed or pitch-coloured** — the root
+                 parser would read "G#dD#" as G#. Cues (`CHORD_CUE`: riff/solo/(x4)/2x…) render as
+                 `.chordpill.cue`. Also: bare `Intro Riff:` / `Verse 1:` / `Chorus:` labels become
+                 headings (colon must be the LAST character, excluding `Key: G`; chord lines win
+                 the tie). Both at RENDER time, so existing songs heal with no re-import.
 ```
 
 > **Note:** the changelog comment at the top of `setlist69.html` is missing entries
@@ -519,7 +530,15 @@ the used count — measure distinct `.sect` x-offsets to know what actually rend
 /^[A-G][#b]?(?:maj|min|m|M|dim|aug|sus|add|°|ø|\+|-|[#b]?(?:2|4|5|6|7|9|11|13)|\([^)]*\))*(?:\/[A-G][#b]?)?[!*]?$/
 ```
 
-`isChordLine(line)` — all tokens must be chords OR pure separators (`/`, `-`, `|`); at least one chord required. This handles "Cm / Bb / Dm - D" correctly.
+`isChordLine(line)` (rewritten v2026.09.07.002) — **tolerant of tokens it can't parse**, because real charts arrive with mangled chords and inline cues. A line qualifies when:
+
+1. every token is a real chord, a pure separator (`/ - |`), a cue (`CHORD_CUE`: `riff`, `solo`, `(x4)`, `2x`…), or at least **chord-shaped** — `chordShaped()`: starts on `A-G`, only chord-legal characters, and no run of 3+ lowercase letters after the root (so `G#dD#`, `C#d` pass; `Cause`, `Blackis`, `Don't` fail);
+2. **at least one token is a real chord**; and
+3. real chords are **at least half** the musical tokens.
+
+Rules 2 and 3 are the lyric guard — drop either and lines like "A big deal" (1 chord in 3) become chord rows. The old all-or-nothing rule meant one bad token dropped the line, its good chords included, to plain lyrics.
+
+**An unrecognised token must never be treated as a chord.** `renderLine` gives it `.chordpill.unk` (neutral, dashed, literal text), `retuneSheet` skips it, and `renderSheet` keeps it out of `sheetRawChords`. Transposing it would corrupt it: `CHORD_RE` reads `G#dD#` as root `G#` + suffix `dD#` and would shift only the root.
 
 ### Chordie auto-clean
 
