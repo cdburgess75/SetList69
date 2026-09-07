@@ -356,6 +356,17 @@ v2026.09.07.002  Real-world charts render. `isChordLine` no longer requires ever
                  `.chordpill.cue`. Also: bare `Intro Riff:` / `Verse 1:` / `Chorus:` labels become
                  headings (colon must be the LAST character, excluding `Key: G`; chord lines win
                  the tie). Both at RENDER time, so existing songs heal with no re-import.
+v2026.09.07.003  Library repair, from an audit of a real 50-song backup. Three render-time fixes;
+                 298 -> 418 coloured chords across that library with **no song losing one**.
+                 (1) `splitChordRun()` splits space-stripped runs (`DDCD`, `GmFDmCGmFDmCA`) — 8
+                 songs. Returns null unless the whole string is consumed by real chords; ordinary
+                 words can't pass because roots must be **uppercase** A-G. (2) A chord row followed
+                 by a **whitespace-only** line then a lyric is paired across it (23 rows). **A
+                 genuinely empty line must not trigger this** — "intro chords, blank, verse" is
+                 deliberate; 17 such rows are correctly left alone. (3) `Bd` -> `Bb` (owner-
+                 confirmed corrupted flat), **bare letter only** and length-preserving.
+                 **Finding worth keeping:** ~half that library has no chords in the data at all —
+                 lyrics-only imports. No parser change fixes that.
 ```
 
 > **Note:** the changelog comment at the top of `setlist69.html` is missing entries
@@ -537,6 +548,10 @@ the used count — measure distinct `.sect` x-offsets to know what actually rend
 3. real chords are **at least half** the musical tokens.
 
 Rules 2 and 3 are the lyric guard — drop either and lines like "A big deal" (1 chord in 3) become chord rows. The old all-or-nothing rule meant one bad token dropped the line, its good chords included, to plain lyrics.
+
+**Space-stripped runs** (v2026.09.07.003): `splitChordRun(t)` rebuilds a progression stored as one token (`CGBdA` → `C G Bb A`). It is greedy left-to-right and returns `null` unless the entire string is consumed by `looksChord` tokens, so a leftover character rejects the line rather than half-parsing it. **The safety comes from case**: a chord root must be an uppercase `A-G`, so "Cage", "Face", "Bag" fail on their second character. A bare letter followed by lowercase `d` is read as a flat (`Bd` → `Bb`) — roots are uppercase, so a lowercase `d` is unambiguous. Only applied when the line has no whitespace at all, is ≥4 chars, and yields ≥3 chords.
+
+**Orphaned chord rows** (v2026.09.07.003): chord line → **whitespace-only** line → lyric gets paired across the junk line. **A genuinely empty (`""`) line must NOT trigger this** — "intro chords, blank, verse" is a real layout and pairing would drop the intro onto the first sung line.
 
 **An unrecognised token must never be treated as a chord.** `renderLine` gives it `.chordpill.unk` (neutral, dashed, literal text), `retuneSheet` skips it, and `renderSheet` keeps it out of `sheetRawChords`. Transposing it would corrupt it: `CHORD_RE` reads `G#dD#` as root `G#` + suffix `dD#` and would shift only the root.
 
