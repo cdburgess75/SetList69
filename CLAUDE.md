@@ -327,6 +327,24 @@ v2026.08.26.005  Fix the screen sleeping on a song (owner: "when I took away gig
                  self-guards; `visibilitychange` re-requests unconditionally; `openCurrent()` and
                  `startScroll()` re-assert. Dead `releaseWake()` and the orphaned gig-mode comment
                  removed. Reproduced against a stubbed `wakeLock` first: 8 failing, then 11 passing.
+v2026.09.07.001  Visual pass — one icon language, real type hierarchy, readable section headings,
+                 decluttered rows. **No behaviour change; the sheet renderer is byte-identical**
+                 across all six seed songs (verified pill-by-pill). (1) `#isprite` `<symbol>` sheet
+                 replaces OS emoji + text glyphs + one lone SVG. **Icon paint lives in CSS on
+                 `.ico`, never as attributes on the sprite root** — `<use>` clones inherit from the
+                 *use site*, so `fill="none" stroke="currentColor"` on `#isprite` never reaches
+                 them and every stroked icon renders as a black fill. `setIcon(el,name)` swaps
+                 symbols where JS used to assign `textContent` (theme toggle, scroll play/pause,
+                 stage button). (2) `--display` retargeted JetBrains Mono → **Fraunces** (already
+                 self-hosted and precached, dormant since .07.04.003); mono is now data-only.
+                 `.brand` pinned to `--mono` so the wordmark is untouched. (3) `.comment` section
+                 headings → tracked accent small caps + hairline rule (were `.7em` grey italic, the
+                 smallest text on screen). (4) Rows show title/subtitle/key; actions live in the
+                 context menu via long-press **or a new `⋯` `.rowmore` button** (pointer devices
+                 have no long-press). `openSetlistContext()` gives setlists the same treatment and
+                 `install()` in the long-press IIFE now takes the opener as its 3rd argument.
+                 Played = a `✓` in the `.num` slot only. Version tag moved to `#aboutLine` in the
+                 ≡ sheet; see §9 for why `.brand small` must stay in the DOM.
 ```
 
 > **Note:** the changelog comment at the top of `setlist69.html` is missing entries
@@ -598,7 +616,7 @@ Globals: `transpose` (semitones, 0 on song open), `preferFlats` (bool), `fontSiz
 
 **Prev/next:** `nextSong()` / `prevSong()` — in a set (`curIndex>=0`) they walk `songIds`; opened standalone they walk the **library** in its rendered alphabetical order (`libraryIds()`, v2026.08.14.002), so swipe works everywhere and the dock shows "n/N" of whichever list applies. Swipe left/right triggers these (40px threshold, |dx|>1.8·|dy|, <700ms; resets on `touchcancel`). History: .003 shipped a "not in a setlist" toast for standalone swipes after the silent no-op burned two debug rounds; .002 of 08.14 replaced it with real library navigation. **🎲 `#spinSong`** (Songs header) opens a random song standalone, never repeating the previous one. **The swipe listener is bound on `document` in the CAPTURE phase, not on `#songView` — load-bearing (v2026.08.13.002).** WebKit multicol (the two-column sheet) can mis-target touches inside columned content, so a bubbling listener on `#songView` is not guaranteed to hear them; document-capture fires no matter what element the browser thinks was touched. It gates on `screen==="song"` and ignores gestures starting inside `.modal`, `.dock`, `#chordPop`, or `header`, so control-drags can't change songs. `#songView` also carries `touch-action:pan-y pinch-zoom` + `overflow-x:hidden` (v2026.08.13.001) — keep `pinch-zoom` in the value, plain `pan-y` would revoke the a11y zoom re-enabled in v2026.07.12.004. `-webkit-overflow-scrolling:touch` was deliberately REMOVED from `.screen` in .002 (legacy since iOS 13; its composited scroller is a gesture-claim suspect) — do not reintroduce it.
 
-**Gesture debug overlay (v2026.08.13.002):** 5 quick taps on the version tag (`.brand small`) toggle `#gestureDbg`, a fixed, `pointer-events:none` readout of the last ~6 touch events seen at document level (type, target, dx/dy) plus screen name and rendered column count. Session-only, never persisted. Exists so a dead gesture on a real device can be reported with the actual event stream — ask the owner to 5-tap, swipe once, and read back the overlay.
+**Gesture debug overlay (v2026.08.13.002):** 5 quick taps on the version line (`#aboutLine`, in the ≡ tools sheet — it was `.brand small` until v2026.09.07.001) toggle `#gestureDbg`, a fixed, `pointer-events:none` readout of the last ~6 touch events seen at document level (type, target, dx/dy) plus screen name and rendered column count. Session-only, never persisted. Exists so a dead gesture on a real device can be reported with the actual event stream — ask the owner to 5-tap, swipe once, and read back the overlay.
 
 **Wake lock (app-wide; sentinel trap fixed v2026.08.26.005):** acquired at `boot()`, re-requested on every `visibilitychange→visible` on ANY screen, and re-asserted by `openCurrent()` and `startScroll()`. The owner runs the app on a stand all night — it must not sleep anywhere.
 
@@ -642,9 +660,17 @@ CSS custom properties define both themes. As of v2026.07.17.001 the palette is *
 
 Contrast: lyrics/ink high in both modes; keep new colors above WCAG AA (`--faint` is the deliberately dim tier, still kept ≥AA on the darkest bg it lands on).
 
-Fonts (the "mono chrome, readable lyrics" split): `--display` **and** `--mono` are both JetBrains Mono — so the brand wordmark, header title, section headings, modal headings, song titles, chords and version tag are all monospace (the PileUp look). `--ui` Hanken Grotesk stays on **lyric bodies + subtitles/banter**, the text you actually read while playing. Fraunces is no longer referenced (its `@font-face` + precache entry are dormant; safe to remove in a future cleanup).
+Fonts — three faces, three jobs (v2026.09.07.001):
+
+- `--display` **Fraunces** — song titles (`.svtitle`), screen headings (`.listhead h2`), the header set name (`.htitle`), modal headings (`.mhead h3`). A warm display serif is what separates this from a developer tool; it was dormant-but-precached for months before this pass switched it on, so it costs no extra download.
+- `--ui` **Hanken Grotesk** — everything a person *reads*: lyric bodies, subtitles, banter, buttons, labels.
+- `--mono` **JetBrains Mono** — **data only**: chords (`.chordpill`), keys (`.pill`, `.keypill`, `.capo-badge`), counts (`.count`, `.num`, `.pos`), the version line, the editor textarea, `#gestureDbg`.
+
+`.brand` is pinned to `--mono` explicitly so retargeting `--display` leaves the PileUp-family wordmark alone. **Don't put mono back on titles or headings** — that was the single biggest "unfinished" tell.
 
 **Brand wordmark** (`.brand`): uppercase, wide-tracked (`.16em`), amber, with a soft glow (`text-shadow`), echoing PileUp's `PILEUP` mark. The `<small>` version tag inside it opts back out (`text-transform:none`).
+
+**Icons (v2026.09.07.001):** every glyph is `<svg class="ico"><use href="#i-NAME"/></svg>` pointing into the `#isprite` `<symbol>` sheet at the top of `<body>`. **The paint (`fill:none;stroke:currentColor;stroke-width:1.75`) is set in CSS on `.ico`, not as attributes on the sprite root** — a `<use>` clone inherits from the use site, so attributes on `#isprite` never reach it and icons render as solid black fills. Symbols that are meant to be solid (play/pause/prev/next, dots) carry their own `fill="currentColor" stroke="none"`, which beats the inherited CSS. When JS needs to change an icon, call `setIcon(el,name)` — assigning `textContent` would delete the `<svg>` child.
 
 **Capo badge** (`.capo-badge`): monospaced, amber border, shown beneath the key pill in the song view header when `capoVal > 0`.
 
@@ -654,7 +680,8 @@ Fonts (the "mono chrome, readable lyrics" split): `--display` **and** `--mono` a
 
 ```
 Storage:       idbOpen  idbGet  idbSet  persist  flushPersist  isValidState
-Seed/init:     seed  boot  uid  newSongId  applyTheme  toast  migrateBanter  addShowcaseSong
+Seed/init:     seed  boot  uid  newSongId  applyTheme  toast  migrateBanter  retireShowcase
+               upgradeShowcase  setIcon
 Music core:    transposeNote  transposeChord  looksChord  isChordLine
                pitchClass  keyColor  cleanEmbeddedChords  toNashville  nashPill
 Chord diagrams: chordFamily  chordFrets  chordDiagramSVG  showChordPop  hideChordPop
@@ -666,7 +693,8 @@ Song view:     openSongInSet  openSongStandalone  openCurrent  reRender  library
                nextSong  prevSong  startScroll  stopScroll  updateScrollProg
                requestWake  openDockSheet  closeDockSheet  nudgeFont
 Editor:        openEditor  closeEditor  saveSong
-Context/dialogs: openSongContext  closeSongContext  openAdder  closeAdder  showPrompt  showConfirm
+Context/dialogs: openSongContext  openSetlistContext  closeSongContext  openAdder  closeAdder
+                 showPrompt  showConfirm
                  closeModal  loadPlayed  savePlayed
 Backup/share:  saveJsonFile  exportData  shareApp  shareSetlist  restoreData  mergeSetImport
 Song links:    b64urlEnc  b64urlDec  streamBytes  songToLink  linkToSong  shareSong
