@@ -294,6 +294,25 @@
                    ("Key: G" carries a value) and ordinary lyrics; chord lines win the tie.
                    Both fixes are at RENDER time, so existing songs heal with no re-import.
                    Seed songs verified byte-identical.
+  v2026.09.07.003  Library repair, driven by an audit of a real 50-song backup rather than guesses.
+                   Three render-time fixes; no song in that library loses a chord and the total
+                   goes 298 -> 418 coloured chords. (1) SPACE-STRIPPED CHORD RUNS: a paste artifact
+                   in 8 songs stores a whole progression as one token ("DDCD",
+                   "GmFDmCGmFDmCA"). splitChordRun() greedily splits it back and returns null
+                   unless the WHOLE string is consumed by real chords. Ordinary words cannot pass
+                   because a chord root must be an UPPERCASE A-G — "Cage"/"Face"/"Bag" die on
+                   their second character. Verified against the actual progressions: White Room
+                   gives Gm F Dm C Gm F Dm C A. (2) ORPHANED CHORD ROWS: chord line, then a
+                   WHITESPACE-ONLY line, then the lyric — 23 rows where the lyric's leading spaces
+                   were split onto their own line, leaving the chord stranded. Now paired across
+                   it. A GENUINELY EMPTY line must never trigger this: "intro chords, blank,
+                   verse" is deliberate, and pairing there would drop intro chords onto the first
+                   sung line (17 such rows correctly left alone). (3) "Bd" -> "Bb", a corrupted
+                   flat the owner confirmed, 6 occurrences. BARE LETTER ONLY — "C#d"/"G#d" already
+                   carry an accidental and would become "C-sharp-flat", so they stay flagged.
+                   Length-preserving (2 chars -> 2) so column alignment is untouched. NOTE: about
+                   half that library has no chords in the stored data at all — imported as lyrics
+                   only. No parser change can conjure those; they need re-importing.
 -->
 <html lang="en">
 <head>
@@ -689,7 +708,7 @@
 <div class="app">
   <header>
     <button class="back" id="backBtn" style="display:none" aria-label="Back"><svg class="ico" aria-hidden="true"><use href="#i-back"/></svg><span id="backLabel">Back</span></button>
-    <div class="brand" id="brand"><span class="dot"></span>SetList69<small>v2026.09.07.002</small></div>
+    <div class="brand" id="brand"><span class="dot"></span>SetList69<small>v2026.09.07.003</small></div>
     <div class="htitle" id="headerTitle" style="display:none"></div>
     <div class="spacer"></div>
     <button class="iconbtn" id="updateHdr" title="Update ready" aria-label="Update ready — refresh" hidden><svg class="ico" aria-hidden="true"><use href="#i-refresh"/></svg></button>
@@ -1009,6 +1028,29 @@ const CHORD_CUE=/^(\(.*\)|x\s*\d+|\d+\s*x|riff|solo|fill|break|tacet|hold|ring|l
 /* "Chord-shaped" = could plausibly BE a chord: starts on A-G, no punctuation a chord never has,
    and no word-like run of 3+ lowercase letters after the root ("Cause" and "Blackis" are words,
    "G#dD#" and "C#d" are mangled chords). */
+/* Split a chord run whose spaces were stripped by a bad paste ("CGBdA", "GmFDmCGmFDmCA") back
+   into chords. Greedy, left to right; returns null unless the WHOLE string is consumed and every
+   piece is a real chord, so a leftover character rejects the line rather than half-parsing it.
+
+   Ordinary words cannot pass: a chord root must be an UPPERCASE A-G, so "Cage"/"Face"/"Bag" die on
+   their second character. Only genuine runs of capitalised roots (plus lowercase chord suffixes)
+   survive. A bare letter followed by lowercase "d" is a corrupted FLAT — the owner confirmed "Bd"
+   is B-flat, and since roots are uppercase a lowercase d is unambiguous. */
+function splitChordRun(t){
+  const RE=/^[A-G][#b]?(?:maj|min|m|M|dim|aug|sus|add|[0-9]|\/[A-G][#b]?)*/;
+  const out=[];let i=0,guard=0;
+  while(i<t.length){
+    if(++guard>64)return null;
+    const m=RE.exec(t.slice(i));
+    if(!m||!m[0])return null;
+    let tok=m[0];
+    if(tok.length===1&&t[i+1]==="d"){tok+="b";i+=2;}   // "Bd" -> "Bb"
+    else i+=m[0].length;
+    if(!looksChord(tok))return null;
+    out.push(tok);
+  }
+  return out.length?out:null;
+}
 function chordShaped(t){return /^[A-G][#b]?[A-Za-z0-9#b°ø+\-\/()]*$/.test(t)&&!/[a-z]{3}/.test(t.slice(1));}
 /* A single unrecognised token used to drop the WHOLE line to plain lyrics, taking its good chords
    with it — a chart pasted with mangled chords ("E G#dD#") lost the E as well, and every chord in
@@ -1102,10 +1144,36 @@ function parseSong(song){
       const n=line.replace(/\b([A-G][#b]?)(\s+)slide(\s+)([A-G][#b]?)\b/g,"$1$2     $3$4")
                   .replace(/\b([A-G][#b]?)s([A-G][#b]?)\b/g,"$1 $2");
       if(n!==line&&isChordLine(n))line=n;
+      /* "Bd" -> "Bb": a corrupted flat, owner-confirmed, seen 6x across two songs. BARE LETTER
+         ONLY — "C#d"/"G#d" already carry an accidental and would become "C-sharp-flat", so those
+         stay flagged as unknown. Same length (2 chars -> 2), so pairToSegs' column alignment is
+         untouched; a shorter replacement would slide every later chord onto the wrong syllable.
+         Guarded on isChordLine so a lyric like "Ed Sullivan" is never rewritten. */
+      const f=line.replace(/\b([A-G])d\b/g,"$1b");
+      if(f!==line&&isChordLine(f))line=f;
+    }
+    /* A chord run with every space stripped, e.g. "DDCD" or "GmFDmCGmFDmCA" — a paste artifact
+       found in 8 songs of the owner's library. Split it back apart so the chords are readable and
+       colourable. There is no column information left in such a line, so it renders as a bar row
+       with no lyric beneath, which is exactly what it is. */
+    if(!hasInline&&!/\s/.test(line.trim())&&line.trim().length>=4&&!isChordLine(line)){
+      const runParts=splitChordRun(line.trim());
+      if(runParts&&runParts.length>=3){
+        out.push({type:"segs",chorus:inChorus,
+          segs:runParts.map((c,ri)=>({chord:c,text:ri<runParts.length-1?" ":""}))});
+        continue;}
     }
     if(hasInline&&/\[[^\]]+\]/.test(line)){out.push({type:"segs",segs:inlineToSegs(line),chorus:inChorus});}
     else if(!hasInline&&isChordLine(line)&&i+1<lines.length&&lines[i+1].trim()!==""&&!isChordLine(lines[i+1])){
       out.push({type:"segs",segs:pairToSegs(line,lines[i+1]),chorus:inChorus});i++;}
+    /* Chord row, then a WHITESPACE-ONLY line, then the lyric — a paste artifact where the lyric's
+       leading spaces were split onto their own line (23 rows across the owner's library). The chord
+       used to render alone with the lyric bare underneath. Pair across the junk line.
+       A GENUINELY EMPTY line must never trigger this: "intro chords, blank, verse" is a deliberate
+       layout, and pairing there would drop the intro chords onto the first sung line. */
+    else if(!hasInline&&isChordLine(line)&&lines[i+1]!==undefined&&lines[i+1]!==""&&lines[i+1].trim()===""
+            &&lines[i+2]!==undefined&&lines[i+2].trim()!==""&&!isChordLine(lines[i+2])){
+      out.push({type:"segs",segs:pairToSegs(line,lines[i+2]),chorus:inChorus});i+=2;}
     else if(!hasInline&&isChordLine(line)){out.push({type:"segs",segs:pairToSegs(line,""),chorus:inChorus});}
     else{out.push({type:"segs",segs:[{chord:"",text:line}],chorus:inChorus});}
   }
