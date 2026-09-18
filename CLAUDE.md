@@ -367,6 +367,12 @@ v2026.09.07.003  Library repair, from an audit of a real 50-song backup. Three r
                  confirmed corrupted flat), **bare letter only** and length-preserving.
                  **Finding worth keeping:** ~half that library has no chords in the data at all —
                  lyrics-only imports. No parser change fixes that.
+v2026.09.18.001  Interface review, HIGH fixes: setlist/song rows and chord pills are real <button>s
+                 (keyboard opens a set, a song, a chord diagram; the long-press guard now skips only
+                 non-row buttons); hidden dock reveals on keyboard focus (.dock.away:has(:focus-visible)
+                 + dismissDock() defers while focus is inside); keyColor lightness 30% for hues 30-180
+                 so white pill text clears AA; new --accent-text token for accent-coloured text;
+                 error toasts (⚠ / parse / link failures) are sticky until tapped.
 ```
 
 > **Note:** the changelog comment at the top of `setlist69.html` is missing entries
@@ -564,7 +570,7 @@ Rules 2 and 3 are the lyric guard — drop either and lines like "A big deal" (1
 
 ### Color coding
 
-`keyColor(key)` maps root pitch class to `hsl(pitchClass*30 52% 42%)`. Unknown root → `#7a7160`.
+`keyColor(key)` maps root pitch class to `hsl(pitchClass*30 52% L%)` where **L is 30% for hues 30–180 (C♯ D D♯ E F F♯) and 42% elsewhere** — pills carry white 12.5px text and the yellow-green-cyan arc only reaches 2.68–4.46:1 at 42%; at 30% every root clears 4.5:1 (v2026.09.18.001). Unknown root → `#7a7160`.
 
 ### Chord diagrams (v2026.07.19.004)
 
@@ -687,6 +693,7 @@ CSS custom properties define both themes. As of v2026.07.17.001 the palette is *
 - `:root` = **dark** (pure-black `--bg:#000000`, cool-white `--ink:#f4f4f6`, amber `--accent`/`--chord:#f0923c`).
 - `[data-theme="light"]` = **light** (cool white `--bg:#f9fbff`, near-black `--ink:#12202f`, deep amber `--accent:#c8600f`).
 - **Coral is the single accent** (`--accent`/`--chord` `#cf3c28` dark / `#c8342a` light, hover `--accent2` `#e04a34`/`#d94a3a`) — buttons, active states, highlights, current-song mark, progress bar. Buttons put **white** text on the coral; the **dark** coral is deepened to `#cf3c28` (from the brighter `#ff6f5c`) so white clears AA in both themes — don't reintroduce a bright `#ff6f5c` button background. `--red` **danger** (`#ef4034` dark / `#b01810` light) stays distinct from the accent (delete-hover, danger items, "update available" dot). `--ok` (`#4be08a` / `#1c8a55`) is the "up to date" dot. `--green`/`--green-dim` = "played" strike/tag pair.
+- **`--accent-text`** (`#e04a34` dark = `--accent2`, `#c8342a` light) is the accent for *text*: section labels (`.comment`), `.ctl button.on`, `.svbanter`, `.capo-badge`, `.hint code`, `.fileimport label`, `.btn.danger`. The button coral `#cf3c28` measures only 4.33:1 on black (3.98 on panel), under the 4.5 body-text bar; `#e04a34` measures 5.20 / 4.78. Filled buttons keep `--accent` (white on it is 4.85:1). Added v2026.09.18.001.
 - **`--brand` (header wordmark) stays bright coral `#ff6f5c` dark / `#c8342a` light** — it's coral *text* on the dark header (no white-text-on-coral issue), so it keeps the brighter, glowier shade while the button accent runs deeper. That's why `--brand` is its own token, distinct from `--accent` in dark mode.
 - **History:** accent was **amber** (PileUp-matched) through v.012; wordmark went coral in .013, whole UI accent followed in **.016** (white button text, deepened dark coral). Chord/key pills stay pitch-colored via `keyColor()` — independent of the accent.
 - Primary buttons (`.secbtn`/`.stagebtn`/`.fab`) are amber with **dark** text (`#160f06`) for AA contrast on the light-ish amber.

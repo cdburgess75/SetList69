@@ -313,6 +313,12 @@
                    Length-preserving (2 chars -> 2) so column alignment is untouched. NOTE: about
                    half that library has no chords in the stored data at all — imported as lyrics
                    only. No parser change can conjure those; they need re-importing.
+  v2026.09.18.001  Interface review, HIGH fixes: setlist/song rows and chord pills are real <button>s
+                   (keyboard can open a set, a song, a chord diagram); hidden dock reveals on
+                   keyboard focus; chord-pill fills for D..F# darkened so white text clears AA
+                   (keyColor lightness 30% for hues 30-180); new --accent-text token (#e04a34
+                   dark) for accent-coloured text - the button coral measured 4.33:1 on black;
+                   error toasts (⚠, parse/link failures) stay until tapped.
 -->
 <html lang="en">
 <head>
@@ -334,6 +340,10 @@
     --ink:#f4f4f6; --muted:#9aa8c2; --faint:#7e889c;   /* faint kept ≥AA on black bg/panel */
     --chord:#cf3c28; --accent:#cf3c28; --accent2:#e04a34; --ok:#4be08a; --red:#ef4034;
     --brand:#ff6f5c;   /* header wordmark — coral, its own token so --accent stays amber */
+    /* accent as TEXT (section labels, on-state, badges): the button coral #cf3c28 measures only
+       4.33:1 on black / 3.98 on panel, under the 4.5 body-text bar. #e04a34 (= --accent2) clears
+       it: 5.20 on bg, 4.78 on panel, 4.71 on the banter tint. Filled buttons keep --accent. */
+    --accent-text:#e04a34;
     --green:#AED8CA; --green-dim:#2E8B7A;   /* "played" strike + tag (bright on dark) */
     --ui:'Hanken Grotesk',system-ui,-apple-system,sans-serif;
     /* Fraunces (self-hosted + precached since .07.04.003, dormant until v2026.09.07.001) is the
@@ -349,6 +359,7 @@
     --ink:#12202f; --muted:#3a4655; --faint:#5b6676;   /* ≥AA on light bg/panel */
     --chord:#c8342a; --accent:#c8342a; --accent2:#d94a3a; --ok:#1c8a55; --red:#b01810;
     --brand:#c8342a;   /* header wordmark — deeper coral for AA on the white header */
+    --accent-text:#c8342a;   /* 5.09 on bg, 5.28 on panel — the light accent already passes */
     --green:#2E8B7A; --green-dim:#AED8CA;   /* swapped so the pair still reads on light bg */
   }
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
@@ -431,9 +442,11 @@
   #setSongsScreen[data-stage] .set-tr-label{display:none !important;}
   #setSongsScreen[data-stage] #stageBtn{background:var(--panel2);color:var(--muted);border:1px solid var(--line);}
   #setSongsScreen[data-stage] .card{padding:1.15rem 1rem;cursor:pointer;}
-  .card .meta{flex:1;min-width:0;}
-  .card .t{font-weight:600;font-size:1.06rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-  .card .s{font-size:.82rem;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:.1rem;}
+  /* The row body is a <button> (keyboard can open a set/song); it must look like the text block
+     it replaced and be allowed to shrink so titles still ellipsise. */
+  .card .meta{flex:1;min-width:0;display:block;overflow:hidden;text-align:left;padding:0;margin:0;font:inherit;color:inherit;}
+  .card .t{display:block;font-weight:600;font-size:1.06rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .card .s{display:block;font-size:.82rem;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:.1rem;}
   .chev{color:var(--faint);font-size:1.1rem;}
   .num{font-family:var(--mono);color:var(--faint);font-size:.85rem;min-width:1.3rem;text-align:right;}
 
@@ -485,7 +498,7 @@
   .svsub{color:var(--muted);font-size:.88rem;margin-top:.1rem;}
   /* Banter: a highlighted stage-note under the title — meant to be read at a glance, so it gets
      a highlighter-style tinted bar rather than fine print. */
-  .svbanter{display:inline-block;color:var(--accent);background:color-mix(in srgb,var(--accent) 14%,transparent);
+  .svbanter{display:inline-block;color:var(--accent-text);background:color-mix(in srgb,var(--accent) 14%,transparent);
     border-left:3px solid var(--accent);border-radius:6px;padding:.3em .6em;margin-top:.35rem;
     font-family:var(--ui);font-size:.92rem;font-weight:600;line-height:1.4;}
   .sheet{margin-top:1.1rem;font-size:var(--sheet-size,1.35rem);-webkit-user-select:text;user-select:text;
@@ -500,7 +513,7 @@
   .wg{display:inline-block;white-space:nowrap;vertical-align:bottom;}  /* word-group: never splits mid-word */
   .seg{display:inline-block;vertical-align:bottom;}
   .seg .c{display:block;line-height:1;min-height:1em;white-space:nowrap;margin-bottom:.08em;}  /* pill is ~.9em tall — keep min-height snug or every chorded row carries dead air */
-  .chordpill{display:inline-block;color:#fff;font-family:var(--mono);font-weight:700;font-size:.58em;
+  .chordpill{display:inline-block;border:none;margin:0;color:#fff;font-family:var(--mono);font-weight:700;font-size:.58em;
     padding:.2em .5em;border-radius:.55em;line-height:1.15;letter-spacing:.2px;
     box-shadow:inset 0 0 0 1px #ffffff2e, 0 1px 2px #0003;}
   .chordpill .nsuf{font-size:.72em;vertical-align:.32em;line-height:0;letter-spacing:0;}
@@ -529,16 +542,17 @@
   .tabline{font-family:var(--mono);font-size:.62em;color:var(--muted);white-space:pre;overflow-x:auto;line-height:1.35;}
   /* Section headings (Verse/Chorus/solo cues). These are what a player scans for mid-song, so
      they are set as tracked small caps in the accent with a hairline rule - was .7em grey
-     italic, the smallest text on the screen. Accent on bg clears AA in both themes. */
+     italic, the smallest text on the screen. --accent-text (not --accent) so the 17px labels
+     clear 4.5:1 in dark mode. */
   .comment{font-family:var(--ui);font-style:normal;font-weight:700;font-size:.8em;
-    letter-spacing:.13em;text-transform:uppercase;color:var(--accent);
+    letter-spacing:.13em;text-transform:uppercase;color:var(--accent-text);
     margin:.75em 0 .45em;padding-bottom:.22em;border-bottom:1px solid var(--line);}
   .sect:first-child .comment{margin-top:.1em;}
   .swipehint{text-align:center;color:var(--faint);font-size:.7rem;font-family:var(--mono);margin-top:2rem;opacity:.6;transition:opacity .5s;}
   .modal.bottom{align-items:flex-end;}
   .modal.bottom .sheetwrap{border-radius:var(--radius) var(--radius) 0 0;border-left:1px solid var(--line);border-right:1px solid var(--line);max-height:55dvh;}
   .confirm-msg{color:var(--muted);font-size:.92rem;margin:0;line-height:1.5;}
-  .sl-notes{font-size:.72rem;color:var(--faint);margin-top:.12rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .sl-notes{display:block;font-size:.72rem;color:var(--faint);margin-top:.12rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
   .set-notes{font-size:.8rem;color:var(--muted);font-style:italic;margin-bottom:.7rem;line-height:1.4;}
   .set-notes:empty{display:none;}
   .searchbar{margin-bottom:.7rem;}
@@ -558,6 +572,7 @@
      the whole height. Tapping the lyrics toggles it; it auto-dismisses after ~4s untouched. */
   .dock{transition:transform .22s ease;}
   .dock.away{transform:translateY(112%);}
+  .dock.away:has(:focus-visible){transform:none;}   /* keyboard focus must never land off-screen */
   @media (prefers-reduced-motion:reduce){.dock{transition:none;}}
   .dock{position:fixed;left:0;right:0;bottom:0;
     background:var(--panel);
@@ -567,7 +582,7 @@
   .ctl{display:flex;align-items:center;gap:.15rem;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:.18rem;}
   .ctl button{padding:.34rem .5rem;border-radius:7px;font-weight:600;font-size:.78rem;color:var(--muted);}
   .ctl button:hover{color:var(--ink);background:var(--panel2);}
-  .ctl button.on{color:var(--chord);}
+  .ctl button.on{color:var(--accent-text);}
   .ctl .val{font-family:var(--mono);font-size:.76rem;min-width:2.3rem;text-align:center;color:var(--ink);}
   .scrollbtn.playing{color:var(--accent)!important;}
   .pos{font-family:var(--mono);font-size:.72rem;color:var(--faint);padding:0 .3rem;}
@@ -608,9 +623,9 @@
   .row2{display:flex;gap:.7rem;}
   .row2 .field{flex:1;}
   .hint{font-size:.74rem;color:var(--faint);line-height:1.5;}
-  .hint code{font-family:var(--mono);color:var(--chord);}
+  .hint code{font-family:var(--mono);color:var(--accent-text);}
   .fileimport{display:flex;align-items:center;gap:.5rem;font-size:.8rem;color:var(--muted);flex-wrap:wrap;}
-  .fileimport label{color:var(--chord);cursor:pointer;text-decoration:underline;text-underline-offset:2px;}
+  .fileimport label{color:var(--accent-text);cursor:pointer;text-decoration:underline;text-underline-offset:2px;}
   .mfoot{display:flex;gap:.6rem;padding:.8rem 1rem;border-top:1px solid var(--line);
     padding-bottom:max(.8rem,env(safe-area-inset-bottom));}
   .btn{flex:1;padding:.7rem;border-radius:10px;font-weight:700;font-size:.9rem;text-align:center;}
@@ -618,7 +633,7 @@
   .btn.primary:hover{background:var(--accent2);}
   .btn.ghost{background:var(--panel);border:1px solid var(--line);color:var(--muted);}
   .btn.ghost:hover{color:var(--ink);}
-  .btn.danger{background:none;border:1px solid var(--line);color:var(--accent);flex:0 0 auto;padding:.7rem 1rem;}
+  .btn.danger{background:none;border:1px solid var(--line);color:var(--accent-text);flex:0 0 auto;padding:.7rem 1rem;}
 
   .pickrow{display:flex;align-items:center;gap:.7rem;padding:.7rem .8rem;border-radius:10px;background:var(--panel);
     border:1px solid var(--line);margin-bottom:.45rem;}
@@ -636,7 +651,7 @@
   .adderbtn.in{color:var(--ok);}
   .lookuprow{display:flex;gap:.5rem;}
   .lookuprow .ghostbtn{flex:1;margin-bottom:0;font-size:.8rem;padding:.55rem .4rem;}
-  .capo-badge{font-family:var(--mono);font-size:.72rem;font-weight:700;color:var(--chord);background:var(--panel);border:1px solid var(--chord);border-radius:6px;padding:.15rem .45rem;white-space:nowrap;}
+  .capo-badge{font-family:var(--mono);font-size:.72rem;font-weight:700;color:var(--accent-text);background:var(--panel);border:1px solid var(--accent-text);border-radius:6px;padding:.15rem .45rem;white-space:nowrap;}
 
   .lookup-label{font-size:.7rem;color:var(--muted);font-family:var(--mono);margin:0 0 -.2rem;text-transform:uppercase;letter-spacing:.5px;}
   .paste-ta{width:100%;min-height:200px;resize:vertical;background:var(--panel);color:var(--ink);
@@ -647,6 +662,7 @@
     color:var(--bg);padding:.6rem 1rem;border-radius:30px;font-size:.85rem;font-weight:600;opacity:0;
     pointer-events:none;transition:.25s;z-index:60;max-width:90vw;text-align:center;}
   .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+  .toast.sticky{pointer-events:auto;cursor:pointer;}   /* errors stay until tapped */
   .update-banner{position:fixed;left:0;right:0;bottom:0;z-index:58;display:flex;align-items:center;gap:.7rem;
     padding:.7rem 1rem;padding-bottom:max(.7rem,env(safe-area-inset-bottom));
     background:var(--panel);border-top:2px solid var(--chord);box-shadow:0 -6px 24px #0007;
@@ -708,7 +724,7 @@
 <div class="app">
   <header>
     <button class="back" id="backBtn" style="display:none" aria-label="Back"><svg class="ico" aria-hidden="true"><use href="#i-back"/></svg><span id="backLabel">Back</span></button>
-    <div class="brand" id="brand"><span class="dot"></span>SetList69<small>v2026.09.07.003</small></div>
+    <div class="brand" id="brand"><span class="dot"></span>SetList69<small>v2026.09.18.001</small></div>
     <div class="htitle" id="headerTitle" style="display:none"></div>
     <div class="spacer"></div>
     <button class="iconbtn" id="updateHdr" title="Update ready" aria-label="Update ready — refresh" hidden><svg class="ico" aria-hidden="true"><use href="#i-refresh"/></svg></button>
@@ -1070,7 +1086,10 @@ function isChordLine(line){
   return real>0&&real*2>=musical;
 }
 function pitchClass(key){const m=(key||"").match(CHORD_RE);return m&&m[1]in IDX?IDX[m[1]]:-1;}
-function keyColor(key){const pc=pitchClass(key);if(pc<0)return"#7a7160";const hue=(pc*30)%360;return"hsl("+hue+" 52% 42%)";}
+/* Pill fills carry white 12.5px text, so each hue needs >= 4.5:1 against white. At 42% lightness
+   the yellow-green-cyan arc (hues 30-180: C# D D# E F F#) measured 2.68-4.46; at 30% it measures
+   4.92-7.42. The other six roots already pass at 42% (5.57-9.80). */
+function keyColor(key){const pc=pitchClass(key);if(pc<0)return"#7a7160";const hue=(pc*30)%360;const light=(hue>=30&&hue<=180)?30:42;return"hsl("+hue+" 52% "+light+"%)";}
 /* Nashville Number System: chord root -> scale degree relative to the key. Computed from the
    RAW (un-transposed/un-capo'd) chord + raw key, so the numbers are key-invariant by construction
    (transpose/capo shift both together). Suffix kept. NASH is the major-scale / "flat-three" set. */
@@ -1240,7 +1259,7 @@ function renderLine(segs){
       const known=cell.raw?looksChord(cell.raw):false;
       const crow=lineHasChord
         ? '<span class="c">'+(cell.chord?(known
-            ? '<span class="chordpill" data-ch="'+esc(cell.raw)+'" style="background:'+keyColor(cell.chord)+'">'+((nashville&&nashKeyPc>=0)?nashPill(toNashville(cell.raw,nashKeyPc)):esc(cell.chord))+'</span>'
+            ? '<button class="chordpill" type="button" data-ch="'+esc(cell.raw)+'" aria-label="'+esc(cell.chord)+' chord diagram" style="background:'+keyColor(cell.chord)+'">'+((nashville&&nashKeyPc>=0)?nashPill(toNashville(cell.raw,nashKeyPc)):esc(cell.chord))+'</button>'
             : (CHORD_CUE.test(cell.raw)
                 ? '<span class="chordpill cue">'+esc(cell.raw)+'</span>'
                 : '<span class="chordpill unk" title="Not a recognised chord — tap the title to edit">'+esc(cell.raw)+'</span>'))
@@ -1355,12 +1374,12 @@ function renderSetlists(){
     const n=sl.songIds.length;
     const keys=[...new Set(sl.songIds.map(id=>(state.songs.find(s=>s.id===id)||{}).key).filter(Boolean))];
     const dots=keys.slice(0,6).map(k=>'<span style="display:inline-block;width:.6rem;height:.6rem;border-radius:50%;background:'+keyColor(k)+';margin-right:2px"></span>').join("");
-    const notesEl=sl.notes?'<div class="sl-notes">'+esc(sl.notes)+'</div>':"";
+    const notesEl=sl.notes?'<span class="sl-notes">'+esc(sl.notes)+'</span>':"";
     const eid=esc(sl.id);
     /* Row carries name + count only. Reorder/settings/delete moved to the context menu (long-press,
        or the ⋯ button for pointer devices) — three always-visible icons per row was chrome, and it
        squeezed the name. i is kept on the ⋯ so the menu can offer move up/down. */
-    return '<div class="card" data-setidx="'+i+'"><div class="meta open-set" data-id="'+eid+'"><div class="t">'+esc(sl.name)+'</div><div class="s">'+n+' song'+(n!==1?"s":"")+' &nbsp;'+dots+'</div>'+notesEl+'</div><button class="rowmore" data-setmore="'+eid+'" data-setidx="'+i+'" title="Setlist actions" aria-label="Setlist actions"><svg class=\"ico\" aria-hidden=\"true\"><use href=\"#i-more\"/></svg></button></div>';
+    return '<div class="card" data-setidx="'+i+'"><button class="meta open-set" data-id="'+eid+'"><span class="t">'+esc(sl.name)+'</span><span class="s">'+n+' song'+(n!==1?"s":"")+' &nbsp;'+dots+'</span>'+notesEl+'</button><button class="rowmore" data-setmore="'+eid+'" data-setidx="'+i+'" title="Setlist actions" aria-label="Setlist actions"><svg class=\"ico\" aria-hidden=\"true\"><use href=\"#i-more\"/></svg></button></div>';
   }).join("");
 }
 function renderSetSongs(){
@@ -1378,7 +1397,7 @@ function renderSetSongs(){
     /* Played shows as a ✓ in the number slot plus a dimmed row — one signal, not three. Remove-from-set
        lives in the context menu; the row keeps the drag handle, which the reorder code keys on. */
     const numCell=isPlayed?'<span class="num" aria-label="Played"><svg class=\"ico\" aria-hidden=\"true\"><use href=\"#i-check\"/></svg></span>':'<span class="num">'+(i+1)+'</span>';
-    return '<div class="card'+cur+(isPlayed?" played":"")+'" data-songidx="'+i+'"><span class="drag-handle" title="Drag to reorder" role="button" aria-label="Drag to reorder"><svg class=\"ico\" aria-hidden=\"true\"><use href=\"#i-drag\"/></svg></span>'+numCell+'<div class="meta open-song" data-i="'+i+'"><div class="t">'+esc(s.title)+'</div><div class="s">'+esc(s.sub||"")+'</div></div>'+(s.key?'<span class="pill" style="background:'+keyColor(s.key)+'">'+esc(s.key)+'</span>':"")+'<button class="rowmore" data-songmore="'+i+'" title="Song actions" aria-label="Song actions"><svg class=\"ico\" aria-hidden=\"true\"><use href=\"#i-more\"/></svg></button></div>';
+    return '<div class="card'+cur+(isPlayed?" played":"")+'" data-songidx="'+i+'"><span class="drag-handle" title="Drag to reorder" aria-hidden="true"><svg class=\"ico\" aria-hidden=\"true\"><use href=\"#i-drag\"/></svg></span>'+numCell+'<button class="meta open-song" data-i="'+i+'"><span class="t">'+esc(s.title)+'</span><span class="s">'+esc(s.sub||"")+'</span></button>'+(s.key?'<span class="pill" style="background:'+keyColor(s.key)+'">'+esc(s.key)+'</span>':"")+'<button class="rowmore" data-songmore="'+i+'" title="Song actions" aria-label="Song actions"><svg class=\"ico\" aria-hidden=\"true\"><use href=\"#i-more\"/></svg></button></div>';
   }).join("");
   document.getElementById("resetPlayed").style.display=anyPlayed?"":"none";
 }
@@ -1390,7 +1409,7 @@ function renderAllSongs(){
   const songs=q?all.filter(s=>s.title.toLowerCase().includes(q)||(s.sub||"").toLowerCase().includes(q)):all;
   if(!all.length){wrap.innerHTML='<div class="empty"><div class="big">♪</div>No songs yet.</div>';return;}
   if(!songs.length){wrap.innerHTML='<div class="empty">No matches.</div>';return;}
-  wrap.innerHTML=songs.map(s=>{const eid=esc(s.id);return '<div class="card open-allsong" data-id="'+eid+'"><div class="meta"><div class="t">'+esc(s.title)+'</div><div class="s">'+esc(s.sub||"")+'</div></div>'+(s.key?'<span class="pill" style="background:'+keyColor(s.key)+'">'+esc(s.key)+'</span>':"")+'<button class="rowmore" data-songmore-id="'+eid+'" title="Song actions" aria-label="Song actions"><svg class=\"ico\" aria-hidden=\"true\"><use href=\"#i-more\"/></svg></button></div>';}).join("");
+  wrap.innerHTML=songs.map(s=>{const eid=esc(s.id);return '<div class="card" data-id="'+eid+'"><button class="meta open-allsong" data-id="'+eid+'"><span class="t">'+esc(s.title)+'</span><span class="s">'+esc(s.sub||"")+'</span></button>'+(s.key?'<span class="pill" style="background:'+keyColor(s.key)+'">'+esc(s.key)+'</span>':"")+'<button class="rowmore" data-songmore-id="'+eid+'" title="Song actions" aria-label="Song actions"><svg class=\"ico\" aria-hidden=\"true\"><use href=\"#i-more\"/></svg></button></div>';}).join("");
 }
 
 /* ===== open song ===== */
@@ -1456,7 +1475,9 @@ function stopScroll(){scrolling=false;if(scrollRAF)cancelAnimationFrame(scrollRA
 let dockTimer=null;
 function summonDock(){const d=document.querySelector(".dock");if(!d)return;d.classList.remove("away");
   clearTimeout(dockTimer);dockTimer=setTimeout(dismissDock,4000);}
-function dismissDock(){clearTimeout(dockTimer);const d=document.querySelector(".dock");if(d)d.classList.add("away");}
+function dismissDock(){clearTimeout(dockTimer);const d=document.querySelector(".dock");if(!d)return;
+  if(d.querySelector(":focus-visible")){dockTimer=setTimeout(dismissDock,4000);return;}   // keyboard is in the dock: keep it, re-check later
+  d.classList.add("away");}
 
 /* scroll progress bar along the top edge of the dock (auto-scroll AND manual) */
 const updateScrollProg=(function(){
@@ -1677,7 +1698,7 @@ async function maybeImportFromLink(){
   const raw=await linkToSong(location.hash);
   // Strip the fragment either way, so a reload doesn't re-prompt for a song already added.
   try{history.replaceState(null,"",location.href.split("#")[0]);}catch(_){}
-  if(!raw){toast("That song link couldn't be read");return;}
+  if(!raw){toast("That song link couldn't be read",{sticky:true});return;}
   offerSharedSong(raw);
 }
 async function shareSong(id){
@@ -1948,7 +1969,12 @@ function parseImport(text,fallbackName){
 }
 
 /* ===== misc ===== */
-let toastT;function toast(m){const t=document.getElementById("toast");t.textContent=m;t.classList.add("show");clearTimeout(toastT);toastT=setTimeout(()=>t.classList.remove("show"),1900);}
+/* toast(msg) auto-clears in 1.9s. toast(msg,{sticky:true}) — or any message starting with ⚠ —
+   stays until tapped: an error the player has to act on must not vanish before it can be read. */
+let toastT;function toast(m,opts){const t=document.getElementById("toast");const sticky=!!(opts&&opts.sticky)||/^⚠/.test(m);
+  t.textContent=m;t.classList.toggle("sticky",sticky);t.classList.add("show");clearTimeout(toastT);
+  if(!sticky)toastT=setTimeout(()=>t.classList.remove("show"),1900);}
+document.getElementById("toast").addEventListener("click",()=>document.getElementById("toast").classList.remove("show"));
 /* Update banner: set by the service-worker block. Flashes once on the home screen
    (never mid-song — an unexpected reload during a set would be worse than a stale version),
    auto-hides after 6s; the header ⟳ stays visible so the update can still be applied later. */
@@ -2126,7 +2152,7 @@ document.getElementById("linkImportBtn").addEventListener("click",()=>{
   showPrompt("Add a song from a link","Paste the song link here","",async v=>{
     if(!v||!v.trim())return;
     const raw=await linkToSong(v);
-    if(!raw){toast("That song link couldn't be read");return;}
+    if(!raw){toast("That song link couldn't be read",{sticky:true});return;}
     offerSharedSong(raw);
   });
 });
@@ -2263,7 +2289,7 @@ document.getElementById("pasteImportBtn").addEventListener("click",()=>{
   const q=document.getElementById("pasteSearch").value.trim();
   if(!text){toast("Paste some lyrics first");return;}
   const parsed=parseImport(text,q||"New Song");
-  if(!parsed){toast("Couldn't parse — try pasting in ChordPro format");return;}
+  if(!parsed){toast("Couldn't parse — try pasting in ChordPro format",{sticky:true});return;}
   document.getElementById("pasteModal").classList.remove("show");
   openEditor(null);
   document.getElementById("fTitle").value=parsed.title||q||"";
@@ -2384,7 +2410,7 @@ document.getElementById("closeSongCtx").addEventListener("click",closeSongContex
   function install(containerId,getCtx,open){
     const el=document.getElementById(containerId);
     el.addEventListener("touchstart",e=>{
-      if(e.target.closest("button")||e.target.closest(".drag-handle"))return;
+      if(e.target.closest("button:not(.meta)")||e.target.closest(".drag-handle"))return;   // .meta IS the row (a button since v2026.09.18.001)
       const card=e.target.closest(".card");if(!card)return;
       const ctx=getCtx(card);if(!ctx)return;
       clearTimeout(lpTimer);
