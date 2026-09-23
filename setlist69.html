@@ -319,6 +319,12 @@
                    (keyColor lightness 30% for hues 30-180); new --accent-text token (#e04a34
                    dark) for accent-coloured text - the button coral measured 4.33:1 on black;
                    error toasts (⚠, parse/link failures) stay until tapped.
+  v2026.09.23.001  Gig-readable lists (owner: "song titles bigger... search much easier to click
+                   when you're gigging"): row titles 1.06->1.28rem, artist .82->.95rem, rows
+                   min-height 4rem, key pills .72->.85rem, row menu 2->2.6rem; search field is
+                   big (1.1rem, so iOS no longer zooms on focus) with a coral magnifier, an
+                   accent-tinted border and a focus ring, sticky at the top of the home scroller;
+                   Songs count reads "3 of 50 songs" while a search is narrowing the list.
 -->
 <html lang="en">
 <head>
@@ -415,7 +421,7 @@
   .count{font-family:var(--mono);font-size:.7rem;color:var(--faint);}
 
   .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);
-    padding:.9rem 1rem;margin-bottom:.6rem;display:flex;align-items:center;gap:.85rem;transition:.15s;overflow:hidden;}
+    padding:1.05rem 1rem;min-height:4rem;margin-bottom:.6rem;display:flex;align-items:center;gap:.85rem;transition:.15s;overflow:hidden;}
   .card:active{transform:scale(.99);}
   .card:hover{border-color:var(--faint);}
   .card.is-current{border-color:var(--accent);box-shadow:inset 3px 0 0 var(--accent);}
@@ -445,8 +451,10 @@
   /* The row body is a <button> (keyboard can open a set/song); it must look like the text block
      it replaced and be allowed to shrink so titles still ellipsise. */
   .card .meta{flex:1;min-width:0;display:block;overflow:hidden;text-align:left;padding:0;margin:0;font:inherit;color:inherit;}
-  .card .t{display:block;font-weight:600;font-size:1.06rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-  .card .s{display:block;font-size:.82rem;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:.1rem;}
+  /* Row text sized for a stage, not a spreadsheet (v2026.09.23.001): a title you can read and hit
+     from a mic stand. */
+  .card .t{display:block;font-weight:600;font-size:1.28rem;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .card .s{display:block;font-size:.95rem;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:.15rem;}
   .chev{color:var(--faint);font-size:1.1rem;}
   .num{font-family:var(--mono);color:var(--faint);font-size:.85rem;min-width:1.3rem;text-align:right;}
 
@@ -456,14 +464,14 @@
   /* a performance cue on the chord line ("E riff") — muted, no border, clearly not a chord */
   .chordpill.cue{background:transparent;color:var(--muted);border:none;box-shadow:none;
     font-family:var(--ui);font-style:italic;font-weight:600;letter-spacing:0;}
-  .pill{font-family:var(--mono);font-size:.72rem;font-weight:700;padding:.2rem .5rem;border-radius:7px;
+  .pill{font-family:var(--mono);font-size:.85rem;font-weight:700;padding:.3rem .6rem;border-radius:8px;
     color:#fff;letter-spacing:.3px;white-space:nowrap;box-shadow:inset 0 0 0 1px #ffffff22;}
 
   /* Row actions live in the long-press menu (and the ⋯ button, for pointer devices), not on
      every row. .rm is retained: the stage-mode rule below still references it. */
   .rm{color:var(--faint);font-size:1.05rem;padding:.25rem .45rem;}
   .rm:hover{color:var(--red);}
-  .rowmore{color:var(--faint);width:2rem;height:2rem;border-radius:8px;display:grid;place-items:center;flex-shrink:0;}
+  .rowmore{color:var(--faint);width:2.6rem;height:2.6rem;border-radius:8px;display:grid;place-items:center;flex-shrink:0;}
   .rowmore:hover{color:var(--ink);background:var(--panel2);}
 
   /* Version line in the ≡ sheet - the header slot now holds the wordmark alone. Also the
@@ -555,10 +563,17 @@
   .sl-notes{display:block;font-size:.72rem;color:var(--faint);margin-top:.12rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
   .set-notes{font-size:.8rem;color:var(--muted);font-style:italic;margin-bottom:.7rem;line-height:1.4;}
   .set-notes:empty{display:none;}
-  .searchbar{margin-bottom:.7rem;}
-  .searchbar input{width:100%;padding:.55rem .8rem;border-radius:10px;background:var(--panel);border:1px solid var(--line);color:var(--ink);font-size:.9rem;font-family:var(--ui);-webkit-user-select:text;user-select:text;outline:none;}
-  .searchbar input::placeholder{color:var(--faint);}
-  .searchbar input:focus{border-color:var(--chord);}
+  /* Search is a gig control, not a filter widget (v2026.09.23.001): a big field with a coral
+     magnifier, ≥16px text so iOS Safari doesn't zoom the page on focus, and on the home screen it
+     sticks to the top of the scroller so a 50-song library never needs a scroll-back to search. */
+  .searchbar{position:relative;margin-bottom:.8rem;}
+  #setlistsScreen .searchbar{position:sticky;top:0;z-index:5;background:var(--bg);padding:.45rem 0;margin-bottom:.45rem;}
+  .searchbar .ico{position:absolute;left:1rem;top:50%;transform:translateY(-50%);width:22px;height:22px;color:var(--accent-text);pointer-events:none;}
+  .searchbar input{width:100%;padding:.9rem 1rem .9rem 3rem;border-radius:12px;background:var(--panel);
+    border:1.5px solid color-mix(in srgb,var(--accent) 45%,var(--line));color:var(--ink);font-size:1.1rem;font-weight:600;
+    font-family:var(--ui);-webkit-appearance:none;appearance:none;-webkit-user-select:text;user-select:text;outline:none;transition:border-color .15s,box-shadow .15s;}
+  .searchbar input::placeholder{color:var(--faint);font-weight:500;}
+  .searchbar input:focus{border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 28%,transparent);}
   @media (max-width:390px){.card{gap:.5rem;padding:.8rem .7rem;}}
   .drag-handle{font-size:1.15rem;color:var(--faint);padding:.3rem .35rem;touch-action:none;-webkit-user-select:none;user-select:none;cursor:grab;flex-shrink:0;}
   .drag-handle:hover{color:var(--muted);}
@@ -724,7 +739,7 @@
 <div class="app">
   <header>
     <button class="back" id="backBtn" style="display:none" aria-label="Back"><svg class="ico" aria-hidden="true"><use href="#i-back"/></svg><span id="backLabel">Back</span></button>
-    <div class="brand" id="brand"><span class="dot"></span>SetList69<small>v2026.09.18.001</small></div>
+    <div class="brand" id="brand"><span class="dot"></span>SetList69<small>v2026.09.23.001</small></div>
     <div class="htitle" id="headerTitle" style="display:none"></div>
     <div class="spacer"></div>
     <button class="iconbtn" id="updateHdr" title="Update ready" aria-label="Update ready — refresh" hidden><svg class="ico" aria-hidden="true"><use href="#i-refresh"/></svg></button>
@@ -754,7 +769,7 @@
         <div class="spacer"></div>
         <button class="iconbtn" id="newSongHome" title="New song" aria-label="New song" style="font-size:1.4rem;color:var(--accent)">+</button>
       </div>
-      <div class="searchbar"><input type="search" id="allSearch" placeholder="Search songs…" autocomplete="off"></div>
+      <div class="searchbar"><svg class="ico" aria-hidden="true"><use href="#i-search"/></svg><input type="search" id="allSearch" placeholder="Search songs or artists…" autocomplete="off" aria-label="Search songs"></div>
       <div id="allSongList"></div>
     </section>
 
@@ -832,7 +847,7 @@
         <button class="secbtn" id="pickerImport" style="background:var(--panel2);border:1px solid var(--line);color:var(--ink);margin-bottom:0"><svg class="ico" aria-hidden="true"><use href="#i-import"/></svg> Import file</button>
       </div>
       <input type="file" id="pickerFileInput" accept=".onsong,.txt,.cho,.chordpro,.chopro,.pro,.crd,.xml,.zip,text/plain,application/zip" multiple hidden>
-      <div class="searchbar"><input type="search" id="pickerSearch" placeholder="Search songs…" autocomplete="off"></div>
+      <div class="searchbar"><svg class="ico" aria-hidden="true"><use href="#i-search"/></svg><input type="search" id="pickerSearch" placeholder="Search songs or artists…" autocomplete="off" aria-label="Search songs"></div>
       <div id="pickerList"></div>
     </div>
     <div class="mfoot"><button class="btn primary" id="pickerDone">Done</button></div>
@@ -1405,8 +1420,9 @@ function renderAllSongs(){
   const wrap=document.getElementById("allSongList");
   const q=allSearchQ;
   const all=[...state.songs].sort((a,b)=>a.title.localeCompare(b.title));
-  document.getElementById("allCount").textContent=state.songs.length+" song"+(state.songs.length!==1?"s":"");
   const songs=q?all.filter(s=>s.title.toLowerCase().includes(q)||(s.sub||"").toLowerCase().includes(q)):all;
+  const total=all.length;   // "3 of 50 songs" while a search is narrowing the list
+  document.getElementById("allCount").textContent=(q&&songs.length!==total?songs.length+" of "+total:total)+" song"+(total!==1?"s":"");
   if(!all.length){wrap.innerHTML='<div class="empty"><div class="big">♪</div>No songs yet.</div>';return;}
   if(!songs.length){wrap.innerHTML='<div class="empty">No matches.</div>';return;}
   wrap.innerHTML=songs.map(s=>{const eid=esc(s.id);return '<div class="card" data-id="'+eid+'"><button class="meta open-allsong" data-id="'+eid+'"><span class="t">'+esc(s.title)+'</span><span class="s">'+esc(s.sub||"")+'</span></button>'+(s.key?'<span class="pill" style="background:'+keyColor(s.key)+'">'+esc(s.key)+'</span>':"")+'<button class="rowmore" data-songmore-id="'+eid+'" title="Song actions" aria-label="Song actions"><svg class=\"ico\" aria-hidden=\"true\"><use href=\"#i-more\"/></svg></button></div>';}).join("");

@@ -1,6 +1,6 @@
 # SetList69 — Handoff Document
 
-> For whoever (or whatever) picks this up next, including Claude Code. This describes the project as of revision **v2026.07.12.006**. Kept in the repo as `CLAUDE.md` so Claude Code reads it automatically as project context.
+> For whoever (or whatever) picks this up next, including Claude Code. This describes the project as of revision **v2026.09.23.001**. Kept in the repo as `CLAUDE.md` so Claude Code reads it automatically as project context.
 
 -----
 
@@ -373,6 +373,12 @@ v2026.09.18.001  Interface review, HIGH fixes: setlist/song rows and chord pills
                  + dismissDock() defers while focus is inside); keyColor lightness 30% for hues 30-180
                  so white pill text clears AA; new --accent-text token for accent-coloured text;
                  error toasts (⚠ / parse / link failures) are sticky until tapped.
+v2026.09.23.001  Gig-readable lists. Row titles 1.28rem / artist .95rem / rows min-height 4rem, key
+                 pills .85rem, `.rowmore` 2.6rem. `.searchbar` is a real control: coral `#i-search`
+                 icon inside, 1.1rem text (≥16px, so iOS Safari stops zooming the page on focus),
+                 accent-tinted border + focus ring, and `#setlistsScreen .searchbar` is
+                 `position:sticky;top:0` in the `.screen` scroller. `renderAllSongs` shows
+                 "n of N songs" while a query narrows the list.
 ```
 
 > **Note:** the changelog comment at the top of `setlist69.html` is missing entries
