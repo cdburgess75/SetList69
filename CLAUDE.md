@@ -379,6 +379,7 @@ v2026.09.23.001  Gig-readable lists. Row titles 1.28rem / artist .95rem / rows m
                  accent-tinted border + focus ring, and `#setlistsScreen .searchbar` is
                  `position:sticky;top:0` in the `.screen` scroller. `renderAllSongs` shows
                  "n of N songs" while a query narrows the list.
+v2026.09.26.001  Header wordmark + status dot lose their glow (owner: the blur by the logo looked bad).
 ```
 
 > **Note:** the changelog comment at the top of `setlist69.html` is missing entries
@@ -715,7 +716,7 @@ Fonts — three faces, three jobs (v2026.09.07.001):
 
 `.brand` is pinned to `--mono` explicitly so retargeting `--display` leaves the PileUp-family wordmark alone. **Don't put mono back on titles or headings** — that was the single biggest "unfinished" tell.
 
-**Brand wordmark** (`.brand`): uppercase, wide-tracked (`.16em`), amber, with a soft glow (`text-shadow`), echoing PileUp's `PILEUP` mark. The `<small>` version tag inside it opts back out (`text-transform:none`).
+**Brand wordmark** (`.brand`): uppercase, wide-tracked (`.16em`), coral, **no glow** (the `text-shadow` glow and the status dot's `box-shadow` were removed in v2026.09.26.001 at the owner's request — don't reintroduce them), echoing PileUp's `PILEUP` mark. The `<small>` version tag inside it opts back out (`text-transform:none`).
 
 **Icons (v2026.09.07.001):** every glyph is `<svg class="ico"><use href="#i-NAME"/></svg>` pointing into the `#isprite` `<symbol>` sheet at the top of `<body>`. **The paint (`fill:none;stroke:currentColor;stroke-width:1.75`) is set in CSS on `.ico`, not as attributes on the sprite root** — a `<use>` clone inherits from the use site, so attributes on `#isprite` never reach it and icons render as solid black fills. Symbols that are meant to be solid (play/pause/prev/next, dots) carry their own `fill="currentColor" stroke="none"`, which beats the inherited CSS. When JS needs to change an icon, call `setIcon(el,name)` — assigning `textContent` would delete the `<svg>` child.
 
