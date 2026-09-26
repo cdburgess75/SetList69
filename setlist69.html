@@ -325,6 +325,8 @@
                    big (1.1rem, so iOS no longer zooms on focus) with a coral magnifier, an
                    accent-tinted border and a focus ring, sticky at the top of the home scroller;
                    Songs count reads "3 of 50 songs" while a search is narrowing the list.
+  v2026.09.26.001  Header wordmark + status dot drop their glow (text-shadow/box-shadow): owner found
+                   the blur by the logo unpleasant. Crisp coral text, flat green/red dot.
 -->
 <html lang="en">
 <head>
@@ -381,10 +383,10 @@
     background:var(--panel);
     border-bottom:1px solid var(--line);position:relative;z-index:20;}
   .brand{font-family:var(--mono);font-weight:700;font-size:1.02rem;display:flex;align-items:center;gap:.45rem;
-    text-transform:uppercase;letter-spacing:.16em;color:var(--brand);text-shadow:0 0 14px rgba(255,111,92,.5);}
+    text-transform:uppercase;letter-spacing:.16em;color:var(--brand);}
   /* status light: green when running the latest version, red when an update is available */
-  .brand .dot{width:.5rem;height:.5rem;border-radius:50%;background:var(--ok);box-shadow:0 0 12px var(--ok);transition:background .3s,box-shadow .3s;}
-  .brand .dot.behind{background:var(--red);box-shadow:0 0 12px var(--red);}
+  .brand .dot{width:.5rem;height:.5rem;border-radius:50%;background:var(--ok);transition:background .3s;}
+  .brand .dot.behind{background:var(--red);}
   .brand small{display:none;}   /* kept in the DOM: CI + APP_VERSION read it. Visible copy is #aboutLine in the ≡ sheet. */
   .spacer{flex:1;}
   /* One icon language: every glyph is a <use> into the #isprite sheet, stroked in currentColor
@@ -739,7 +741,7 @@
 <div class="app">
   <header>
     <button class="back" id="backBtn" style="display:none" aria-label="Back"><svg class="ico" aria-hidden="true"><use href="#i-back"/></svg><span id="backLabel">Back</span></button>
-    <div class="brand" id="brand"><span class="dot"></span>SetList69<small>v2026.09.23.001</small></div>
+    <div class="brand" id="brand"><span class="dot"></span>SetList69<small>v2026.09.26.001</small></div>
     <div class="htitle" id="headerTitle" style="display:none"></div>
     <div class="spacer"></div>
     <button class="iconbtn" id="updateHdr" title="Update ready" aria-label="Update ready — refresh" hidden><svg class="ico" aria-hidden="true"><use href="#i-refresh"/></svg></button>
